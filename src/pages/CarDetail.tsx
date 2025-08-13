@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, Star, Share2, ArrowLeft, Phone, Mail, Calendar, Palette, Car as CarIcon, Zap, Gauge, Users, Fuel } from "lucide-react";
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createSafeSupabaseWrapper, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { findCarBySlug, createCarSlug } from "@/utils/carSlugUtils";
 
 const CarDetail = () => {
