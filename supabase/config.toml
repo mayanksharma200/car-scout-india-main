@@ -1,0 +1,16 @@
+project_id = "gfjhsljeezfdkknhsrxx"
+
+[functions.sync-carwale-data]
+verify_jwt = false
+
+[functions.sync-api-ninjas-data]
+verify_jwt = false
+
+[functions.add-test-data]
+verify_jwt = false
+
+[functions.import-comprehensive-cars]
+verify_jwt = false
+
+[functions.update-car-images]
+verify_jwt = false
