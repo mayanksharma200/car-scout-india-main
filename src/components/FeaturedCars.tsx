@@ -64,7 +64,7 @@ const FeaturedCars = () => {
         setFeaturedCars(getMockCars());
       }
     } catch (error) {
-      console.error('Error in loadFeaturedCars:', error);
+      console.warn('🔥 Error in loadFeaturedCars, using mock data:', error.message || error);
       setFeaturedCars(getMockCars());
     } finally {
       setLoading(false);
