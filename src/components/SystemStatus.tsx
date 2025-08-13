@@ -77,7 +77,7 @@ const SystemStatus = () => {
               {/* Storage Status */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Storage className="w-4 h-4" />
+                  <HardDrive className="w-4 h-4" />
                   <span className="text-sm">Local Storage</span>
                 </div>
                 <Badge variant={storageStatus === 'available' ? 'default' : 'secondary'}>
