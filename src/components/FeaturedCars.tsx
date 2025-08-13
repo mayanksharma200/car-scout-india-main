@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import CarCard from "./CarCard";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 
 const FeaturedCars = () => {
@@ -14,6 +14,13 @@ const FeaturedCars = () => {
 
   const loadFeaturedCars = async () => {
     try {
+      // Check if Supabase is configured and available
+      if (!isSupabaseConfigured || !supabase) {
+        console.log('Supabase not configured, using mock data');
+        setFeaturedCars(getMockCars());
+        return;
+      }
+
       const { data: cars, error } = await supabase
         .from('cars')
         .select('*')
@@ -22,10 +29,10 @@ const FeaturedCars = () => {
         .limit(4);
 
       console.log('Raw cars from database:', cars);
-      
+
       if (error) {
         console.error('Error loading cars:', error);
-        // Fallback to mock data if database is empty
+        // Fallback to mock data if database error
         setFeaturedCars(getMockCars());
       } else if (cars && cars.length > 0) {
         // Transform database cars to match CarCard interface
