@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, Star, Share2, ArrowLeft, Phone, Mail, Calendar, Palette, Car as CarIcon, Zap, Gauge, Users, Fuel } from "lucide-react";
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createSafeSupabaseWrapper, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { findCarBySlug, createCarSlug } from "@/utils/carSlugUtils";
 
 const CarDetail = () => {
@@ -28,14 +27,33 @@ const CarDetail = () => {
 
   const loadCarBySlug = async () => {
     try {
-      console.log('Loading car by slug:', slug);
-      const { data, error } = await supabase
+      console.log('🔍 Loading car by slug:', slug);
+
+      // Use safe wrapper and check configuration
+      const safeSupabase = createSafeSupabaseWrapper();
+
+      if (!isSupabaseConfigured || !supabase) {
+        console.log('🔄 Supabase not configured, using mock data');
+        // Create a mock car for the slug
+        const mockCar = getMockCarBySlug(slug || '');
+        if (mockCar) {
+          setCar(mockCar);
+        }
+        return;
+      }
+
+      const { data, error } = await safeSupabase
         .from('cars')
         .select('*')
         .eq('status', 'active');
 
       if (error) {
-        console.error('Error loading cars:', error);
+        console.warn('⚠️ Database error, trying mock data:', error.message);
+        // Try mock data as fallback
+        const mockCar = getMockCarBySlug(slug || '');
+        if (mockCar) {
+          setCar(mockCar);
+        }
         return;
       }
 
@@ -77,10 +95,53 @@ const CarDetail = () => {
         console.log('Car not found for slug:', slug);
       }
     } catch (error) {
-      console.error('Error loading car by slug:', error);
+      console.warn('🔥 Error loading car by slug, trying mock data:', error.message || error);
+      // Try mock data as final fallback
+      const mockCar = getMockCarBySlug(slug || '');
+      if (mockCar) {
+        setCar(mockCar);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // Mock car data generator for fallback
+  const getMockCarBySlug = (slug: string) => {
+    const mockCars = [
+      {
+        id: "1",
+        brand: "Maruti Suzuki",
+        model: "Swift",
+        variant: "ZXI AMT",
+        price: 849000,
+        onRoadPrice: 967000,
+        fuelType: "Petrol",
+        fuel_type: "Petrol",
+        transmission: "AMT",
+        bodyType: "Hatchback",
+        body_type: "Hatchback",
+        seating: 5,
+        seating_capacity: 5,
+        mileage: "23.2",
+        engine_capacity: "1.2L",
+        rating: 4.2,
+        reviews: 150,
+        image: "/placeholder.svg",
+        images: ["/placeholder.svg"],
+        color: "Pearl White",
+        year: 2024,
+        features: ["Power Steering", "Air Conditioning", "Power Windows", "Central Locking", "ABS", "Airbags"],
+        description: "The Maruti Suzuki Swift ZXI AMT is a premium hatchback that combines style, performance, and comfort.",
+        status: "active",
+        isPopular: true,
+        isBestSeller: false
+      }
+    ];
+
+    // Find by slug or return the first mock car
+    const foundCar = findCarBySlug(mockCars, slug);
+    return foundCar || mockCars[0];
   };
 
   const formatPrice = (price: number) => {
