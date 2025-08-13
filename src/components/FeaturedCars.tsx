@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import CarCard from "./CarCard";
 import { Button } from "@/components/ui/button";
-import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { supabase, isSupabaseConfigured, createSafeSupabaseWrapper } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 
 const FeaturedCars = () => {
