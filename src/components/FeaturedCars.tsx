@@ -14,24 +14,28 @@ const FeaturedCars = () => {
 
   const loadFeaturedCars = async () => {
     try {
+      // Use safe wrapper instead of direct supabase client
+      const safeSupabase = createSafeSupabaseWrapper();
+
       // Check if Supabase is configured and available
       if (!isSupabaseConfigured || !supabase) {
-        console.log('Supabase not configured, using mock data');
+        console.log('🔄 Supabase not configured, using mock data');
         setFeaturedCars(getMockCars());
         return;
       }
 
-      const { data: cars, error } = await supabase
+      console.log('🔍 Fetching cars from database...');
+      const { data: cars, error } = await safeSupabase
         .from('cars')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(4);
 
-      console.log('Raw cars from database:', cars);
+      console.log('📊 Raw cars from database:', cars);
 
       if (error) {
-        console.error('Error loading cars:', error);
+        console.warn('⚠️ Database error, falling back to mock data:', error.message);
         // Fallback to mock data if database error
         setFeaturedCars(getMockCars());
       } else if (cars && cars.length > 0) {
