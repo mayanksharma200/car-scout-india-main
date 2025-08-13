@@ -32,9 +32,29 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Set up environment variables (optional)
+# Copy the example environment file and configure your own Supabase instance
+cp .env.example .env.local
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Database Setup (Optional)
+
+This project uses Supabase for data storage. The app will work with mock data out of the box, but to connect to your own database:
+
+1. Create a free account at [Supabase](https://supabase.com)
+2. Create a new project
+3. Copy your project URL and anon key from the project settings
+4. Create a `.env.local` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+5. Set up your database tables using the SQL migrations in the `supabase/` folder
+
+**Note**: Without Supabase configuration, the app will use mock data for demonstration purposes.
 
 **Edit a file directly in GitHub**
 
