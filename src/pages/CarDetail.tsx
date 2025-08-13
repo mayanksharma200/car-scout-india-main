@@ -27,14 +27,33 @@ const CarDetail = () => {
 
   const loadCarBySlug = async () => {
     try {
-      console.log('Loading car by slug:', slug);
-      const { data, error } = await supabase
+      console.log('🔍 Loading car by slug:', slug);
+
+      // Use safe wrapper and check configuration
+      const safeSupabase = createSafeSupabaseWrapper();
+
+      if (!isSupabaseConfigured || !supabase) {
+        console.log('🔄 Supabase not configured, using mock data');
+        // Create a mock car for the slug
+        const mockCar = getMockCarBySlug(slug || '');
+        if (mockCar) {
+          setCar(mockCar);
+        }
+        return;
+      }
+
+      const { data, error } = await safeSupabase
         .from('cars')
         .select('*')
         .eq('status', 'active');
 
       if (error) {
-        console.error('Error loading cars:', error);
+        console.warn('⚠️ Database error, trying mock data:', error.message);
+        // Try mock data as fallback
+        const mockCar = getMockCarBySlug(slug || '');
+        if (mockCar) {
+          setCar(mockCar);
+        }
         return;
       }
 
