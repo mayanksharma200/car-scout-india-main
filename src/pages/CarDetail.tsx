@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { carAPI } from "@/services/api";
-import { findCarBySlug, createCarSlug } from "@/utils/carSlugUtils";
+import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
