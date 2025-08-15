@@ -10,28 +10,55 @@ export const useAuth = () => {
   const env = detectEnvironment();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        console.log('🔄 Initializing authentication...');
+
+        // Check for existing session first
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (mounted) {
+          if (error) {
+            console.warn('⚠️ Session check failed:', error.message);
+          } else {
+            console.log('🔍 Initial session check:', { hasSession: !!session });
+            setSession(session);
+            setUser(session?.user ?? null);
+          }
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('❌ Auth initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log(`🔐 Auth event: ${event}`, { hasSession: !!session });
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          // Only set loading to false after the first auth change
+          if (event === 'INITIAL_SESSION') {
+            setLoading(false);
+          }
+        }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔍 Initial session check:', { hasSession: !!session });
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }).catch((error) => {
-      console.log('⚠️ Session check failed (expected in cloud environments):', error.message);
-      setLoading(false);
-    });
+    // Initialize authentication
+    initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, userData?: { firstName?: string, lastName?: string, phone?: string }) => {
