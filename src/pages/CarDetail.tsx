@@ -108,7 +108,28 @@ const CarDetail = () => {
         console.log('Looking for slug:', slug);
 
         // Find car by slug
-        const foundCar = findCarBySlug(transformedCars, slug || '');
+        let foundCar = findCarBySlug(transformedCars, slug || '');
+
+        // If not found, try some common redirects for missing cars
+        if (!foundCar && slug) {
+          const redirectMap = {
+            'mg-hector-super': ['mg-astor-sharp', 'mg-astor-super'],
+            'mg-hector-style': ['mg-astor-style'],
+            'mg-hector-smart': ['mg-astor-sharp'],
+          };
+
+          if (redirectMap[slug]) {
+            for (const redirectSlug of redirectMap[slug]) {
+              foundCar = findCarBySlug(transformedCars, redirectSlug);
+              if (foundCar) {
+                console.log(`🔀 Redirecting from ${slug} to ${redirectSlug}`);
+                // Update URL without page reload
+                window.history.replaceState({}, '', `/cars/${redirectSlug}`);
+                break;
+              }
+            }
+          }
+        }
 
         if (foundCar) {
           console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
