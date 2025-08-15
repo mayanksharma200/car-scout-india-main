@@ -23,6 +23,7 @@ import ReviewsPage from "./pages/ReviewsPage";
 import GalleryPage from "./pages/GalleryPage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminRouteGuard from "./components/AdminRouteGuard";
 import CarManagement from "./pages/CarManagement";
 import LeadManagement from "./pages/LeadManagement";
 import APISettings from "./pages/APISettings";
@@ -84,11 +85,11 @@ const App = () => {
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/cars" element={<CarManagement />} />
-            <Route path="/admin/leads" element={<LeadManagement />} />
-            <Route path="/admin/content" element={<ContentManagement />} />
-            <Route path="/admin/api-settings" element={<APISettings />} />
+            <Route path="/admin" element={<AdminRouteGuard><AdminDashboard /></AdminRouteGuard>} />
+            <Route path="/admin/cars" element={<AdminRouteGuard><CarManagement /></AdminRouteGuard>} />
+            <Route path="/admin/leads" element={<AdminRouteGuard><LeadManagement /></AdminRouteGuard>} />
+            <Route path="/admin/content" element={<AdminRouteGuard><ContentManagement /></AdminRouteGuard>} />
+            <Route path="/admin/api-settings" element={<AdminRouteGuard><APISettings /></AdminRouteGuard>} />
 
             {/* Legal Pages */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
