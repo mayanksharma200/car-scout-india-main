@@ -263,6 +263,16 @@ app.post("/api/auth/recreate-test-user", async (req, res) => {
 
     if (error) throw error;
 
+    // Set the test user as admin for development
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ role: 'admin' })
+      .eq('id', data.user.id);
+
+    if (profileError) {
+      console.warn("Could not set admin role:", profileError.message);
+    }
+
     res.json({
       success: true,
       data: {
@@ -270,7 +280,7 @@ app.post("/api/auth/recreate-test-user", async (req, res) => {
         password: testPassword,
         user: data.user
       },
-      message: "Test user recreated successfully with confirmed email"
+      message: "Test user recreated successfully with admin role"
     });
   } catch (error) {
     console.error("Error recreating test user:", error);
