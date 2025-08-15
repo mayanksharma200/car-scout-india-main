@@ -171,8 +171,8 @@ const FeaturedCars = () => {
                 // Transform API data to match CarCard interface
                 const transformedCar = {
                   id: car.id,
-                  brand: car.brand,
-                  model: car.model,
+                  brand: car.brand || "Unknown",
+                  model: car.model || "Unknown",
                   variant: car.variant || "",
                   price: car.price_min || 0,
                   onRoadPrice: car.price_max || car.price_min || 0,
@@ -191,6 +191,11 @@ const FeaturedCars = () => {
                       : "/placeholder.svg",
                   isPopular: car.isPopular || Math.random() > 0.5,
                   isBestSeller: car.isBestSeller || Math.random() > 0.7,
+                  // Additional fields for navigation
+                  bodyType: car.body_type || "Hatchback",
+                  color: "Pearl White",
+                  year: 2024,
+                  features: car.features || []
                 };
 
                 return (
