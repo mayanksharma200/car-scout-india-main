@@ -124,7 +124,7 @@ app.get("/api/cars/search", async (req, res) => {
       .select("*")
       .or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`)
       .eq("status", "active")
-      .limit(20);
+      .limit(600);
 
     if (error) throw error;
 
@@ -152,7 +152,7 @@ app.get("/api/cars", async (req, res) => {
       model,
       minPrice,
       maxPrice,
-      limit = 20,
+      limit = 500,
       offset = 0,
     } = req.query;
 
