@@ -2,23 +2,57 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-// Simple memory storage for development
-const memoryStorage = {
-  data: {} as Record<string, string>,
-  getItem: (key: string) => memoryStorage.data[key] || null,
-  setItem: (key: string, value: string) => { memoryStorage.data[key] = value; },
-  removeItem: (key: string) => { delete memoryStorage.data[key]; }
-};
+// Enhanced memory storage implementation for cloud environments
+class SecureMemoryStorage {
+  private data: Map<string, string> = new Map();
 
-// Check localStorage availability
+  getItem(key: string): string | null {
+    return this.data.get(key) || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.data.delete(key);
+  }
+
+  clear(): void {
+    this.data.clear();
+  }
+
+  // Implement Storage interface compatibility
+  get length(): number {
+    return this.data.size;
+  }
+
+  key(index: number): string | null {
+    const keys = Array.from(this.data.keys());
+    return keys[index] || null;
+  }
+}
+
+const memoryStorage = new SecureMemoryStorage();
+
+// Check localStorage availability with comprehensive testing
 const isLocalStorageAvailable = (): boolean => {
   try {
     if (typeof window === 'undefined') return false;
-    const test = '__test__';
-    window.localStorage.setItem(test, test);
+
+    // Check if localStorage object exists
+    if (!window.localStorage) return false;
+
+    // Test actual read/write operations
+    const test = '__supabase_storage_test__';
+    window.localStorage.setItem(test, 'test');
+    const result = window.localStorage.getItem(test);
     window.localStorage.removeItem(test);
-    return true;
-  } catch {
+
+    return result === 'test';
+  } catch (error) {
+    // Log the specific error for debugging
+    console.log('🔍 localStorage not available:', error.message);
     return false;
   }
 };
@@ -28,10 +62,13 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://gfjhsljeezfdk
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmamhzbGplZXpmZGtrbmhzcnh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MzUyOTQsImV4cCI6MjA2OTUxMTI5NH0.fuqHH9yWDj5zlrljsuFgGT9J-stzz8pzlfIJpjEFcao";
 
-const isDevelopment = import.meta.env.DEV;
+import { detectEnvironment, getEnvironmentMessage } from "@/utils/environmentDetector";
+
+const env = detectEnvironment();
 const storageAvailable = isLocalStorageAvailable();
 
-console.log("🔧 Supabase Environment:", { isDevelopment, storageAvailable });
+console.log("🔧 Supabase Environment:", env);
+console.log("ℹ️", getEnvironmentMessage());
 
 // Create Supabase client with proper error handling
 let supabase: ReturnType<typeof createClient<Database>> | null = null;
@@ -39,14 +76,22 @@ let supabase: ReturnType<typeof createClient<Database>> | null = null;
 try {
   console.log("🔧 Creating Supabase client...");
   
-  // Always use memory storage to avoid localStorage issues
+  // Configure Supabase based on environment capabilities
+  const authConfig = storageAvailable ? {
+    // localStorage available - use default settings
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  } : {
+    // localStorage not available - use memory storage with optimized settings
+    storage: memoryStorage,
+    persistSession: false, // Can't persist without localStorage
+    autoRefreshToken: false, // Disable to avoid refresh loops in memory storage
+    detectSessionInUrl: env.isCloudEnvironment || env.isInIframe, // Enable for OAuth in cloud/iframe
+  };
+
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      storage: memoryStorage, // Always use memory storage
-      persistSession: false,  // Don't persist sessions
-      autoRefreshToken: false, // Don't auto-refresh
-      detectSessionInUrl: false, // Don't detect session in URL
-    },
+    auth: authConfig,
     global: {
       headers: {
         'X-Client-Info': 'car-marketplace'
@@ -126,4 +171,4 @@ export { supabase, isLocalStorageAvailable };
 export const isSupabaseConfigured = !!supabase;
 export const createSafeSupabaseWrapper = getSupabase;
 export const supabaseError = supabase ? null : "Supabase client not initialized";
-export const safeStorage = memoryStorage; 
+export const safeStorage = memoryStorage;

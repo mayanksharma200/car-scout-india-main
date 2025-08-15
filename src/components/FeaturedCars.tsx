@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { carAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { getCarSlugFromCar } from "@/utils/carSlugUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Mock data fallback (only used if API is completely unavailable)
   const mockCars = [
@@ -77,36 +80,55 @@ const FeaturedCars = () => {
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        console.log("🔍 Fetching cars from API...");
+        console.log("🔍 Fetching cars...");
         setLoading(true);
         setError(null);
 
-        // Simple API call - no localStorage needed!
-        const response = await carAPI.getFeatured();
+        let carsData = null;
 
-        console.log("📊 API response:", response);
+        // Try API first
+        try {
+          const response = await carAPI.getFeatured();
+          console.log("📊 API response:", response);
 
-        if (response.success && response.data && response.data.length > 0) {
-          console.log("✅ Successfully fetched cars from API");
-          setCars(response.data);
-        } else {
-          console.log("📝 No cars found, using mock data");
-          setCars(mockCars);
+          if (response.success && response.data && response.data.length > 0) {
+            console.log("✅ Successfully fetched cars from API");
+            carsData = response.data;
+          }
+        } catch (apiError) {
+          console.warn("⚠️ API not available, trying Supabase directly:", apiError.message);
+        }
+
+        // If API failed, try Supabase directly
+        if (!carsData) {
+          console.log("🔄 Falling back to Supabase direct access...");
+          const { data: supabaseData, error: supabaseError } = await supabase
+            .from('cars')
+            .select('*')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(8);
+
+          if (supabaseError) {
+            console.warn("⚠️ Supabase error, using mock data:", supabaseError);
+            setCars(mockCars);
+          } else if (supabaseData && supabaseData.length > 0) {
+            console.log("✅ Successfully fetched cars from Supabase");
+            carsData = supabaseData;
+          } else {
+            console.log("📝 No cars found in Supabase, using mock data");
+            setCars(mockCars);
+          }
+        }
+
+        if (carsData) {
+          setCars(carsData);
         }
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        console.error("❌ API Error:", errorMessage);
-
-        // Check if it's a network error (API not running)
-        if (errorMessage.includes("fetch")) {
-          console.log("🔄 API not available, using mock data");
-          setCars(mockCars);
-          setError(null); // Don't show error for missing API
-        } else {
-          setError(`Unable to load cars: ${errorMessage}`);
-          setCars(mockCars); // Still show mock data
-        }
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error("❌ Error fetching cars:", errorMessage);
+        setCars(mockCars);
+        setError(null); // Don't show error, just use mock data
       } finally {
         setLoading(false);
       }
@@ -120,6 +142,11 @@ const FeaturedCars = () => {
       return `₹${(price / 100000).toFixed(2)} Lakh`;
     }
     return `₹${price.toLocaleString()}`;
+  };
+
+  const handleViewDetails = (car) => {
+    const slug = getCarSlugFromCar(car);
+    navigate(`/cars/${slug}`);
   };
 
   return (
@@ -164,8 +191,8 @@ const FeaturedCars = () => {
                 // Transform API data to match CarCard interface
                 const transformedCar = {
                   id: car.id,
-                  brand: car.brand,
-                  model: car.model,
+                  brand: car.brand || "Unknown",
+                  model: car.model || "Unknown",
                   variant: car.variant || "",
                   price: car.price_min || 0,
                   onRoadPrice: car.price_max || car.price_min || 0,
@@ -184,6 +211,11 @@ const FeaturedCars = () => {
                       : "/placeholder.svg",
                   isPopular: car.isPopular || Math.random() > 0.5,
                   isBestSeller: car.isBestSeller || Math.random() > 0.7,
+                  // Additional fields for navigation
+                  bodyType: car.body_type || "Hatchback",
+                  color: "Pearl White",
+                  year: 2024,
+                  features: car.features || []
                 };
 
                 return (
@@ -370,7 +402,10 @@ const FeaturedCars = () => {
                       </div>
 
                       {/* Action button */}
-                      <button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(transformedCar)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2"
+                      >
                         View Details
                         <svg
                           className="w-4 h-4"

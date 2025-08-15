@@ -3,6 +3,12 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+// Log the API configuration
+console.log('🔧 API Configuration:', {
+  baseUrl: API_BASE_URL,
+  environment: import.meta.env.MODE
+});
+
 // Helper for API calls
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   try {
@@ -76,6 +82,46 @@ export const leadAPI = {
       method: 'POST',
       body: JSON.stringify(leadData),
     });
+  },
+};
+
+// Authentication API endpoints
+export const authAPI = {
+  // Login with email and password
+  login: async (email: string, password: string) => {
+    return fetchAPI('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  // Signup with email and password
+  signup: async (email: string, password: string, userData?: any) => {
+    return fetchAPI('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, userData }),
+    });
+  },
+
+  // Logout
+  logout: async () => {
+    return fetchAPI('/auth/logout', {
+      method: 'POST',
+    });
+  },
+
+  // Get current session
+  getSession: async (token: string) => {
+    return fetchAPI('/auth/session', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  },
+
+  // Google OAuth redirect URL
+  getGoogleOAuthUrl: () => {
+    return `${API_BASE_URL}/auth/google`;
   },
 };
 

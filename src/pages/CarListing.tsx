@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CarCard from "@/components/CarCard";
+import { carAPI } from "@/services/api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,6 @@ import { useToast } from "@/hooks/use-toast";
 const CarListing = () => {
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updatingImages, setUpdatingImages] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -53,88 +53,89 @@ const CarListing = () => {
 
   const loadCarsFromDB = async () => {
     try {
-      console.log('Loading cars from database...');
-      const { data, error } = await supabase
-        .from('cars')
-        .select('*')
-        .eq('status', 'active')
-        .order('brand', { ascending: true });
+      console.log('Loading cars...');
+      setLoading(true);
 
-      if (error) {
-        console.error('Error loading cars:', error);
-        return;
+      let carsData = null;
+
+      // Try API first
+      try {
+        const response = await carAPI.getAll({
+          status: 'active',
+          limit: 100
+        });
+
+        if (response.success && response.data) {
+          console.log('✅ Cars loaded from API:', response.data);
+          carsData = response.data;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API not available, trying Supabase directly:', apiError.message);
       }
 
-      console.log('Raw cars from database:', data);
-      
-      // Transform database cars to match existing interface
-      const transformedCars = data.map(car => {
-        // Get the first image from the images array, or use placeholder
-        let carImage = "/placeholder.svg";
-        if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
-          carImage = car.images[0] as string;
+      // If API failed, try Supabase directly
+      if (!carsData) {
+        console.log('🔄 Falling back to Supabase direct access...');
+        const { data: supabaseData, error: supabaseError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('status', 'active')
+          .order('brand', { ascending: true });
+
+        if (supabaseError) {
+          console.error('❌ Supabase error:', supabaseError);
+          setCars([]);
+          return;
         }
 
-        return {
-          ...car,
-          price: car.price_min,
-          onRoadPrice: car.price_max,
-          fuelType: car.fuel_type,
-          bodyType: car.body_type,
-          seating: car.seating_capacity,
-          rating: 4.2 + Math.random() * 0.8,
-          image: carImage,
-          color: "Pearl White",
-          year: 2024,
-          features: car.features || [],
-          mileage: parseFloat(car.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
-          isPopular: Math.random() > 0.7,
-          isBestSeller: Math.random() > 0.8
-        };
-      });
+        carsData = supabaseData;
+        console.log('✅ Cars loaded from Supabase:', carsData);
+      }
 
-      console.log('Transformed cars:', transformedCars);
-      setCars(transformedCars);
+      if (carsData) {
+        console.log('Raw cars data:', carsData);
+
+        // Transform cars to match existing interface
+        const transformedCars = carsData.map(car => {
+          // Get the first image from the images array, or use placeholder
+          let carImage = "/placeholder.svg";
+          if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+            carImage = car.images[0] as string;
+          }
+
+          return {
+            ...car,
+            price: car.price_min || car.price,
+            onRoadPrice: car.price_max || car.onRoadPrice,
+            fuelType: car.fuel_type || car.fuelType,
+            bodyType: car.body_type || car.bodyType,
+            seating: car.seating_capacity || car.seating,
+            rating: 4.2 + Math.random() * 0.8,
+            image: carImage,
+            color: "Pearl White",
+            year: 2024,
+            features: car.features || [],
+            mileage: parseFloat(car.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
+            isPopular: Math.random() > 0.7,
+            isBestSeller: Math.random() > 0.8
+          };
+        });
+
+        console.log('Transformed cars:', transformedCars);
+        setCars(transformedCars);
+      } else {
+        console.log('No cars found');
+        setCars([]);
+      }
     } catch (error) {
-      console.error('Error loading cars from DB:', error);
+      console.error('Error loading cars:', error);
+      setCars([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateCarImages = async () => {
-    setUpdatingImages(true);
-    try {
-      toast({
-        title: "Updating Car Images...",
-        description: "Adding real car images to database",
-      });
-
-      const { data, error } = await supabase.functions.invoke('update-car-images');
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Success!",
-        description: `Updated images for ${data.updatedCount} car models!`,
-      });
-
-      // Refresh the car data to show updated images
-      loadCarsFromDB();
-
-    } catch (error) {
-      console.error('Update error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update car images. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingImages(false);
-    }
-  };
+  // Image update functionality moved to admin panel
 
   const handleFilterChange = (filterType: string, value: string, checked: boolean) => {
     setFilters(prev => ({
