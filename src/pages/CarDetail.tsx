@@ -202,11 +202,26 @@ const CarDetail = () => {
           <div className="text-center">
             <CarIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">Car not found</h3>
-            <p className="text-muted-foreground mb-4">The car you're looking for doesn't exist.</p>
-            <Button onClick={() => window.history.back()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
+            <p className="text-muted-foreground mb-4">
+              {slug?.includes('mg-hector')
+                ? "The MG Hector variant you're looking for is not available. Try browsing our MG Astor collection instead."
+                : "The car you're looking for doesn't exist."
+              }
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => window.history.back()}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Go Back
+              </Button>
+              {slug?.includes('mg-hector') && (
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.href = '/cars?brand=MG'}
+                >
+                  Browse MG Cars
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
