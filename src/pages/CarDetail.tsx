@@ -62,10 +62,10 @@ const CarDetail = () => {
       }
 
       if (carsData) {
-        console.log('All cars from API:', response.data);
+        console.log('All cars loaded:', carsData);
 
-        // Transform API cars to match existing interface while preserving key fields
-        const transformedCars = response.data.map(dbCar => {
+        // Transform cars to match existing interface while preserving key fields
+        const transformedCars = carsData.map(dbCar => {
           // Get the first image from the images array, or use placeholder
           let carImage = "/placeholder.svg";
           if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
