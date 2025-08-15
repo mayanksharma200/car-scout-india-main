@@ -377,7 +377,10 @@ const FeaturedCars = () => {
                       </div>
 
                       {/* Action button */}
-                      <button className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(transformedCar)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2"
+                      >
                         View Details
                         <svg
                           className="w-4 h-4"
