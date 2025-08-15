@@ -106,7 +106,7 @@ const DevAuthHelper = () => {
               className="w-full"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              {creating ? "Creating..." : "Create Test User"}
+              {creating ? "Creating..." : "Create Confirmed Test User"}
             </Button>
             <Button 
               size="sm" 
