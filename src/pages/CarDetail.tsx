@@ -97,43 +97,7 @@ const CarDetail = () => {
     }
   };
 
-  // Mock car data generator for fallback
-  const getMockCarBySlug = (slug: string) => {
-    const mockCars = [
-      {
-        id: "1",
-        brand: "Maruti Suzuki",
-        model: "Swift",
-        variant: "ZXI AMT",
-        price: 849000,
-        onRoadPrice: 967000,
-        fuelType: "Petrol",
-        fuel_type: "Petrol",
-        transmission: "AMT",
-        bodyType: "Hatchback",
-        body_type: "Hatchback",
-        seating: 5,
-        seating_capacity: 5,
-        mileage: "23.2",
-        engine_capacity: "1.2L",
-        rating: 4.2,
-        reviews: 150,
-        image: "/placeholder.svg",
-        images: ["/placeholder.svg"],
-        color: "Pearl White",
-        year: 2024,
-        features: ["Power Steering", "Air Conditioning", "Power Windows", "Central Locking", "ABS", "Airbags"],
-        description: "The Maruti Suzuki Swift ZXI AMT is a premium hatchback that combines style, performance, and comfort.",
-        status: "active",
-        isPopular: true,
-        isBestSeller: false
-      }
-    ];
-
-    // Find by slug or return the first mock car
-    const foundCar = findCarBySlug(mockCars, slug);
-    return foundCar || mockCars[0];
-  };
+  // No more mock data - always use API data
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
