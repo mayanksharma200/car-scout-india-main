@@ -244,9 +244,29 @@ app.post("/api/auth/create-test-user", async (req, res) => {
         data: {
           firstName: "Test",
           lastName: "User"
-        }
+        },
+        emailRedirectTo: undefined
       }
     });
+
+    // If user was created but needs confirmation, auto-confirm them
+    if (data.user && !data.user.email_confirmed_at) {
+      try {
+        // Use admin API to confirm email
+        const { error: confirmError } = await supabase.auth.admin.updateUserById(
+          data.user.id,
+          { email_confirm: true }
+        );
+
+        if (confirmError) {
+          console.warn("Could not auto-confirm email:", confirmError.message);
+        } else {
+          console.log("Test user email auto-confirmed");
+        }
+      } catch (confirmError) {
+        console.warn("Email confirmation failed:", confirmError);
+      }
+    }
 
     if (error) throw error;
 
