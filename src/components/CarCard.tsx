@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Heart, Star, Share2, Fuel, Users, Gauge, Zap, Eye, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -216,12 +215,9 @@ const CarCard = ({ car }: CarCardProps) => {
           </div>
 
           {/* Action Button */}
-          <Button 
+          <Button
             className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardClick();
-            }}
+            onClick={handleCardClick}
           >
             <span>View Details</span>
             <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
