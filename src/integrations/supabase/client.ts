@@ -64,8 +64,16 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ||
 
 const isDevelopment = import.meta.env.DEV;
 const storageAvailable = isLocalStorageAvailable();
+const isCloudEnvironment = window.location.hostname.includes('.fly.dev') ||
+                          window.location.hostname.includes('localhost') ||
+                          window.self !== window.top; // Running in iframe
 
-console.log("🔧 Supabase Environment:", { isDevelopment, storageAvailable });
+console.log("🔧 Supabase Environment:", {
+  isDevelopment,
+  storageAvailable,
+  isCloudEnvironment,
+  hostname: window.location.hostname
+});
 
 // Create Supabase client with proper error handling
 let supabase: ReturnType<typeof createClient<Database>> | null = null;
