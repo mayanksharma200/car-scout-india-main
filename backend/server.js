@@ -166,6 +166,119 @@ app.get("/api/cars/:id", async (req, res) => {
   }
 });
 
+// Authentication endpoints
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        user: data.user,
+        session: data.session,
+      },
+      message: "Login successful",
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(400).json({
+      success: false,
+      error: "Login failed",
+      message: error.message,
+    });
+  }
+});
+
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { email, password, userData } = req.body;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: userData,
+      },
+    });
+
+    if (error) throw error;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: data.user,
+        session: data.session,
+      },
+      message: "Signup successful",
+    });
+  } catch (error) {
+    console.error("Error during signup:", error);
+    res.status(400).json({
+      success: false,
+      error: "Signup failed",
+      message: error.message,
+    });
+  }
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  try {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    res.status(400).json({
+      success: false,
+      error: "Logout failed",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/auth/session", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        error: "No authorization header",
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        user: data.user,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting session:", error);
+    res.status(401).json({
+      success: false,
+      error: "Invalid session",
+      message: error.message,
+    });
+  }
+});
+
 // Create lead
 app.post("/api/leads", async (req, res) => {
   try {
