@@ -161,7 +161,7 @@ export const safeQuery = async <T>(
 export { supabase, isLocalStorageAvailable };
 
 // Legacy exports for compatibility
-export const isSupabaseConfigured = !!supabase;
+export const isSupabaseConfigured = true;
 export const createSafeSupabaseWrapper = getSupabase;
-export const supabaseError = supabase ? null : "Supabase client not initialized";
+export const supabaseError = null;
 export const safeStorage = memoryStorage;
