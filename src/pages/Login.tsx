@@ -119,6 +119,43 @@ const Login = () => {
     }
   };
 
+  const handleFacebookSignIn = async () => {
+    try {
+      const { error } = await signInWithFacebook();
+
+      if (error) {
+        console.error('Facebook sign in error:', error);
+
+        // Handle specific OAuth configuration errors
+        if (error.message?.includes('invalid_client') || error.message?.includes('OAuth')) {
+          toast({
+            title: "Facebook Sign In Not Configured",
+            description: "Facebook OAuth is not set up yet. Please use email/password login for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Facebook Sign In Failed",
+            description: error.message || "An error occurred during Facebook sign in.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Redirecting...",
+          description: "You're being redirected to Facebook for authentication.",
+        });
+      }
+    } catch (error) {
+      console.error('Facebook sign in exception:', error);
+      toast({
+        title: "Facebook Sign In Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center px-4">
       <div className="w-full max-w-md">
