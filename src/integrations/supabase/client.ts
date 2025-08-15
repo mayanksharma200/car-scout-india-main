@@ -2,13 +2,38 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
-// Simple memory storage for development
-const memoryStorage = {
-  data: {} as Record<string, string>,
-  getItem: (key: string) => memoryStorage.data[key] || null,
-  setItem: (key: string, value: string) => { memoryStorage.data[key] = value; },
-  removeItem: (key: string) => { delete memoryStorage.data[key]; }
-};
+// Enhanced memory storage implementation for cloud environments
+class SecureMemoryStorage {
+  private data: Map<string, string> = new Map();
+
+  getItem(key: string): string | null {
+    return this.data.get(key) || null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.data.delete(key);
+  }
+
+  clear(): void {
+    this.data.clear();
+  }
+
+  // Implement Storage interface compatibility
+  get length(): number {
+    return this.data.size;
+  }
+
+  key(index: number): string | null {
+    const keys = Array.from(this.data.keys());
+    return keys[index] || null;
+  }
+}
+
+const memoryStorage = new SecureMemoryStorage();
 
 // Check localStorage availability with comprehensive testing
 const isLocalStorageAvailable = (): boolean => {
