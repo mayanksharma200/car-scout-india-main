@@ -10,6 +10,7 @@ const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Mock data fallback (only used if API is completely unavailable)
   const mockCars = [
