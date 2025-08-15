@@ -316,4 +316,8 @@ app.listen(PORT, () => {
   console.log(`   GET  http://localhost:${PORT}/api/cars/search?q=query`);
   console.log(`   GET  http://localhost:${PORT}/api/cars/:id`);
   console.log(`   POST http://localhost:${PORT}/api/leads`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/login`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/signup`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/logout`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/session`);
 });
