@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp, signInWithGoogle, user, loading } = useAuth();
+  const { signUp, signInWithGoogle, signInWithFacebook, user, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
