@@ -31,10 +31,37 @@ const CarDetail = () => {
       console.log('🔍 Loading car by slug:', slug);
       setLoading(true);
 
-      // Try to get all cars from API first
-      const response = await carAPI.getAll({ status: 'active' });
+      let carsData = null;
 
-      if (response.success && response.data) {
+      // Try to get all cars from API first
+      try {
+        const response = await carAPI.getAll({ status: 'active' });
+        if (response.success && response.data) {
+          carsData = response.data;
+          console.log('✅ Data loaded from backend API');
+        }
+      } catch (apiError) {
+        console.warn('⚠️ Backend API not available, trying Supabase directly:', apiError.message);
+      }
+
+      // If API failed, try Supabase directly
+      if (!carsData) {
+        console.log('🔄 Falling back to Supabase direct access...');
+        const { data: supabaseData, error: supabaseError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('status', 'active');
+
+        if (supabaseError) {
+          console.error('❌ Supabase error:', supabaseError);
+          throw new Error('Failed to load cars from both API and Supabase');
+        }
+
+        carsData = supabaseData;
+        console.log('✅ Data loaded from Supabase directly');
+      }
+
+      if (carsData) {
         console.log('All cars from API:', response.data);
 
         // Transform API cars to match existing interface while preserving key fields
