@@ -169,10 +169,63 @@ app.get("/api/cars/:id", async (req, res) => {
   }
 });
 
+// Test user creation for development
+app.post("/api/auth/create-test-user", async (req, res) => {
+  try {
+    // Only allow in development
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: "Not allowed in production"
+      });
+    }
+
+    const testEmail = "test@autoscope.com";
+    const testPassword = "test123456";
+
+    const { data, error } = await supabase.auth.signUp({
+      email: testEmail,
+      password: testPassword,
+      options: {
+        data: {
+          firstName: "Test",
+          lastName: "User"
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        email: testEmail,
+        password: testPassword,
+        user: data.user
+      },
+      message: "Test user created successfully"
+    });
+  } catch (error) {
+    console.error("Error creating test user:", error);
+    res.status(400).json({
+      success: false,
+      error: "Failed to create test user",
+      message: error.message,
+    });
+  }
+});
+
 // Authentication endpoints
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "Email and password are required"
+      });
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
