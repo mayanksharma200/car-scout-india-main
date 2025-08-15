@@ -70,24 +70,18 @@ const storageAvailable = isLocalStorageAvailable();
 console.log("🔧 Supabase Environment:", env);
 console.log("ℹ️", getEnvironmentMessage());
 
-// Create Supabase client with proper error handling
-let supabase: ReturnType<typeof createClient<Database>> | null = null;
+// Create Supabase client with simplified configuration
+let supabase: ReturnType<typeof createClient<Database>>;
 
 try {
   console.log("🔧 Creating Supabase client...");
-  
-  // Configure Supabase based on environment capabilities
-  const authConfig = storageAvailable ? {
-    // localStorage available - use default settings
-    persistSession: true,
+
+  // Use simple, reliable configuration
+  const authConfig = {
+    storage: storageAvailable ? undefined : memoryStorage,
+    persistSession: storageAvailable,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-  } : {
-    // localStorage not available - use memory storage with optimized settings
-    storage: memoryStorage,
-    persistSession: false, // Can't persist without localStorage
-    autoRefreshToken: false, // Disable to avoid refresh loops in memory storage
-    detectSessionInUrl: env.isCloudEnvironment || env.isInIframe, // Enable for OAuth in cloud/iframe
   };
 
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -98,11 +92,14 @@ try {
       }
     }
   });
-  
+
   console.log("✅ Supabase client created successfully");
+  console.log("🔧 Storage available:", storageAvailable);
+  console.log("🔧 Environment:", env);
 } catch (error) {
   console.error("❌ Failed to create Supabase client:", error);
-  supabase = null;
+  // Fallback to a basic client
+  supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 }
 
 // Simple wrapper function
