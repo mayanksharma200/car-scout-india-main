@@ -39,13 +39,13 @@ let supabase: ReturnType<typeof createClient<Database>> | null = null;
 try {
   console.log("🔧 Creating Supabase client...");
   
-  // Always use memory storage to avoid localStorage issues
+  // Use proper storage configuration for authentication
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
-      storage: memoryStorage, // Always use memory storage
-      persistSession: false,  // Don't persist sessions
-      autoRefreshToken: false, // Don't auto-refresh
-      detectSessionInUrl: false, // Don't detect session in URL
+      storage: storageAvailable ? undefined : memoryStorage, // Use localStorage if available, fallback to memory
+      persistSession: true,  // Enable session persistence
+      autoRefreshToken: true, // Enable auto-refresh
+      detectSessionInUrl: true, // Enable session detection in URL for OAuth
     },
     global: {
       headers: {
@@ -126,4 +126,4 @@ export { supabase, isLocalStorageAvailable };
 export const isSupabaseConfigured = !!supabase;
 export const createSafeSupabaseWrapper = getSupabase;
 export const supabaseError = supabase ? null : "Supabase client not initialized";
-export const safeStorage = memoryStorage; 
+export const safeStorage = memoryStorage;
