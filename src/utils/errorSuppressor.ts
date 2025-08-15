@@ -40,11 +40,9 @@ export function installGlobalErrorSuppressor() {
     if (!suppressedErrors.has(key)) {
       suppressedErrors.add(key);
       suppressionCount++;
-      // Only log the first 3 suppressions to avoid console spam
-      if (suppressionCount <= 3) {
-        console.log(`🔇 Suppressed ${type}`);
-      } else if (suppressionCount === 4) {
-        console.log('🔇 Further error suppressions will be silent...');
+      // Only log the first suppression to avoid console spam
+      if (suppressionCount === 1) {
+        console.log(`🔇 Cloud environment: Using fallback storage (localStorage not available)`);
       }
     }
   };
