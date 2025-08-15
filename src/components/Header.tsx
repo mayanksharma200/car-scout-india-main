@@ -90,7 +90,7 @@ const Header = () => {
 
             {/* Authentication - Always visible */}
             {loading ? (
-              <Button size="sm" disabled className="bg-gradient-accent text-xs md:text-sm">
+              <Button size="sm" disabled className="bg-gray-400 text-white text-xs md:text-sm px-4 py-2">
                 Loading...
               </Button>
             ) : user ? (
@@ -124,7 +124,7 @@ const Header = () => {
               </DropdownMenu>
             ) : (
               <Link to="/login">
-                <Button size="sm" className="bg-gradient-accent hover:opacity-90 text-xs md:text-sm">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs md:text-sm px-4 py-2 rounded-lg shadow-sm">
                   Login
                 </Button>
               </Link>

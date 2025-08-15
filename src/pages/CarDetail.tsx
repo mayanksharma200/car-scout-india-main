@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { carAPI } from "@/services/api";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { addMissingMGHectorCars } from "@/utils/addMissingCars";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -108,7 +109,28 @@ const CarDetail = () => {
         console.log('Looking for slug:', slug);
 
         // Find car by slug
-        const foundCar = findCarBySlug(transformedCars, slug || '');
+        let foundCar = findCarBySlug(transformedCars, slug || '');
+
+        // If not found, try some common redirects for missing cars
+        if (!foundCar && slug) {
+          const redirectMap = {
+            'mg-hector-super': ['mg-astor-sharp', 'mg-astor-super'],
+            'mg-hector-style': ['mg-astor-style'],
+            'mg-hector-smart': ['mg-astor-sharp'],
+          };
+
+          if (redirectMap[slug]) {
+            for (const redirectSlug of redirectMap[slug]) {
+              foundCar = findCarBySlug(transformedCars, redirectSlug);
+              if (foundCar) {
+                console.log(`🔀 Redirecting from ${slug} to ${redirectSlug}`);
+                // Update URL without page reload
+                window.history.replaceState({}, '', `/cars/${redirectSlug}`);
+                break;
+              }
+            }
+          }
+        }
 
         if (foundCar) {
           console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
@@ -116,6 +138,39 @@ const CarDetail = () => {
         } else {
           console.error('❌ Car not found for slug:', slug);
           console.error('Available slugs:', transformedCars.map(car => getCarSlugFromCar(car)));
+
+          // Try to find a similar car or suggest alternatives
+          const suggestedCars = transformedCars.filter(car =>
+            car.brand.toLowerCase().includes('mg') ||
+            car.model.toLowerCase().includes('hector') ||
+            getCarSlugFromCar(car).includes('mg')
+          );
+
+          if (suggestedCars.length > 0) {
+            console.log('🔍 Suggested similar cars:', suggestedCars.map(car => ({
+              brand: car.brand,
+              model: car.model,
+              variant: car.variant,
+              slug: getCarSlugFromCar(car)
+            })));
+          }
+
+          // If looking for MG Hector and not found, try to add missing cars and retry
+          if (slug?.includes('mg-hector')) {
+            console.log('🔧 Attempting to add missing MG Hector cars...');
+            addMissingMGHectorCars().then((result) => {
+              if (result.success && result.count && result.count > 0) {
+                console.log('🔄 MG Hector cars added, retrying...');
+                // Retry loading after adding cars
+                setTimeout(() => {
+                  loadCarBySlug();
+                }, 1000);
+              }
+            }).catch(err => {
+              console.error('Failed to add MG Hector cars:', err);
+            });
+          }
+
           setCar(null);
         }
       } else {
@@ -164,11 +219,26 @@ const CarDetail = () => {
           <div className="text-center">
             <CarIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">Car not found</h3>
-            <p className="text-muted-foreground mb-4">The car you're looking for doesn't exist.</p>
-            <Button onClick={() => window.history.back()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
+            <p className="text-muted-foreground mb-4">
+              {slug?.includes('mg-hector')
+                ? "The MG Hector variant you're looking for is not available. Try browsing our MG Astor collection instead."
+                : "The car you're looking for doesn't exist."
+              }
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => window.history.back()}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Go Back
+              </Button>
+              {slug?.includes('mg-hector') && (
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.href = '/cars?brand=MG'}
+                >
+                  Browse MG Cars
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
