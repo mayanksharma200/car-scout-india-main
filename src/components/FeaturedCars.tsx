@@ -124,6 +124,11 @@ const FeaturedCars = () => {
     return `₹${price.toLocaleString()}`;
   };
 
+  const handleViewDetails = (car) => {
+    const slug = getCarSlugFromCar(car);
+    navigate(`/cars/${slug}`);
+  };
+
   return (
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4 animate-fade-in">
