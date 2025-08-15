@@ -10,15 +10,24 @@ const memoryStorage = {
   removeItem: (key: string) => { delete memoryStorage.data[key]; }
 };
 
-// Check localStorage availability
+// Check localStorage availability with comprehensive testing
 const isLocalStorageAvailable = (): boolean => {
   try {
     if (typeof window === 'undefined') return false;
-    const test = '__test__';
-    window.localStorage.setItem(test, test);
+
+    // Check if localStorage object exists
+    if (!window.localStorage) return false;
+
+    // Test actual read/write operations
+    const test = '__supabase_storage_test__';
+    window.localStorage.setItem(test, 'test');
+    const result = window.localStorage.getItem(test);
     window.localStorage.removeItem(test);
-    return true;
-  } catch {
+
+    return result === 'test';
+  } catch (error) {
+    // Log the specific error for debugging
+    console.log('🔍 localStorage not available:', error.message);
     return false;
   }
 };
