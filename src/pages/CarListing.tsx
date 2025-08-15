@@ -53,50 +53,52 @@ const CarListing = () => {
 
   const loadCarsFromDB = async () => {
     try {
-      console.log('Loading cars from database...');
-      const { data, error } = await supabase
-        .from('cars')
-        .select('*')
-        .eq('status', 'active')
-        .order('brand', { ascending: true });
+      console.log('Loading cars from API...');
+      setLoading(true);
 
-      if (error) {
-        console.error('Error loading cars:', error);
-        return;
-      }
-
-      console.log('Raw cars from database:', data);
-      
-      // Transform database cars to match existing interface
-      const transformedCars = data.map(car => {
-        // Get the first image from the images array, or use placeholder
-        let carImage = "/placeholder.svg";
-        if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
-          carImage = car.images[0] as string;
-        }
-
-        return {
-          ...car,
-          price: car.price_min,
-          onRoadPrice: car.price_max,
-          fuelType: car.fuel_type,
-          bodyType: car.body_type,
-          seating: car.seating_capacity,
-          rating: 4.2 + Math.random() * 0.8,
-          image: carImage,
-          color: "Pearl White",
-          year: 2024,
-          features: car.features || [],
-          mileage: parseFloat(car.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
-          isPopular: Math.random() > 0.7,
-          isBestSeller: Math.random() > 0.8
-        };
+      const response = await carAPI.getAll({
+        status: 'active',
+        limit: 100
       });
 
-      console.log('Transformed cars:', transformedCars);
-      setCars(transformedCars);
+      if (response.success && response.data) {
+        console.log('Raw cars from API:', response.data);
+
+        // Transform API cars to match existing interface
+        const transformedCars = response.data.map(car => {
+          // Get the first image from the images array, or use placeholder
+          let carImage = "/placeholder.svg";
+          if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+            carImage = car.images[0] as string;
+          }
+
+          return {
+            ...car,
+            price: car.price_min || car.price,
+            onRoadPrice: car.price_max || car.onRoadPrice,
+            fuelType: car.fuel_type || car.fuelType,
+            bodyType: car.body_type || car.bodyType,
+            seating: car.seating_capacity || car.seating,
+            rating: 4.2 + Math.random() * 0.8,
+            image: carImage,
+            color: "Pearl White",
+            year: 2024,
+            features: car.features || [],
+            mileage: parseFloat(car.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
+            isPopular: Math.random() > 0.7,
+            isBestSeller: Math.random() > 0.8
+          };
+        });
+
+        console.log('Transformed cars:', transformedCars);
+        setCars(transformedCars);
+      } else {
+        console.log('No cars found from API');
+        setCars([]);
+      }
     } catch (error) {
-      console.error('Error loading cars from DB:', error);
+      console.error('Error loading cars from API:', error);
+      setCars([]);
     } finally {
       setLoading(false);
     }
