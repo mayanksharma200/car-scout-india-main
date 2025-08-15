@@ -128,6 +128,27 @@ export const useAuth = () => {
     }
   };
 
+  const signInWithFacebook = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (error) {
+        console.error('Facebook sign-in error:', error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (err) {
+      console.error('Facebook sign-in exception:', err);
+      return { data: null, error: err as any };
+    }
+  };
+
   return {
     user,
     session,
@@ -135,6 +156,7 @@ export const useAuth = () => {
     signUp,
     signIn,
     signOut,
-    signInWithGoogle
+    signInWithGoogle,
+    signInWithFacebook
   };
 };
