@@ -279,6 +279,57 @@ app.get("/api/auth/session", async (req, res) => {
   }
 });
 
+// Google OAuth endpoints
+app.get("/api/auth/google", async (req, res) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${req.protocol}://${req.get('host')}/api/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      }
+    });
+
+    if (error) throw error;
+
+    res.redirect(data.url);
+  } catch (error) {
+    console.error("Error with Google OAuth:", error);
+    res.status(400).json({
+      success: false,
+      error: "Google OAuth failed",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/auth/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        error: "No authorization code provided",
+      });
+    }
+
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code.toString());
+
+    if (error) throw error;
+
+    // Redirect to frontend with success
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}?auth=success`);
+  } catch (error) {
+    console.error("Error in OAuth callback:", error);
+    // Redirect to frontend with error
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}?auth=error&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
 // Create lead
 app.post("/api/leads", async (req, res) => {
   try {
