@@ -90,7 +90,7 @@ const Header = () => {
 
             {/* Authentication - Always visible */}
             {loading ? (
-              <Button size="sm" disabled className="bg-gradient-accent text-xs md:text-sm">
+              <Button size="sm" disabled className="bg-gray-400 text-white text-xs md:text-sm px-4 py-2">
                 Loading...
               </Button>
             ) : user ? (
