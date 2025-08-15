@@ -25,7 +25,8 @@ const DevAuthHelper = () => {
   const createTestUser = async () => {
     setCreating(true);
     try {
-      const response = await fetch('http://localhost:3001/api/auth/create-test-user', {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${backendUrl}/auth/create-test-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
