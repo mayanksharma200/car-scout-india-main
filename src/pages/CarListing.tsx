@@ -17,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 const CarListing = () => {
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updatingImages, setUpdatingImages] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
