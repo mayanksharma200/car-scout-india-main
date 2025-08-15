@@ -30,21 +30,37 @@ const AdminLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password
       });
-      
+
       if (error) throw error;
-      
-      // Check if user has admin role (you'll need to implement role checking)
+
+      // Check if user has admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error('Unable to verify admin access');
+      }
+
+      if (profile.role !== 'admin') {
+        // Sign out the user since they don't have admin access
+        await supabase.auth.signOut();
+        throw new Error('Access denied. This account does not have admin privileges.');
+      }
+
       toast({
         title: "Login Successful",
         description: "Welcome to the admin dashboard"
       });
-      
+
       navigate("/admin");
     } catch (error: any) {
       toast({
