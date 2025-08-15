@@ -26,7 +26,7 @@ const DevAuthHelper = () => {
     setCreating(true);
     try {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${backendUrl}/auth/create-test-user`, {
+      const response = await fetch(`${backendUrl}/auth/recreate-test-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +38,7 @@ const DevAuthHelper = () => {
       if (result.success) {
         toast({
           title: "Test User Created",
-          description: `Email: ${result.data.email}, Password: ${result.data.password}`,
+          description: `Email: ${result.data.email}, Password: ${result.data.password} (Email confirmed)`,
         });
       } else {
         throw new Error(result.message);
@@ -106,7 +106,7 @@ const DevAuthHelper = () => {
               className="w-full"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              {creating ? "Creating..." : "Create Test User"}
+              {creating ? "Creating..." : "Create Confirmed Test User"}
             </Button>
             <Button 
               size="sm" 
