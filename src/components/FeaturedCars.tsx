@@ -5,6 +5,7 @@ import { carAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { getCarSlugFromCar } from "@/utils/carSlugUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
