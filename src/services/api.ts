@@ -3,6 +3,12 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+// Log the API configuration
+console.log('🔧 API Configuration:', {
+  baseUrl: API_BASE_URL,
+  environment: import.meta.env.MODE
+});
+
 // Helper for API calls
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   try {
