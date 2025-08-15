@@ -371,4 +371,6 @@ app.listen(PORT, () => {
   console.log(`   POST http://localhost:${PORT}/api/auth/signup`);
   console.log(`   POST http://localhost:${PORT}/api/auth/logout`);
   console.log(`   GET  http://localhost:${PORT}/api/auth/session`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/google`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/callback`);
 });
