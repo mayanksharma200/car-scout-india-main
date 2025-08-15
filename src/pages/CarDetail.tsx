@@ -155,6 +155,22 @@ const CarDetail = () => {
             })));
           }
 
+          // If looking for MG Hector and not found, try to add missing cars and retry
+          if (slug?.includes('mg-hector')) {
+            console.log('🔧 Attempting to add missing MG Hector cars...');
+            addMissingMGHectorCars().then((result) => {
+              if (result.success && result.count && result.count > 0) {
+                console.log('🔄 MG Hector cars added, retrying...');
+                // Retry loading after adding cars
+                setTimeout(() => {
+                  loadCarBySlug();
+                }, 1000);
+              }
+            }).catch(err => {
+              console.error('Failed to add MG Hector cars:', err);
+            });
+          }
+
           setCar(null);
         }
       } else {
