@@ -79,6 +79,46 @@ export const leadAPI = {
   },
 };
 
+// Authentication API endpoints
+export const authAPI = {
+  // Login with email and password
+  login: async (email: string, password: string) => {
+    return fetchAPI('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  // Signup with email and password
+  signup: async (email: string, password: string, userData?: any) => {
+    return fetchAPI('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, userData }),
+    });
+  },
+
+  // Logout
+  logout: async () => {
+    return fetchAPI('/auth/logout', {
+      method: 'POST',
+    });
+  },
+
+  // Get current session
+  getSession: async (token: string) => {
+    return fetchAPI('/auth/session', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  },
+
+  // Google OAuth redirect URL
+  getGoogleOAuthUrl: () => {
+    return `${API_BASE_URL}/auth/google`;
+  },
+};
+
 // Health check
 export const healthCheck = async () => {
   return fetchAPI('/health');
