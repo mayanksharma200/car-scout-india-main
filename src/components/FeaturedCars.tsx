@@ -80,36 +80,55 @@ const FeaturedCars = () => {
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        console.log("🔍 Fetching cars from API...");
+        console.log("🔍 Fetching cars...");
         setLoading(true);
         setError(null);
 
-        // Simple API call - no localStorage needed!
-        const response = await carAPI.getFeatured();
+        let carsData = null;
 
-        console.log("📊 API response:", response);
+        // Try API first
+        try {
+          const response = await carAPI.getFeatured();
+          console.log("📊 API response:", response);
 
-        if (response.success && response.data && response.data.length > 0) {
-          console.log("✅ Successfully fetched cars from API");
-          setCars(response.data);
-        } else {
-          console.log("📝 No cars found, using mock data");
-          setCars(mockCars);
+          if (response.success && response.data && response.data.length > 0) {
+            console.log("✅ Successfully fetched cars from API");
+            carsData = response.data;
+          }
+        } catch (apiError) {
+          console.warn("⚠️ API not available, trying Supabase directly:", apiError.message);
+        }
+
+        // If API failed, try Supabase directly
+        if (!carsData) {
+          console.log("🔄 Falling back to Supabase direct access...");
+          const { data: supabaseData, error: supabaseError } = await supabase
+            .from('cars')
+            .select('*')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(8);
+
+          if (supabaseError) {
+            console.warn("⚠️ Supabase error, using mock data:", supabaseError);
+            setCars(mockCars);
+          } else if (supabaseData && supabaseData.length > 0) {
+            console.log("✅ Successfully fetched cars from Supabase");
+            carsData = supabaseData;
+          } else {
+            console.log("📝 No cars found in Supabase, using mock data");
+            setCars(mockCars);
+          }
+        }
+
+        if (carsData) {
+          setCars(carsData);
         }
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        console.error("❌ API Error:", errorMessage);
-
-        // Check if it's a network error (API not running)
-        if (errorMessage.includes("fetch")) {
-          console.log("🔄 API not available, using mock data");
-          setCars(mockCars);
-          setError(null); // Don't show error for missing API
-        } else {
-          setError(`Unable to load cars: ${errorMessage}`);
-          setCars(mockCars); // Still show mock data
-        }
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error("❌ Error fetching cars:", errorMessage);
+        setCars(mockCars);
+        setError(null); // Don't show error, just use mock data
       } finally {
         setLoading(false);
       }
