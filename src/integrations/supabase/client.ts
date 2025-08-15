@@ -81,14 +81,22 @@ let supabase: ReturnType<typeof createClient<Database>> | null = null;
 try {
   console.log("🔧 Creating Supabase client...");
   
-  // Use proper storage configuration for authentication
+  // Configure Supabase for cloud development environment
+  const authConfig = storageAvailable ? {
+    // localStorage available - use default settings
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  } : {
+    // localStorage not available - use memory storage with optimized settings
+    storage: memoryStorage,
+    persistSession: false, // Can't persist without localStorage
+    autoRefreshToken: false, // Disable to avoid refresh loops
+    detectSessionInUrl: isCloudEnvironment, // Enable for OAuth in cloud
+  };
+
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: {
-      storage: storageAvailable ? undefined : memoryStorage, // Use localStorage if available, fallback to memory
-      persistSession: true,  // Enable session persistence
-      autoRefreshToken: true, // Enable auto-refresh
-      detectSessionInUrl: true, // Enable session detection in URL for OAuth
-    },
+    auth: authConfig,
     global: {
       headers: {
         'X-Client-Info': 'car-marketplace'
