@@ -105,6 +105,7 @@ const App = () => {
         </BrowserRouter>
         <AuthStatus />
         <DevAuthHelper />
+        <AdminSetup />
       </TooltipProvider>
     </QueryClientProvider>
   );
