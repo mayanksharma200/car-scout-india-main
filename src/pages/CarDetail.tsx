@@ -36,7 +36,7 @@ const CarDetail = () => {
       if (response.success && response.data) {
         console.log('All cars from API:', response.data);
 
-        // Transform API cars to match existing interface
+        // Transform API cars to match existing interface while preserving key fields
         const transformedCars = response.data.map(dbCar => {
           // Get the first image from the images array, or use placeholder
           let carImage = "/placeholder.svg";
@@ -45,21 +45,26 @@ const CarDetail = () => {
           }
 
           return {
-            ...dbCar,
-            price: dbCar.price_min || dbCar.price,
-            onRoadPrice: dbCar.price_max || dbCar.onRoadPrice,
-            fuelType: dbCar.fuel_type || dbCar.fuelType,
-            bodyType: dbCar.body_type || dbCar.bodyType,
-            seating: dbCar.seating_capacity || dbCar.seating,
-            rating: 4.2 + Math.random() * 0.8,
+            ...dbCar, // Keep all original fields
+            // Override specific fields with transformed values
+            price: dbCar.price_min || dbCar.price || 0,
+            onRoadPrice: dbCar.price_max || dbCar.onRoadPrice || dbCar.price_min || 0,
+            fuelType: dbCar.fuel_type || dbCar.fuelType || "Petrol",
+            bodyType: dbCar.body_type || dbCar.bodyType || "Hatchback",
+            seating: dbCar.seating_capacity || dbCar.seating || 5,
+            rating: dbCar.rating || (4.2 + Math.random() * 0.8),
             image: carImage,
-            color: "Pearl White",
-            year: 2024,
+            color: dbCar.color || "Pearl White",
+            year: dbCar.year || 2024,
             features: dbCar.features || [],
             mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
-            reviews: Math.floor(Math.random() * 500) + 50,
-            isPopular: Math.random() > 0.7,
-            isBestSeller: Math.random() > 0.8
+            reviews: dbCar.reviews || Math.floor(Math.random() * 500) + 50,
+            isPopular: dbCar.isPopular || Math.random() > 0.7,
+            isBestSeller: dbCar.isBestSeller || Math.random() > 0.8,
+            // Ensure these key fields are never empty for slug generation
+            brand: dbCar.brand || 'Unknown',
+            model: dbCar.model || 'Unknown',
+            variant: dbCar.variant || ''
           };
         });
 
