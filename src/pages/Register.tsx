@@ -112,7 +112,7 @@ const Register = () => {
   const handleGoogleSignIn = async () => {
     try {
       const { error } = await signInWithGoogle();
-      
+
       if (error) {
         toast({
           title: "Google Sign In Failed",
@@ -123,6 +123,43 @@ const Register = () => {
     } catch (error) {
       toast({
         title: "Google Sign In Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    try {
+      const { error } = await signInWithFacebook();
+
+      if (error) {
+        console.error('Facebook sign in error:', error);
+
+        // Handle specific OAuth configuration errors
+        if (error.message?.includes('invalid_client') || error.message?.includes('OAuth')) {
+          toast({
+            title: "Facebook Sign In Not Configured",
+            description: "Facebook OAuth is not set up yet. Please use email/password registration for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Facebook Sign In Failed",
+            description: error.message || "An error occurred during Facebook sign in.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Redirecting...",
+          description: "You're being redirected to Facebook for authentication.",
+        });
+      }
+    } catch (error) {
+      console.error('Facebook sign in exception:', error);
+      toast({
+        title: "Facebook Sign In Failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
