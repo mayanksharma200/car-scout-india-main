@@ -124,11 +124,11 @@ const CarListing = () => {
         console.log('Transformed cars:', transformedCars);
         setCars(transformedCars);
       } else {
-        console.log('No cars found from API');
+        console.log('No cars found');
         setCars([]);
       }
     } catch (error) {
-      console.error('Error loading cars from API:', error);
+      console.error('Error loading cars:', error);
       setCars([]);
     } finally {
       setLoading(false);
