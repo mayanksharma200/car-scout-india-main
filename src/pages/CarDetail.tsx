@@ -116,6 +116,23 @@ const CarDetail = () => {
         } else {
           console.error('❌ Car not found for slug:', slug);
           console.error('Available slugs:', transformedCars.map(car => getCarSlugFromCar(car)));
+
+          // Try to find a similar car or suggest alternatives
+          const suggestedCars = transformedCars.filter(car =>
+            car.brand.toLowerCase().includes('mg') ||
+            car.model.toLowerCase().includes('hector') ||
+            getCarSlugFromCar(car).includes('mg')
+          );
+
+          if (suggestedCars.length > 0) {
+            console.log('🔍 Suggested similar cars:', suggestedCars.map(car => ({
+              brand: car.brand,
+              model: car.model,
+              variant: car.variant,
+              slug: getCarSlugFromCar(car)
+            })));
+          }
+
           setCar(null);
         }
       } else {
