@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { supabase, createSafeSupabaseWrapper, isSupabaseConfigured } from "@/integrations/supabase/client";
-import { findCarBySlug, createCarSlug } from "@/utils/carSlugUtils";
+import { carAPI } from "@/services/api";
+import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -28,121 +29,108 @@ const CarDetail = () => {
   const loadCarBySlug = async () => {
     try {
       console.log('🔍 Loading car by slug:', slug);
+      setLoading(true);
 
-      // Use safe wrapper and check configuration
-      const safeSupabase = createSafeSupabaseWrapper();
+      let carsData = null;
 
-      if (!isSupabaseConfigured || !supabase) {
-        console.log('🔄 Supabase not configured, using mock data');
-        // Create a mock car for the slug
-        const mockCar = getMockCarBySlug(slug || '');
-        if (mockCar) {
-          setCar(mockCar);
+      // Try to get all cars from API first
+      try {
+        const response = await carAPI.getAll({ status: 'active' });
+        if (response.success && response.data) {
+          carsData = response.data;
+          console.log('✅ Data loaded from backend API');
         }
-        return;
+      } catch (apiError) {
+        console.warn('⚠️ Backend API not available, trying Supabase directly:', apiError.message);
       }
 
-      const { data, error } = await safeSupabase
-        .from('cars')
-        .select('*')
-        .eq('status', 'active');
+      // If API failed, try Supabase directly
+      if (!carsData) {
+        console.log('🔄 Falling back to Supabase direct access...');
+        const { data: supabaseData, error: supabaseError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('status', 'active');
 
-      if (error) {
-        console.warn('⚠️ Database error, trying mock data:', error.message);
-        // Try mock data as fallback
-        const mockCar = getMockCarBySlug(slug || '');
-        if (mockCar) {
-          setCar(mockCar);
+        if (supabaseError) {
+          console.error('❌ Supabase error:', supabaseError);
+          throw new Error('Failed to load cars from both API and Supabase');
         }
-        return;
+
+        carsData = supabaseData;
+        console.log('✅ Data loaded from Supabase directly');
       }
 
-      console.log('All cars from database:', data);
-      
-      // Transform database cars to match existing interface
-      const transformedCars = data.map(dbCar => {
-        // Get the first image from the images array, or use placeholder
-        let carImage = "/placeholder.svg";
-        if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
-          carImage = dbCar.images[0] as string;
+      if (carsData) {
+        console.log('All cars loaded:', carsData);
+
+        // Transform cars to match existing interface while preserving key fields
+        const transformedCars = carsData.map(dbCar => {
+          // Get the first image from the images array, or use placeholder
+          let carImage = "/placeholder.svg";
+          if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
+            carImage = dbCar.images[0] as string;
+          }
+
+          return {
+            ...dbCar, // Keep all original fields
+            // Override specific fields with transformed values
+            price: dbCar.price_min || dbCar.price || 0,
+            onRoadPrice: dbCar.price_max || dbCar.onRoadPrice || dbCar.price_min || 0,
+            fuelType: dbCar.fuel_type || dbCar.fuelType || "Petrol",
+            bodyType: dbCar.body_type || dbCar.bodyType || "Hatchback",
+            seating: dbCar.seating_capacity || dbCar.seating || 5,
+            rating: dbCar.rating || (4.2 + Math.random() * 0.8),
+            image: carImage,
+            color: dbCar.color || "Pearl White",
+            year: dbCar.year || 2024,
+            features: dbCar.features || [],
+            mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
+            reviews: dbCar.reviews || Math.floor(Math.random() * 500) + 50,
+            isPopular: dbCar.isPopular || Math.random() > 0.7,
+            isBestSeller: dbCar.isBestSeller || Math.random() > 0.8,
+            // Ensure these key fields are never empty for slug generation
+            brand: dbCar.brand || 'Unknown',
+            model: dbCar.model || 'Unknown',
+            variant: dbCar.variant || ''
+          };
+        });
+
+        // Debug: Log all available cars and their slugs
+        console.log('Available cars from API:', transformedCars.map(car => ({
+          id: car.id,
+          brand: car.brand,
+          model: car.model,
+          variant: car.variant,
+          slug: getCarSlugFromCar(car)
+        })));
+
+        console.log('Looking for slug:', slug);
+
+        // Find car by slug
+        const foundCar = findCarBySlug(transformedCars, slug || '');
+
+        if (foundCar) {
+          console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
+          setCar(foundCar);
+        } else {
+          console.error('❌ Car not found for slug:', slug);
+          console.error('Available slugs:', transformedCars.map(car => getCarSlugFromCar(car)));
+          setCar(null);
         }
-
-        return {
-          ...dbCar,
-          price: dbCar.price_min,
-          onRoadPrice: dbCar.price_max,
-          fuelType: dbCar.fuel_type,
-          bodyType: dbCar.body_type,
-          seating: dbCar.seating_capacity,
-          rating: 4.2 + Math.random() * 0.8,
-          image: carImage,
-          color: "Pearl White",
-          year: 2024,
-          features: dbCar.features || [],
-          mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
-          reviews: Math.floor(Math.random() * 500) + 50,
-          isPopular: Math.random() > 0.7,
-          isBestSeller: Math.random() > 0.8
-        };
-      });
-
-      // Find car by slug
-      const foundCar = findCarBySlug(transformedCars, slug || '');
-      
-      if (foundCar) {
-        setCar(foundCar);
       } else {
-        console.log('Car not found for slug:', slug);
+        console.error('🔄 API response failed or no data');
+        setCar(null);
       }
     } catch (error) {
-      console.warn('🔥 Error loading car by slug, trying mock data:', error.message || error);
-      // Try mock data as final fallback
-      const mockCar = getMockCarBySlug(slug || '');
-      if (mockCar) {
-        setCar(mockCar);
-      }
+      console.error('🔥 Error loading car by slug:', error.message || error);
+      setCar(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock car data generator for fallback
-  const getMockCarBySlug = (slug: string) => {
-    const mockCars = [
-      {
-        id: "1",
-        brand: "Maruti Suzuki",
-        model: "Swift",
-        variant: "ZXI AMT",
-        price: 849000,
-        onRoadPrice: 967000,
-        fuelType: "Petrol",
-        fuel_type: "Petrol",
-        transmission: "AMT",
-        bodyType: "Hatchback",
-        body_type: "Hatchback",
-        seating: 5,
-        seating_capacity: 5,
-        mileage: "23.2",
-        engine_capacity: "1.2L",
-        rating: 4.2,
-        reviews: 150,
-        image: "/placeholder.svg",
-        images: ["/placeholder.svg"],
-        color: "Pearl White",
-        year: 2024,
-        features: ["Power Steering", "Air Conditioning", "Power Windows", "Central Locking", "ABS", "Airbags"],
-        description: "The Maruti Suzuki Swift ZXI AMT is a premium hatchback that combines style, performance, and comfort.",
-        status: "active",
-        isPopular: true,
-        isBestSeller: false
-      }
-    ];
-
-    // Find by slug or return the first mock car
-    const foundCar = findCarBySlug(mockCars, slug);
-    return foundCar || mockCars[0];
-  };
+  // No more mock data - always use API data
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {

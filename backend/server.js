@@ -10,7 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Supabase client with service role key for full access
@@ -166,6 +169,170 @@ app.get("/api/cars/:id", async (req, res) => {
   }
 });
 
+// Authentication endpoints
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        user: data.user,
+        session: data.session,
+      },
+      message: "Login successful",
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(400).json({
+      success: false,
+      error: "Login failed",
+      message: error.message,
+    });
+  }
+});
+
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { email, password, userData } = req.body;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: userData,
+      },
+    });
+
+    if (error) throw error;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: data.user,
+        session: data.session,
+      },
+      message: "Signup successful",
+    });
+  } catch (error) {
+    console.error("Error during signup:", error);
+    res.status(400).json({
+      success: false,
+      error: "Signup failed",
+      message: error.message,
+    });
+  }
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  try {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    res.status(400).json({
+      success: false,
+      error: "Logout failed",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/auth/session", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        error: "No authorization header",
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        user: data.user,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting session:", error);
+    res.status(401).json({
+      success: false,
+      error: "Invalid session",
+      message: error.message,
+    });
+  }
+});
+
+// Google OAuth endpoints
+app.get("/api/auth/google", async (req, res) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${req.protocol}://${req.get('host')}/api/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      }
+    });
+
+    if (error) throw error;
+
+    res.redirect(data.url);
+  } catch (error) {
+    console.error("Error with Google OAuth:", error);
+    res.status(400).json({
+      success: false,
+      error: "Google OAuth failed",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/auth/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        error: "No authorization code provided",
+      });
+    }
+
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code.toString());
+
+    if (error) throw error;
+
+    // Redirect to frontend with success
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}?auth=success`);
+  } catch (error) {
+    console.error("Error in OAuth callback:", error);
+    // Redirect to frontend with error
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}?auth=error&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
 // Create lead
 app.post("/api/leads", async (req, res) => {
   try {
@@ -203,4 +370,10 @@ app.listen(PORT, () => {
   console.log(`   GET  http://localhost:${PORT}/api/cars/search?q=query`);
   console.log(`   GET  http://localhost:${PORT}/api/cars/:id`);
   console.log(`   POST http://localhost:${PORT}/api/leads`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/login`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/signup`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/logout`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/session`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/google`);
+  console.log(`   GET  http://localhost:${PORT}/api/auth/callback`);
 });

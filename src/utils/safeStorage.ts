@@ -60,8 +60,17 @@ export const safeLocalStorage = (() => {
     return window.localStorage;
     
   } catch (error) {
-    console.warn("❌ LocalStorage not available, using memory storage fallback:", error.message);
-    
+    // Don't show warning in cloud environments where this is expected
+    const isCloudEnv = window.location.hostname.includes('.fly.dev') ||
+                      window.location.hostname.includes('localhost') ||
+                      window.self !== window.top;
+
+    if (isCloudEnv) {
+      console.log("ℹ️ Cloud environment detected: Using memory storage for session data");
+    } else {
+      console.warn("❌ LocalStorage not available, using memory storage fallback:", error.message);
+    }
+
     // Return memory storage fallback
     return new MemoryStorage();
   }

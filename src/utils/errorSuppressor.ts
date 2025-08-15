@@ -8,7 +8,7 @@ export function installGlobalErrorSuppressor() {
   if ((window as any).__errorSuppressorInstalled) return;
   (window as any).__errorSuppressorInstalled = true;
 
-  console.log("🛡️ Installing global error suppressor for localStorage issues");
+  console.log("🛡️ Installing global error suppressor for cloud environment compatibility");
 
   // Track suppressed errors to avoid duplicate logging
   const suppressedErrors = new Set<string>();
@@ -40,11 +40,9 @@ export function installGlobalErrorSuppressor() {
     if (!suppressedErrors.has(key)) {
       suppressedErrors.add(key);
       suppressionCount++;
-      // Only log the first 3 suppressions to avoid console spam
-      if (suppressionCount <= 3) {
-        console.log(`🔇 Suppressed ${type}`);
-      } else if (suppressionCount === 4) {
-        console.log('🔇 Further error suppressions will be silent...');
+      // Only log the first suppression to avoid console spam
+      if (suppressionCount === 1) {
+        console.log(`🔇 Cloud environment: Using fallback storage (localStorage not available)`);
       }
     }
   };
