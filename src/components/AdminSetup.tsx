@@ -17,10 +17,13 @@ const AdminSetup = () => {
   const [isVisible, setIsVisible] = useState(true);
   const { toast } = useToast();
 
-  // Only show in development or if no admin exists yet
-  const isDev = import.meta.env.DEV;
+  // Only show in development environment
+  const isDev = import.meta.env.DEV || import.meta.env.VITE_DEBUG_MODE === 'true';
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  if (!isDev) {
+  // Only show if in development mode or on localhost
+  if (!isDev && !isLocalhost) {
     return null;
   }
 
