@@ -16,6 +16,60 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Authentication middleware
+const authenticateUser = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: "No valid authorization token provided"
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid or expired token"
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Authentication middleware error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Authentication failed"
+    });
+  }
+};
+
+// Optional auth middleware (doesn't fail if no token)
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+
+      if (!error && user) {
+        req.user = user;
+      }
+    }
+
+    next();
+  } catch (error) {
+    // Continue without auth if optional
+    next();
+  }
+};
+
 // Initialize Supabase client with service role key for full access
 const supabase = createClient(
   process.env.SUPABASE_URL,
