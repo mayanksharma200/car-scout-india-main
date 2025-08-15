@@ -440,10 +440,73 @@ app.get("/api/auth/callback", async (req, res) => {
   }
 });
 
-// Create lead
-app.post("/api/leads", async (req, res) => {
+// Get user profile (protected)
+app.get("/api/user/profile", authenticateUser, async (req, res) => {
   try {
-    const leadData = req.body;
+    res.json({
+      success: true,
+      data: {
+        user: req.user,
+        profile: {
+          id: req.user.id,
+          email: req.user.email,
+          firstName: req.user.user_metadata?.firstName,
+          lastName: req.user.user_metadata?.lastName,
+          phone: req.user.user_metadata?.phone,
+          createdAt: req.user.created_at
+        }
+      },
+      message: "Profile retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Error getting profile:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get profile",
+      message: error.message,
+    });
+  }
+});
+
+// Update user profile (protected)
+app.put("/api/user/profile", authenticateUser, async (req, res) => {
+  try {
+    const { firstName, lastName, phone } = req.body;
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        firstName,
+        lastName,
+        phone
+      }
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data.user,
+      message: "Profile updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update profile",
+      message: error.message,
+    });
+  }
+});
+
+// Create lead (with optional auth)
+app.post("/api/leads", optionalAuth, async (req, res) => {
+  try {
+    const leadData = {
+      ...req.body,
+      user_id: req.user?.id || null, // Associate with user if authenticated
+      ip_address: req.ip,
+      user_agent: req.get('User-Agent')
+    };
 
     const { data, error } = await supabase
       .from("leads")
