@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { supabase, createSafeSupabaseWrapper, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { carAPI } from "@/services/api";
 import { findCarBySlug, createCarSlug } from "@/utils/carSlugUtils";
 
 const CarDetail = () => {
