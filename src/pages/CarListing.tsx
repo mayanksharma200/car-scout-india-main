@@ -104,39 +104,7 @@ const CarListing = () => {
     }
   };
 
-  const handleUpdateCarImages = async () => {
-    setUpdatingImages(true);
-    try {
-      toast({
-        title: "Updating Car Images...",
-        description: "Adding real car images to database",
-      });
-
-      const { data, error } = await supabase.functions.invoke('update-car-images');
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Success!",
-        description: `Updated images for ${data.updatedCount} car models!`,
-      });
-
-      // Refresh the car data to show updated images
-      loadCarsFromDB();
-
-    } catch (error) {
-      console.error('Update error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update car images. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingImages(false);
-    }
-  };
+  // Image update functionality moved to admin panel
 
   const handleFilterChange = (filterType: string, value: string, checked: boolean) => {
     setFilters(prev => ({
