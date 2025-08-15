@@ -86,11 +86,46 @@ const App = () => {
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminRouteGuard><AdminDashboard /></AdminRouteGuard>} />
-            <Route path="/admin/cars" element={<AdminRouteGuard><CarManagement /></AdminRouteGuard>} />
-            <Route path="/admin/leads" element={<AdminRouteGuard><LeadManagement /></AdminRouteGuard>} />
-            <Route path="/admin/content" element={<AdminRouteGuard><ContentManagement /></AdminRouteGuard>} />
-            <Route path="/admin/api-settings" element={<AdminRouteGuard><APISettings /></AdminRouteGuard>} />
+            <Route
+              path="/admin"
+              element={
+                <AdminRouteGuard>
+                  <AdminDashboard />
+                </AdminRouteGuard>
+              }
+            />
+            <Route
+              path="/admin/cars"
+              element={
+                <AdminRouteGuard>
+                  <CarManagement />
+                </AdminRouteGuard>
+              }
+            />
+            <Route
+              path="/admin/leads"
+              element={
+                <AdminRouteGuard>
+                  <LeadManagement />
+                </AdminRouteGuard>
+              }
+            />
+            <Route
+              path="/admin/content"
+              element={
+                <AdminRouteGuard>
+                  <ContentManagement />
+                </AdminRouteGuard>
+              }
+            />
+            <Route
+              path="/admin/api-settings"
+              element={
+                <AdminRouteGuard>
+                  <APISettings />
+                </AdminRouteGuard>
+              }
+            />
 
             {/* Legal Pages */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -103,7 +138,8 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        <AuthStatus />
+        {/* local auth status of the test user */}
+        {/* <AuthStatus /> */}
         <DevAuthHelper />
         <AdminSetup />
       </TooltipProvider>
