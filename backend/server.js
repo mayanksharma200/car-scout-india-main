@@ -10,7 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Supabase client with service role key for full access
