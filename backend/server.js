@@ -223,6 +223,65 @@ app.get("/api/cars/:id", async (req, res) => {
   }
 });
 
+// Recreate test user with confirmed email for development
+app.post("/api/auth/recreate-test-user", async (req, res) => {
+  try {
+    // Only allow in development
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: "Not allowed in production"
+      });
+    }
+
+    const testEmail = "test@autoscope.com";
+    const testPassword = "test123456";
+
+    // First, try to delete existing user
+    try {
+      const { data: existingUsers } = await supabase.auth.admin.listUsers();
+      const existingUser = existingUsers.users.find(u => u.email === testEmail);
+
+      if (existingUser) {
+        await supabase.auth.admin.deleteUser(existingUser.id);
+        console.log("Deleted existing test user");
+      }
+    } catch (deleteError) {
+      console.warn("Could not delete existing user:", deleteError.message);
+    }
+
+    // Create new user with confirmed email
+    const { data, error } = await supabase.auth.admin.createUser({
+      email: testEmail,
+      password: testPassword,
+      email_confirm: true,
+      user_metadata: {
+        firstName: "Test",
+        lastName: "User"
+      }
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: {
+        email: testEmail,
+        password: testPassword,
+        user: data.user
+      },
+      message: "Test user recreated successfully with confirmed email"
+    });
+  } catch (error) {
+    console.error("Error recreating test user:", error);
+    res.status(400).json({
+      success: false,
+      error: "Failed to recreate test user",
+      message: error.message,
+    });
+  }
+});
+
 // Test user creation for development
 app.post("/api/auth/create-test-user", async (req, res) => {
   try {
