@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { carAPI } from "@/services/api";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
