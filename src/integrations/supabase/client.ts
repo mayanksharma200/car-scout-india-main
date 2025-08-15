@@ -62,18 +62,13 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://gfjhsljeezfdk
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmamhzbGplZXpmZGtrbmhzcnh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MzUyOTQsImV4cCI6MjA2OTUxMTI5NH0.fuqHH9yWDj5zlrljsuFgGT9J-stzz8pzlfIJpjEFcao";
 
-const isDevelopment = import.meta.env.DEV;
-const storageAvailable = isLocalStorageAvailable();
-const isCloudEnvironment = window.location.hostname.includes('.fly.dev') ||
-                          window.location.hostname.includes('localhost') ||
-                          window.self !== window.top; // Running in iframe
+import { detectEnvironment, getEnvironmentMessage } from "@/utils/environmentDetector";
 
-console.log("🔧 Supabase Environment:", {
-  isDevelopment,
-  storageAvailable,
-  isCloudEnvironment,
-  hostname: window.location.hostname
-});
+const env = detectEnvironment();
+const storageAvailable = isLocalStorageAvailable();
+
+console.log("🔧 Supabase Environment:", env);
+console.log("ℹ️", getEnvironmentMessage());
 
 // Create Supabase client with proper error handling
 let supabase: ReturnType<typeof createClient<Database>> | null = null;
