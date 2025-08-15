@@ -63,34 +63,35 @@ const CarDetail = () => {
           };
         });
 
+        // Debug: Log all available cars and their slugs
+        console.log('Available cars from API:', transformedCars.map(car => ({
+          id: car.id,
+          brand: car.brand,
+          model: car.model,
+          variant: car.variant,
+          slug: getCarSlugFromCar(car)
+        })));
+
+        console.log('Looking for slug:', slug);
+
         // Find car by slug
         const foundCar = findCarBySlug(transformedCars, slug || '');
 
         if (foundCar) {
+          console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
           setCar(foundCar);
         } else {
-          console.log('Car not found for slug:', slug, 'in API data');
-          // Fallback to mock data
-          const mockCar = getMockCarBySlug(slug || '');
-          if (mockCar) {
-            setCar(mockCar);
-          }
+          console.error('❌ Car not found for slug:', slug);
+          console.error('Available slugs:', transformedCars.map(car => getCarSlugFromCar(car)));
+          setCar(null);
         }
       } else {
-        console.log('🔄 API response failed, using mock data');
-        // Create a mock car for the slug
-        const mockCar = getMockCarBySlug(slug || '');
-        if (mockCar) {
-          setCar(mockCar);
-        }
+        console.error('🔄 API response failed or no data');
+        setCar(null);
       }
     } catch (error) {
-      console.warn('🔥 Error loading car by slug, trying mock data:', error.message || error);
-      // Try mock data as final fallback
-      const mockCar = getMockCarBySlug(slug || '');
-      if (mockCar) {
-        setCar(mockCar);
-      }
+      console.error('🔥 Error loading car by slug:', error.message || error);
+      setCar(null);
     } finally {
       setLoading(false);
     }
