@@ -104,10 +104,6 @@ try {
 
 // Simple wrapper function
 export const getSupabase = () => {
-  if (!supabase) {
-    console.warn("⚠️ Supabase client not available");
-    return null;
-  }
   return supabase;
 };
 
