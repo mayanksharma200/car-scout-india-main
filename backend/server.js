@@ -546,4 +546,7 @@ app.listen(PORT, () => {
   console.log(`   GET  http://localhost:${PORT}/api/auth/session`);
   console.log(`   GET  http://localhost:${PORT}/api/auth/google`);
   console.log(`   GET  http://localhost:${PORT}/api/auth/callback`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/create-test-user (dev only)`);
+  console.log(`   GET  http://localhost:${PORT}/api/user/profile (protected)`);
+  console.log(`   PUT  http://localhost:${PORT}/api/user/profile (protected)`);
 });
