@@ -8,7 +8,7 @@ export function installGlobalErrorSuppressor() {
   if ((window as any).__errorSuppressorInstalled) return;
   (window as any).__errorSuppressorInstalled = true;
 
-  console.log("🛡️ Installing global error suppressor for localStorage issues");
+  console.log("🛡️ Installing global error suppressor for cloud environment compatibility");
 
   // Track suppressed errors to avoid duplicate logging
   const suppressedErrors = new Set<string>();
