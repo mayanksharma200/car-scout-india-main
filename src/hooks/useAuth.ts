@@ -11,27 +11,41 @@ export const useAuth = () => {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const initializeAuth = async () => {
       try {
         console.log('🔄 Initializing authentication...');
 
+        // Set a timeout to ensure loading doesn't get stuck
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            console.warn('⏰ Auth initialization timeout, setting loading to false');
+            setLoading(false);
+          }
+        }, 3000); // 3 second timeout
+
         // Check for existing session first
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (mounted) {
+          clearTimeout(timeoutId);
+
           if (error) {
             console.warn('⚠️ Session check failed:', error.message);
+            // Still set loading to false even if there's an error
+            setLoading(false);
           } else {
             console.log('🔍 Initial session check:', { hasSession: !!session });
             setSession(session);
             setUser(session?.user ?? null);
+            setLoading(false);
           }
-          setLoading(false);
         }
       } catch (error) {
         console.error('❌ Auth initialization error:', error);
         if (mounted) {
+          clearTimeout(timeoutId);
           setLoading(false);
         }
       }
@@ -44,10 +58,8 @@ export const useAuth = () => {
         if (mounted) {
           setSession(session);
           setUser(session?.user ?? null);
-          // Only set loading to false after the first auth change
-          if (event === 'INITIAL_SESSION') {
-            setLoading(false);
-          }
+          // Always ensure loading is false after any auth event
+          setLoading(false);
         }
       }
     );
@@ -57,6 +69,7 @@ export const useAuth = () => {
 
     return () => {
       mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
