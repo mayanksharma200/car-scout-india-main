@@ -85,15 +85,32 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       const { error } = await signInWithGoogle();
-      
+
       if (error) {
+        console.error('Google sign in error:', error);
+
+        // Handle specific OAuth configuration errors
+        if (error.message?.includes('invalid_client') || error.message?.includes('OAuth')) {
+          toast({
+            title: "Google Sign In Not Configured",
+            description: "Google OAuth is not set up yet. Please use email/password login for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Google Sign In Failed",
+            description: error.message || "An error occurred during Google sign in.",
+            variant: "destructive",
+          });
+        }
+      } else {
         toast({
-          title: "Google Sign In Failed",
-          description: error.message,
-          variant: "destructive",
+          title: "Redirecting...",
+          description: "You're being redirected to Google for authentication.",
         });
       }
     } catch (error) {
+      console.error('Google sign in exception:', error);
       toast({
         title: "Google Sign In Failed",
         description: "An unexpected error occurred. Please try again.",
