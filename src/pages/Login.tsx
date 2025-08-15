@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signInWithGoogle, user, loading } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook, user, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -113,6 +113,43 @@ const Login = () => {
       console.error('Google sign in exception:', error);
       toast({
         title: "Google Sign In Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    try {
+      const { error } = await signInWithFacebook();
+
+      if (error) {
+        console.error('Facebook sign in error:', error);
+
+        // Handle specific OAuth configuration errors
+        if (error.message?.includes('invalid_client') || error.message?.includes('OAuth')) {
+          toast({
+            title: "Facebook Sign In Not Configured",
+            description: "Facebook OAuth is not set up yet. Please use email/password login for now.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Facebook Sign In Failed",
+            description: error.message || "An error occurred during Facebook sign in.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Redirecting...",
+          description: "You're being redirected to Facebook for authentication.",
+        });
+      }
+    } catch (error) {
+      console.error('Facebook sign in exception:', error);
+      toast({
+        title: "Facebook Sign In Failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
@@ -239,7 +276,12 @@ const Login = () => {
                   </svg>
                   Google
                 </Button>
-                <Button variant="outline" type="button">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleFacebookSignIn}
+                  disabled={isSubmitting || loading}
+                >
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                   </svg>
