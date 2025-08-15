@@ -76,7 +76,7 @@ let supabase: ReturnType<typeof createClient<Database>> | null = null;
 try {
   console.log("🔧 Creating Supabase client...");
   
-  // Configure Supabase for cloud development environment
+  // Configure Supabase based on environment capabilities
   const authConfig = storageAvailable ? {
     // localStorage available - use default settings
     persistSession: true,
@@ -86,8 +86,8 @@ try {
     // localStorage not available - use memory storage with optimized settings
     storage: memoryStorage,
     persistSession: false, // Can't persist without localStorage
-    autoRefreshToken: false, // Disable to avoid refresh loops
-    detectSessionInUrl: isCloudEnvironment, // Enable for OAuth in cloud
+    autoRefreshToken: false, // Disable to avoid refresh loops in memory storage
+    detectSessionInUrl: env.isCloudEnvironment || env.isInIframe, // Enable for OAuth in cloud/iframe
   };
 
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
