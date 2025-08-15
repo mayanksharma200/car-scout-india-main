@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SystemStatus from "@/components/SystemStatus";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
+import DevAuthHelper from "@/components/DevAuthHelper";
 import Index from "./pages/Index";
 import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
