@@ -28,71 +28,61 @@ const CarDetail = () => {
   const loadCarBySlug = async () => {
     try {
       console.log('🔍 Loading car by slug:', slug);
+      setLoading(true);
 
-      // Use safe wrapper and check configuration
-      const safeSupabase = createSafeSupabaseWrapper();
+      // Try to get all cars from API first
+      const response = await carAPI.getAll({ status: 'active' });
 
-      if (!isSupabaseConfigured || !supabase) {
-        console.log('🔄 Supabase not configured, using mock data');
+      if (response.success && response.data) {
+        console.log('All cars from API:', response.data);
+
+        // Transform API cars to match existing interface
+        const transformedCars = response.data.map(dbCar => {
+          // Get the first image from the images array, or use placeholder
+          let carImage = "/placeholder.svg";
+          if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
+            carImage = dbCar.images[0] as string;
+          }
+
+          return {
+            ...dbCar,
+            price: dbCar.price_min || dbCar.price,
+            onRoadPrice: dbCar.price_max || dbCar.onRoadPrice,
+            fuelType: dbCar.fuel_type || dbCar.fuelType,
+            bodyType: dbCar.body_type || dbCar.bodyType,
+            seating: dbCar.seating_capacity || dbCar.seating,
+            rating: 4.2 + Math.random() * 0.8,
+            image: carImage,
+            color: "Pearl White",
+            year: 2024,
+            features: dbCar.features || [],
+            mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
+            reviews: Math.floor(Math.random() * 500) + 50,
+            isPopular: Math.random() > 0.7,
+            isBestSeller: Math.random() > 0.8
+          };
+        });
+
+        // Find car by slug
+        const foundCar = findCarBySlug(transformedCars, slug || '');
+
+        if (foundCar) {
+          setCar(foundCar);
+        } else {
+          console.log('Car not found for slug:', slug, 'in API data');
+          // Fallback to mock data
+          const mockCar = getMockCarBySlug(slug || '');
+          if (mockCar) {
+            setCar(mockCar);
+          }
+        }
+      } else {
+        console.log('🔄 API response failed, using mock data');
         // Create a mock car for the slug
         const mockCar = getMockCarBySlug(slug || '');
         if (mockCar) {
           setCar(mockCar);
         }
-        return;
-      }
-
-      const { data, error } = await safeSupabase
-        .from('cars')
-        .select('*')
-        .eq('status', 'active');
-
-      if (error) {
-        console.warn('⚠️ Database error, trying mock data:', error.message);
-        // Try mock data as fallback
-        const mockCar = getMockCarBySlug(slug || '');
-        if (mockCar) {
-          setCar(mockCar);
-        }
-        return;
-      }
-
-      console.log('All cars from database:', data);
-      
-      // Transform database cars to match existing interface
-      const transformedCars = data.map(dbCar => {
-        // Get the first image from the images array, or use placeholder
-        let carImage = "/placeholder.svg";
-        if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
-          carImage = dbCar.images[0] as string;
-        }
-
-        return {
-          ...dbCar,
-          price: dbCar.price_min,
-          onRoadPrice: dbCar.price_max,
-          fuelType: dbCar.fuel_type,
-          bodyType: dbCar.body_type,
-          seating: dbCar.seating_capacity,
-          rating: 4.2 + Math.random() * 0.8,
-          image: carImage,
-          color: "Pearl White",
-          year: 2024,
-          features: dbCar.features || [],
-          mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
-          reviews: Math.floor(Math.random() * 500) + 50,
-          isPopular: Math.random() > 0.7,
-          isBestSeller: Math.random() > 0.8
-        };
-      });
-
-      // Find car by slug
-      const foundCar = findCarBySlug(transformedCars, slug || '');
-      
-      if (foundCar) {
-        setCar(foundCar);
-      } else {
-        console.log('Car not found for slug:', slug);
       }
     } catch (error) {
       console.warn('🔥 Error loading car by slug, trying mock data:', error.message || error);
