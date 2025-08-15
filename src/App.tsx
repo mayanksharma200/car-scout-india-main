@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SystemStatus from "@/components/SystemStatus";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
+import AuthStatus from "@/components/AuthStatus";
 import Index from "./pages/Index";
 import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
