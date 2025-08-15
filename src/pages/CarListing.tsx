@@ -53,19 +53,50 @@ const CarListing = () => {
 
   const loadCarsFromDB = async () => {
     try {
-      console.log('Loading cars from API...');
+      console.log('Loading cars...');
       setLoading(true);
 
-      const response = await carAPI.getAll({
-        status: 'active',
-        limit: 100
-      });
+      let carsData = null;
 
-      if (response.success && response.data) {
-        console.log('Raw cars from API:', response.data);
+      // Try API first
+      try {
+        const response = await carAPI.getAll({
+          status: 'active',
+          limit: 100
+        });
 
-        // Transform API cars to match existing interface
-        const transformedCars = response.data.map(car => {
+        if (response.success && response.data) {
+          console.log('✅ Cars loaded from API:', response.data);
+          carsData = response.data;
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API not available, trying Supabase directly:', apiError.message);
+      }
+
+      // If API failed, try Supabase directly
+      if (!carsData) {
+        console.log('🔄 Falling back to Supabase direct access...');
+        const { data: supabaseData, error: supabaseError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('status', 'active')
+          .order('brand', { ascending: true });
+
+        if (supabaseError) {
+          console.error('❌ Supabase error:', supabaseError);
+          setCars([]);
+          return;
+        }
+
+        carsData = supabaseData;
+        console.log('✅ Cars loaded from Supabase:', carsData);
+      }
+
+      if (carsData) {
+        console.log('Raw cars data:', carsData);
+
+        // Transform cars to match existing interface
+        const transformedCars = carsData.map(car => {
           // Get the first image from the images array, or use placeholder
           let carImage = "/placeholder.svg";
           if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
