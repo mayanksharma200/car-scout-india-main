@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { carAPI } from "@/services/api";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { addMissingMGHectorCars } from "@/utils/addMissingCars";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
