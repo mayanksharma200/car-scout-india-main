@@ -7,7 +7,13 @@ import { CheckCircle, XCircle, Clock } from 'lucide-react';
 const AuthStatus = () => {
   const { user, loading, session } = useAuth();
 
-  if (import.meta.env.PROD) {
+  // Only show in local development (not on deployed environments like fly.dev)
+  const isLocalDevelopment = import.meta.env.DEV &&
+    (window.location.hostname === 'localhost' ||
+     window.location.hostname === '127.0.0.1' ||
+     window.location.hostname.includes('local'));
+
+  if (!isLocalDevelopment) {
     return null;
   }
 
