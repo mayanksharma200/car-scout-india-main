@@ -587,6 +587,68 @@ app.put("/api/user/profile", authenticateUser, async (req, res) => {
   }
 });
 
+// Create admin user endpoint (production safe)
+app.post("/api/auth/create-admin", async (req, res) => {
+  try {
+    const { email, password, adminKey } = req.body;
+
+    // Check admin creation key (set via environment variable)
+    const expectedAdminKey = process.env.ADMIN_CREATION_KEY;
+    if (!expectedAdminKey || adminKey !== expectedAdminKey) {
+      return res.status(403).json({
+        success: false,
+        error: "Invalid admin creation key"
+      });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "Email and password are required"
+      });
+    }
+
+    // Create new admin user
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: "Admin User"
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    // Set the user as admin
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ role: 'admin' })
+      .eq('id', data.user.id);
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    res.json({
+      success: true,
+      message: "Admin user created successfully",
+      data: {
+        email,
+        userId: data.user.id
+      }
+    });
+  } catch (error) {
+    console.error("Error creating admin user:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Create lead (with optional auth)
 app.post("/api/leads", optionalAuth, async (req, res) => {
   try {
