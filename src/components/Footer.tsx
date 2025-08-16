@@ -12,7 +12,7 @@ const Footer = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img src={autoscopeLogo} alt="AutoScope" className="w-10 h-10 object-contain" />
+              <img src={autoscopeLogo} alt="AutoScope" className="w-20 h-20 object-contain" />
               <h3 className="text-xl font-bold text-foreground">AutoScope</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
