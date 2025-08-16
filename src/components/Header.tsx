@@ -42,11 +42,11 @@ const Header = () => {
   return (
     <header className="bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-50 shadow-sm">
       {/* Main Header */}
-      <div className="container mx-auto px-4 py-3">
+      <div className="container mx-auto px-4 py-0">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img src={`${autoscopeLogo}?v=${Date.now()}`} alt="AutoScope" className="w-10 h-10 md:w-12 md:h-12 object-contain hover:scale-105 transition-transform" />
+            <img src={`${autoscopeLogo}?v=${Date.now()}`} alt="AutoScope" className="w-20 h-20 md:w-20 md:h-20 object-contain hover:scale-105 transition-transform" />
           </Link>
 
           {/* Desktop Search Bar */}
