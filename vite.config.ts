@@ -8,10 +8,10 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'https://car-scout-india-main-production.up.railway.app/api',
+        target: 'https://car-scout-india-main-production.up.railway.app',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        secure: false
+        secure: false,
+        // No rewrite needed - keeps /api in the final URL
       }
     }
   },
