@@ -1,9 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/[^.]+",
-      "dest": "/",
-      "status": 200
+      "source": "/api/(.*)",
+      "destination": "https://car-scout-india-main-production.up.railway.app/$1"
     }
   ]
 }
