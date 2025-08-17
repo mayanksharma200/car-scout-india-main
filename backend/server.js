@@ -595,6 +595,7 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
 // ===== AUTHENTICATION ROUTES (Environment-Aware) =====
 
 // Login endpoint with environment-aware token handling
+// Login endpoint with consistent response structure
 app.post("/api/auth/login", async (req, res) => {
   const ipAddress = req.ip;
   const userAgent = req.get("User-Agent");
@@ -607,27 +608,31 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Email and password are required",
+        code: "MISSING_CREDENTIALS"
       });
     }
 
-    console.log(
-      `🔐 Login attempt for ${email} (${
-        IS_PRODUCTION ? "Production" : "Development"
-      } mode)`
-    );
+    console.log(`🔐 Login attempt for ${email} from ${ipAddress}`);
 
     // Authenticate with Supabase
-    const { data: authData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
     if (authError) {
+      await logAuthEvent(
+        null,
+        "login_failed",
+        ipAddress,
+        userAgent,
+        false,
+        authError.message
+      );
       return res.status(401).json({
         success: false,
         error: "Invalid credentials",
-        code: "INVALID_CREDENTIALS",
+        code: "INVALID_CREDENTIALS"
       });
     }
 
@@ -636,63 +641,80 @@ app.post("/api/auth/login", async (req, res) => {
     // Get user profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, first_name, last_name, is_active")
       .eq("id", userId)
       .single();
 
+    // Check account status
+    if (profile && !profile.is_active) {
+      await logAuthEvent(
+        userId,
+        "login_blocked",
+        ipAddress,
+        userAgent,
+        false,
+        "Account deactivated"
+      );
+      return res.status(403).json({
+        success: false,
+        error: "Account is deactivated",
+        code: "ACCOUNT_DEACTIVATED"
+      });
+    }
+
     // Generate tokens
     const tokens = await generateTokens(authData.user);
+    if (!tokens.expiresIn) {
+      tokens.expiresIn = 900; // Default 15 minutes if not set
+    }
 
     // Update login tracking
-    try {
-      await supabase.rpc("increment_login_count", { user_id: userId });
-    } catch (rpcError) {
-      console.warn("Failed to increment login count:", rpcError.message);
+    await supabase.rpc("increment_login_count", { user_id: userId });
+    await supabase
+      .from("profiles")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    // Prepare consistent response structure
+    const responseData = {
+      user: {
+        id: authData.user.id,
+        email: authData.user.email,
+        emailVerified: !!authData.user.email_confirmed_at,
+        role: profile?.role || "user",
+        firstName: profile?.first_name,
+        lastName: profile?.last_name
+      },
+      accessToken: tokens.accessToken,
+      expiresIn: tokens.expiresIn,
+      tokenType: "Bearer"
+    };
+
+    // In production, set HttpOnly cookie for refresh token
+    if (IS_PRODUCTION) {
+      res.cookie("refreshToken", tokens.refreshToken, {
+        ...COOKIE_CONFIG,
+        maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined // 30 days if "remember me"
+      });
+    } else {
+      // In development, include refreshToken in response
+      responseData.refreshToken = tokens.refreshToken;
     }
 
     // Log successful login
     await logAuthEvent(userId, "login_success", ipAddress, userAgent, true);
 
-    // Environment-aware response
-    if (IS_PRODUCTION) {
-      // Production: Set httpOnly cookie for refresh token
-      res.cookie("refreshToken", tokens.refreshToken, COOKIE_CONFIG);
-
-      res.json({
-        success: true,
-        data: {
-          user: {
-            id: authData.user.id,
-            email: authData.user.email,
-            emailVerified: authData.user.email_confirmed_at ? true : false,
-            role: profile?.role || "user",
-          },
-          accessToken: tokens.accessToken, // Only send access token
-          expiresIn: tokens.expiresIn,
-        },
-        message: "Login successful",
-      });
-    } else {
-      // Development: Send both tokens in response for localStorage
-      res.json({
-        success: true,
-        data: {
-          user: {
-            id: authData.user.id,
-            email: authData.user.email,
-            emailVerified: authData.user.email_confirmed_at ? true : false,
-            role: profile?.role || "user",
-          },
-          tokens, // Send complete tokens object
-          expiresIn: tokens.expiresIn,
-        },
-        message: "Login successful",
-      });
-    }
-
     console.log(`✅ Login successful for user: ${userId}`);
+    
+    return res.json({
+      success: true,
+      data: responseData,
+      message: "Login successful"
+    });
+
   } catch (error) {
     console.error("Login error:", error);
+    
     if (userId) {
       await logAuthEvent(
         userId,
@@ -702,10 +724,16 @@ app.post("/api/auth/login", async (req, res) => {
         false,
         error.message
       );
+      
+      // Reset failed login attempts
+      await supabase.rpc("increment_failed_logins", { user_id: userId });
     }
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
       error: "Login failed",
+      code: "LOGIN_FAILED",
+      details: IS_DEVELOPMENT ? error.message : undefined
     });
   }
 });
