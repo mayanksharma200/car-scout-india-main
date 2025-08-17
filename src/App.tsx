@@ -9,6 +9,9 @@ import SystemStatus from "@/components/SystemStatus";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
 import AuthStatus from "@/components/AuthStatus";
+import { TokenAuthProvider } from "@/contexts/TokenAuthContext";
+
+import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import Index from "./pages/Index";
 import CarListing from "./pages/CarListing";
 import CarDetail from "./pages/CarDetail";
@@ -71,6 +74,7 @@ const App = () => {
         <EnvironmentBanner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/cars" element={<CarListing />} />
             <Route path="/cars/:slug" element={<CarDetail />} />
@@ -84,49 +88,6 @@ const App = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/wishlist" element={<Wishlist />} />
 
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route
-              path="/admin"
-              element={
-                <AdminRouteGuard>
-                  <AdminDashboard />
-                </AdminRouteGuard>
-              }
-            />
-            <Route
-              path="/admin/cars"
-              element={
-                <AdminRouteGuard>
-                  <CarManagement />
-                </AdminRouteGuard>
-              }
-            />
-            <Route
-              path="/admin/leads"
-              element={
-                <AdminRouteGuard>
-                  <LeadManagement />
-                </AdminRouteGuard>
-              }
-            />
-            <Route
-              path="/admin/content"
-              element={
-                <AdminRouteGuard>
-                  <ContentManagement />
-                </AdminRouteGuard>
-              }
-            />
-            <Route
-              path="/admin/api-settings"
-              element={
-                <AdminRouteGuard>
-                  <APISettings />
-                </AdminRouteGuard>
-              }
-            />
-
             {/* Legal Pages */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-conditions" element={<TermsConditions />} />
@@ -134,11 +95,71 @@ const App = () => {
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/contact" element={<Contact />} />
 
+            {/* Admin Routes - Wrapped with AdminAuthProvider */}
+            <Route
+              path="/admin/*"
+              element={
+                <TokenAuthProvider>
+                  <Routes>
+                    {/* Admin Login - No guard needed */}
+                    <Route path="login" element={<AdminLogin />} />
+
+                    {/* Protected Admin Routes */}
+                    <Route
+                      path=""
+                      element={
+                        <AdminRouteGuard>
+                          <AdminDashboard />
+                        </AdminRouteGuard>
+                      }
+                    />
+
+                    <Route
+                      path="cars"
+                      element={
+                        <AdminRouteGuard>
+                          <CarManagement />
+                        </AdminRouteGuard>
+                      }
+                    />
+
+                    <Route
+                      path="leads"
+                      element={
+                        <AdminRouteGuard>
+                          <LeadManagement />
+                        </AdminRouteGuard>
+                      }
+                    />
+
+                    <Route
+                      path="content"
+                      element={
+                        <AdminRouteGuard>
+                          <ContentManagement />
+                        </AdminRouteGuard>
+                      }
+                    />
+
+                    <Route
+                      path="api-settings"
+                      element={
+                        <AdminRouteGuard>
+                          <APISettings />
+                        </AdminRouteGuard>
+                      }
+                    />
+                  </Routes>
+                </TokenAuthProvider>
+              }
+            />
+
             {/* Catch-all route - must be last */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        {/* local auth status of the test user */}
+
+        {/* Development Tools */}
         {/* <AuthStatus /> */}
         <DevAuthHelper />
         <AdminSetup />
