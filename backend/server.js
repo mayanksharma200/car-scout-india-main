@@ -214,7 +214,7 @@ const generateTokens = async (user) => {
     const tokenResponse = {
       accessToken,
       refreshToken,
-      expiresIn: 15 * 60,
+      expiresIn: 15 * 60, // 15 minutes in seconds
       tokenType: "Bearer",
     };
 
@@ -596,6 +596,7 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
 
 // Login endpoint with environment-aware token handling
 // Login endpoint with consistent response structure
+// Login endpoint with consistent response structure and error handling
 app.post("/api/auth/login", async (req, res) => {
   const ipAddress = req.ip;
   const userAgent = req.get("User-Agent");
@@ -662,18 +663,42 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    // Generate tokens
-    const tokens = await generateTokens(authData.user);
-    if (!tokens.expiresIn) {
-      tokens.expiresIn = 900; // Default 15 minutes if not set
+    // Generate tokens with error handling
+    let tokens;
+    try {
+      tokens = await generateTokens(authData.user);
+      console.log("Generated tokens:", { 
+        hasAccessToken: !!tokens.accessToken,
+        hasRefreshToken: !!tokens.refreshToken,
+        expiresIn: tokens.expiresIn,
+        tokenType: tokens.tokenType
+      });
+    } catch (tokenError) {
+      console.error("Token generation failed:", tokenError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to generate authentication tokens",
+        code: "TOKEN_GENERATION_FAILED"
+      });
+    }
+
+    // Ensure expiresIn is always present with a valid value
+    if (!tokens.expiresIn || typeof tokens.expiresIn !== 'number') {
+      console.warn("expiresIn missing or invalid, setting default");
+      tokens.expiresIn = 900; // 15 minutes
     }
 
     // Update login tracking
-    await supabase.rpc("increment_login_count", { user_id: userId });
-    await supabase
-      .from("profiles")
-      .update({ last_login_at: new Date().toISOString() })
-      .eq("id", userId);
+    try {
+      await supabase.rpc("increment_login_count", { user_id: userId });
+      await supabase
+        .from("profiles")
+        .update({ last_login_at: new Date().toISOString() })
+        .eq("id", userId);
+    } catch (updateError) {
+      console.warn("Failed to update login tracking:", updateError);
+      // Don't fail the login for tracking errors
+    }
 
     // Prepare consistent response structure
     const responseData = {
@@ -686,8 +711,9 @@ app.post("/api/auth/login", async (req, res) => {
         lastName: profile?.last_name
       },
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken, // Always include for development
       expiresIn: tokens.expiresIn,
-      tokenType: "Bearer"
+      tokenType: tokens.tokenType || "Bearer"
     };
 
     // In production, set HttpOnly cookie for refresh token
@@ -696,9 +722,8 @@ app.post("/api/auth/login", async (req, res) => {
         ...COOKIE_CONFIG,
         maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined // 30 days if "remember me"
       });
-    } else {
-      // In development, include refreshToken in response
-      responseData.refreshToken = tokens.refreshToken;
+      // Remove refreshToken from response in production
+      delete responseData.refreshToken;
     }
 
     // Log successful login
@@ -725,8 +750,12 @@ app.post("/api/auth/login", async (req, res) => {
         error.message
       );
       
-      // Reset failed login attempts
-      await supabase.rpc("increment_failed_logins", { user_id: userId });
+      // Reset failed login attempts (handle RPC errors gracefully)
+      try {
+        await supabase.rpc("increment_failed_logins", { user_id: userId });
+      } catch (rpcError) {
+        console.warn("Failed to increment failed logins:", rpcError);
+      }
     }
 
     return res.status(500).json({
@@ -737,6 +766,90 @@ app.post("/api/auth/login", async (req, res) => {
     });
   }
 });
+
+// Updated generateTokens function with better error handling
+// const generateTokens = async (user) => {
+//   try {
+//     const { data: profile } = await supabase
+//       .from("profiles")
+//       .select("role, first_name, last_name, is_active, email_verified")
+//       .eq("id", user.id)
+//       .single();
+
+//     if (profile && !profile.is_active) {
+//       throw new Error("Account is deactivated");
+//     }
+
+//     const payload = {
+//       userId: user.id,
+//       email: user.email,
+//       role: profile?.role || "user",
+//       firstName: profile?.first_name,
+//       lastName: profile?.last_name,
+//       emailVerified: user.email_confirmed_at ? true : false,
+//       iat: Math.floor(Date.now() / 1000),
+//     };
+
+//     // Generate access token
+//     const accessToken = jwt.sign(payload, TOKEN_CONFIG.secret, {
+//       expiresIn: TOKEN_CONFIG.accessTokenExpiry,
+//       issuer: TOKEN_CONFIG.issuer,
+//       audience: TOKEN_CONFIG.audience,
+//       subject: user.id,
+//     });
+
+//     // Generate refresh token
+//     const refreshTokenPayload = {
+//       userId: user.id,
+//       type: "refresh",
+//       iat: Math.floor(Date.now() / 1000),
+//     };
+
+//     const refreshToken = jwt.sign(
+//       refreshTokenPayload,
+//       TOKEN_CONFIG.refreshSecret,
+//       {
+//         expiresIn: TOKEN_CONFIG.refreshTokenExpiry,
+//         issuer: TOKEN_CONFIG.issuer,
+//         audience: TOKEN_CONFIG.audience,
+//         subject: user.id,
+//       }
+//     );
+
+//     // Store refresh token in database
+//     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+//     const { error: sessionError } = await supabase.from("user_sessions").insert({
+//       user_id: user.id,
+//       refresh_token: refreshToken,
+//       expires_at: expiresAt.toISOString(),
+//       created_at: new Date().toISOString(),
+//       is_active: true,
+//     });
+
+//     if (sessionError) {
+//       console.error("Failed to store refresh token:", sessionError);
+//       throw new Error("Failed to store session");
+//     }
+
+//     const tokenResponse = {
+//       accessToken,
+//       refreshToken,
+//       expiresIn: 900, // Explicit 15 minutes in seconds
+//       tokenType: "Bearer",
+//     };
+
+//     console.log(
+//       `✅ Generated tokens for ${user.email} (${
+//         IS_PRODUCTION ? "Production" : "Development"
+//       } mode) - expiresIn: ${tokenResponse.expiresIn}`
+//     );
+    
+//     return tokenResponse;
+//   } catch (error) {
+//     console.error("Token generation error:", error);
+//     throw new Error(`Failed to generate tokens: ${error.message}`);
+//   }
+// };
 
 // Refresh token endpoint (environment-aware)
 app.post("/api/auth/refresh", async (req, res) => {
