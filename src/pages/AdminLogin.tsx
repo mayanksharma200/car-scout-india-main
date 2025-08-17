@@ -1,75 +1,179 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, Car, Shield } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Car,
+  Shield,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { createApiClient } from "@/utils/apiClient";
 
 const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    rememberMe: false
+    rememberMe: false,
   });
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { login, loading } = useTokenAuth();
+
+  // Get redirect path from location state
+  const from = (location.state as any)?.from?.pathname || "/admin";
+
+  // Create API client instance for this component
+  const api = createApiClient();
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.email) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!formData.password) {
+      errors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      errors.password = "Password must be at least 8 characters long";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
+
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (!validateForm()) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please fix the errors below and try again.",
+      });
+      return;
+    }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password
-      });
+      console.log("🔐 Attempting admin login...");
 
-      if (error) throw error;
+      const result = await login(
+        formData.email,
+        formData.password,
+        formData.rememberMe
+      );
 
-      // Check if user has admin role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
+      if (result.success) {
+        toast({
+          title: "Login Successful",
+          description: (
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Welcome to the admin dashboard!
+            </div>
+          ),
+        });
 
-      if (profileError) {
-        throw new Error('Unable to verify admin access');
+        console.log("🚀 Redirecting to:", from);
+        navigate(from, { replace: true });
+      } else {
+        throw new Error(result.error || "Login failed");
       }
+    } catch (error: any) {
+      console.error("❌ Admin login error:", error);
 
-      if (profile.role !== 'admin') {
-        // Sign out the user since they don't have admin access
-        await supabase.auth.signOut();
-        throw new Error('Access denied. This account does not have admin privileges.');
+      let errorMessage = "An unexpected error occurred";
+      let errorTitle = "Login Failed";
+      let isStorageError = false;
+
+      if (error.message.includes("Invalid credentials")) {
+        errorMessage =
+          "Invalid email or password. Please check your credentials and try again.";
+      } else if (error.message.includes("Too many")) {
+        errorMessage =
+          "Too many login attempts. Please wait a moment before trying again.";
+        errorTitle = "Rate Limited";
+      } else if (error.message.includes("Admin access")) {
+        errorMessage =
+          "This account does not have admin privileges. Please contact your administrator.";
+        errorTitle = "Access Denied";
+      } else if (error.message.includes("localStorage")) {
+        errorMessage =
+          "Login successful, but some features might not work properly in this environment.";
+        errorTitle = "Limited Functionality";
+        isStorageError = true;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
 
       toast({
-        title: "Login Successful",
-        description: "Welcome to the admin dashboard"
+        variant: isStorageError ? "default" : "destructive",
+        title: errorTitle,
+        description: (
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {errorMessage}
+          </div>
+        ),
       });
 
-      navigate("/admin");
+      if (isStorageError) {
+        console.log("🚀 Redirecting despite localStorage error");
+        navigate(from, { replace: true });
+      }
+    }
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      const response = await api.cars.getFeatured();
+      if (response.success) {
+        toast({
+          title: "Connection Test",
+          description: "✅ Backend connection successful!",
+        });
+      } else {
+        throw new Error(response.error);
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: error.message
+        title: "Connection Test Failed",
+        description: `❌ ${error.message || "Could not connect to backend"}`,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -83,7 +187,9 @@ const AdminLogin = () => {
               <Car className="w-7 h-7 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-primary-foreground">AutoScope</h1>
+              <h1 className="text-2xl font-bold text-primary-foreground">
+                AutoScope
+              </h1>
               <p className="text-sm text-primary-foreground/70">Admin Portal</p>
             </div>
           </Link>
@@ -95,7 +201,9 @@ const AdminLogin = () => {
               <Shield className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-2xl">Admin Access</CardTitle>
-            <p className="text-muted-foreground">Sign in to manage content and leads</p>
+            <p className="text-muted-foreground">
+              Sign in with your secure token-based credentials
+            </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,10 +218,18 @@ const AdminLogin = () => {
                     placeholder="admin@autoscope.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
-                    className="pl-10"
+                    className={`pl-10 ${
+                      validationErrors.email ? "border-destructive" : ""
+                    }`}
                     required
+                    autoComplete="email"
                   />
                 </div>
+                {validationErrors.email && (
+                  <p className="text-sm text-destructive">
+                    {validationErrors.email}
+                  </p>
+                )}
               </div>
 
               {/* Password */}
@@ -124,11 +240,16 @@ const AdminLogin = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter admin password"
+                    placeholder="Enter secure password"
                     value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    className="pl-10 pr-10"
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    className={`pl-10 pr-10 ${
+                      validationErrors.password ? "border-destructive" : ""
+                    }`}
                     required
+                    autoComplete="current-password"
                   />
                   <Button
                     type="button"
@@ -144,32 +265,104 @@ const AdminLogin = () => {
                     )}
                   </Button>
                 </div>
+                {validationErrors.password && (
+                  <p className="text-sm text-destructive">
+                    {validationErrors.password}
+                  </p>
+                )}
               </div>
 
-              {/* Remember Me */}
+              {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="remember"
                     checked={formData.rememberMe}
-                    onCheckedChange={(checked) => handleInputChange("rememberMe", checked as boolean)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("rememberMe", checked as boolean)
+                    }
                   />
-                  <Label htmlFor="remember" className="text-sm">Remember me</Label>
+                  <Label htmlFor="remember" className="text-sm">
+                    Keep me signed in
+                  </Label>
                 </div>
-                <Link to="/admin/forgot-password" className="text-sm text-primary hover:underline">
+                <Link
+                  to="/admin/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>
 
+              {/* Security Notice */}
+              <Alert>
+                <Shield className="h-4 w-4" />
+                <AlertDescription>
+                  This login uses secure HTTP-only cookies for authentication.
+                  Your session will remain active for 7 days with remember me
+                  enabled.
+                </AlertDescription>
+              </Alert>
+
               {/* Sign In Button */}
-              <Button type="submit" disabled={loading} className="w-full bg-gradient-primary hover:opacity-90 shadow-auto-md">
-                {loading ? "Signing In..." : "Access Admin Dashboard"}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-primary hover:opacity-90 shadow-auto-md"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Authenticating...
+                  </div>
+                ) : (
+                  "Access Admin Dashboard"
+                )}
               </Button>
 
-              {/* Security Notice */}
+              {/* Development Tools */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-xs text-muted-foreground">
+                    Development Tools:
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestConnection}
+                      className="text-xs"
+                    >
+                      Test Backend
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFormData({
+                          email: "test@autoscope.com",
+                          password: "test123456",
+                          rememberMe: false,
+                        });
+                      }}
+                      className="text-xs"
+                    >
+                      Fill Test Data
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Security Footer */}
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">
-                  This is a secure admin area. All activities are logged and monitored.
+                  🔒 This is a secure admin area. All activities are logged and
+                  monitored.
+                  <br />
+                  Refresh tokens are stored in HTTP-only cookies for maximum
+                  security.
                 </p>
               </div>
             </form>
@@ -178,10 +371,23 @@ const AdminLogin = () => {
 
         {/* Back to Site */}
         <div className="text-center mt-6">
-          <Link to="/" className="text-primary-foreground/70 hover:text-primary-foreground text-sm">
+          <Link
+            to="/"
+            className="text-primary-foreground/70 hover:text-primary-foreground text-sm flex items-center justify-center gap-1"
+          >
             ← Back to AutoScope India
           </Link>
         </div>
+
+        {/* Development Info */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="mt-4 p-4 bg-background/80 rounded-lg backdrop-blur-sm">
+            <p className="text-xs text-center text-muted-foreground">
+              <strong>Dev Mode:</strong> Using secure cookie-based auth with
+              15min access tokens + 7d refresh tokens
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

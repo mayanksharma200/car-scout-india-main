@@ -1,9 +1,22 @@
 import { useState } from "react";
-import { BarChart3, Car, FileText, Users, TrendingUp, Bell, Settings, LogOut, Menu, Globe } from "lucide-react";
+import {
+  BarChart3,
+  Car,
+  FileText,
+  Users,
+  TrendingUp,
+  Bell,
+  Settings,
+  LogOut,
+  Menu,
+  Globe,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -12,6 +25,9 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useTokenAuth();
+  const { toast } = useToast();
 
   const navigation = [
     { name: "Dashboard", href: "/admin", icon: BarChart3 },
@@ -29,10 +45,42 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     return location.pathname.startsWith(href);
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/admin/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout Error",
+        description: "There was an issue logging out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = (email?: string) => {
+    if (!email) return "A";
+    const parts = email.split("@")[0].split(".");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return email[0].toUpperCase();
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-card border-r border-border flex flex-col`}>
+      <div
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } transition-all duration-300 bg-card border-r border-border flex flex-col`}
+      >
         {/* Logo */}
         <div className="p-6 border-b border-border">
           <Link to="/admin" className="flex items-center gap-3">
@@ -57,8 +105,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   to={item.href}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                     isActive(item.href)
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-muted text-foreground'
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted text-foreground"
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -72,7 +120,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {/* System Status */}
         {sidebarOpen && (
           <div className="p-4 border-t border-border">
-            <div className="text-xs text-muted-foreground mb-2">System Status</div>
+            <div className="text-xs text-muted-foreground mb-2">
+              System Status
+            </div>
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span>Data Sync</span>
@@ -80,6 +130,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span>API Integration</span>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span>Admin Auth</span>
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
             </div>
@@ -90,25 +144,36 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              A
+              {getUserInitials(user?.email)}
             </div>
             {sidebarOpen && (
               <div className="flex-1">
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-muted-foreground">admin@autoscope.com</p>
+                <p className="text-sm font-medium">
+                  {user?.email ? user.email.split("@")[0] : "Admin User"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {user?.email || "admin@autoscope.com"}
+                </p>
+                <p className="text-xs text-primary font-medium capitalize">
+                  {user?.role || "Administrator"}
+                </p>
               </div>
             )}
           </div>
           {sidebarOpen && (
             <div className="mt-3 flex gap-2">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" title="Settings">
                 <Settings className="w-4 h-4" />
               </Button>
-              <Link to="/admin/login">
-                <Button variant="ghost" size="sm">
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                title="Logout"
+                className="hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           )}
         </div>
@@ -123,28 +188,45 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              title="Toggle Sidebar"
             >
               <Menu className="w-5 h-5" />
             </Button>
+
+            {/* Breadcrumb or current page indicator */}
+            <div className="text-sm text-muted-foreground">
+              {location.pathname === "/admin" && "Dashboard"}
+              {location.pathname === "/admin/cars" && "Car Management"}
+              {location.pathname === "/admin/leads" && "Lead Management"}
+              {location.pathname === "/admin/content" && "Content Management"}
+              {location.pathname === "/admin/api-settings" && "API Settings"}
+            </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative"
+              title="Notifications"
+            >
               <Bell className="w-5 h-5" />
               <Badge className="absolute -top-1 -right-1 w-5 h-5 rounded-full p-0 flex items-center justify-center text-xs">
                 3
               </Badge>
             </Button>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              to="/"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              title="View Main Site"
+            >
               View Site →
             </Link>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );

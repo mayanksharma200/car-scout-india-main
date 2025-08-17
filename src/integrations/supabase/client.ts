@@ -77,12 +77,15 @@ try {
   console.log("🔧 Creating Supabase client...");
 
   // Use simple, reliable configuration
-  const authConfig = {
-    storage: storageAvailable ? undefined : memoryStorage,
-    persistSession: storageAvailable,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  };
+const authConfig = import.meta.env.VITE_SIMPLE_STORAGE ? {
+  persistSession: false,
+  autoRefreshToken: false,
+} : {
+  storage: storageAvailable ? undefined : memoryStorage,
+  persistSession: storageAvailable,
+  autoRefreshToken: true,
+  detectSessionInUrl: true,
+};
 
   supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: authConfig,

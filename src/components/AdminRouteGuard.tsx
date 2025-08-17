@@ -1,21 +1,19 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
-import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Loader2 } from 'lucide-react';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { Card, CardContent } from "@/components/ui/card";
+import { Shield, Loader2 } from "lucide-react";
 
 interface AdminRouteGuardProps {
   children: React.ReactNode;
 }
 
 const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth();
-  const { isAdmin, loading: roleLoading, error } = useUserRole();
+  const { user, isAuthenticated, loading } = useTokenAuth();
   const location = useLocation();
 
-  // Show loading state while checking authentication and role
-  if (authLoading || roleLoading) {
+  // Show loading state while checking authentication
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <Card className="p-8 text-center">
@@ -29,18 +27,14 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
   }
 
   // Redirect to login if not authenticated
-  if (!user) {
-    return (
-      <Navigate 
-        to="/admin/login" 
-        state={{ from: location }} 
-        replace 
-      />
-    );
+  if (!isAuthenticated || !user) {
+    console.log("🔐 Not authenticated, redirecting to login");
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
-  // Show access denied if not admin
-  if (!isAdmin) {
+  // Show access denied if not admin (extra safety check)
+  if (user.role !== "admin") {
+    console.log("🚫 Access denied - user role:", user.role);
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
@@ -48,22 +42,28 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
               <Shield className="w-8 h-8 text-destructive" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground">Access Denied</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              Access Denied
+            </h2>
             <p className="text-muted-foreground">
-              You don't have permission to access the admin panel. 
-              Please contact an administrator if you believe this is an error.
+              You don't have permission to access the admin panel. Please
+              contact an administrator if you believe this is an error.
             </p>
-            {error && (
-              <p className="text-sm text-destructive">
-                Error: {error}
-              </p>
-            )}
-            <div className="pt-4">
-              <button 
+            <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
+              Current role: {user.role} | Required: admin
+            </div>
+            <div className="pt-4 space-x-4">
+              <button
                 onClick={() => window.history.back()}
                 className="text-primary hover:underline"
               >
                 ← Go Back
+              </button>
+              <button
+                onClick={() => (window.location.href = "/admin/login")}
+                className="text-primary hover:underline"
+              >
+                Try Different Account
               </button>
             </div>
           </CardContent>
@@ -73,6 +73,7 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
   }
 
   // Render admin content for authorized users
+  console.log("✅ Admin access granted for user:", user.email);
   return <>{children}</>;
 };
 
