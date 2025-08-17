@@ -252,13 +252,14 @@ export const TokenAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return headers;
   }, [tokens]);
 
-  // Login function
+  // Fixed login function in your auth context
   const login = async (
     email: string,
     password: string,
     rememberMe = false
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log("🔐 Attempting admin login...");
       setLoading(true);
 
       const response = await fetch(`${backendUrl}/auth/login`, {
@@ -272,6 +273,10 @@ export const TokenAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const result = await response.json();
 
+      // Add debugging
+      console.log("Login response:", result);
+      console.log("Response data:", result.data);
+
       if (!response.ok || !result.success) {
         return {
           success: false,
@@ -279,9 +284,16 @@ export const TokenAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
       }
 
-      // Save tokens and user data
-      saveTokens(result.data.tokens, result.data.user);
-      scheduleTokenRefresh(result.data.tokens.expiresIn);
+      // ✅ Fix: Access the data structure correctly
+      const tokenData = {
+        accessToken: result.data.accessToken,
+        expiresIn: result.data.expiresIn,
+        tokenType: result.data.tokenType || "Bearer",
+      };
+
+      // ✅ Fix: Use the correct data structure
+      saveTokens(tokenData, result.data.user);
+      scheduleTokenRefresh(result.data.expiresIn); // Direct access
 
       console.log("✅ Login successful");
       return { success: true };
