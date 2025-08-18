@@ -1409,7 +1409,7 @@ const CompareSection = () => {
         )}
 
         {/* Popular Comparisons */}
-        <div>
+        {/* <div>
           <h3 className="text-2xl font-bold text-foreground mb-8 text-center">
             Popular Comparisons
           </h3>
@@ -1486,7 +1486,7 @@ const CompareSection = () => {
               ))}
             </div>
           )}
-        </div>
+        </div> */}
 
         <div className="text-center mt-8">
           <Button
