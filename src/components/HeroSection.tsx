@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, SlidersHorizontal, MapPin, IndianRupee, Fuel, Car, Users, X, Zap, Shield, Award, ChevronDown } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  MapPin,
+  IndianRupee,
+  Fuel,
+  Car,
+  Users,
+  X,
+  Zap,
+  Shield,
+  Award,
+  ChevronDown,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-
-
 
 const AnimatedCounter = ({ end, suffix = "", delay = 0 }) => {
   const [count, setCount] = useState(0);
@@ -21,7 +32,7 @@ const AnimatedCounter = ({ end, suffix = "", delay = 0 }) => {
       },
       {
         threshold: 0.5, // Trigger when 50% of the element is visible
-        rootMargin: '0px 0px -100px 0px' // Start animation slightly before fully visible
+        rootMargin: "0px 0px -100px 0px", // Start animation slightly before fully visible
       }
     );
 
@@ -70,22 +81,29 @@ const AnimatedCounter = ({ end, suffix = "", delay = 0 }) => {
     return () => clearInterval(timer);
   }, [hasStarted, end]);
 
-  return <span ref={counterRef}>{count.toLocaleString()}{suffix}</span>;
+  return (
+    <span ref={counterRef}>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
 };
 
 const HeroSection = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [priceRange, setPriceRange] = useState([5, 50]);
   const [mileageRange, setMileageRange] = useState([10, 30]);
-  
+
   // Main search states
   const [carType, setCarType] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedBudget, setSelectedBudget] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
-  
+
   // Filter states
   const [fuelTypes, setFuelTypes] = useState([]);
   const [transmissions, setTransmissions] = useState([]);
@@ -95,7 +113,7 @@ const HeroSection = () => {
 
   const toggleFilter = (value, currentArray, setter) => {
     const newArray = currentArray.includes(value)
-      ? currentArray.filter(item => item !== value)
+      ? currentArray.filter((item) => item !== value)
       : [...currentArray, value];
     setter(newArray);
   };
@@ -111,63 +129,282 @@ const HeroSection = () => {
   };
 
   const getActiveFiltersCount = () => {
-    return fuelTypes.length + transmissions.length + bodyTypes.length + seatingOptions.length + brands.length;
+    return (
+      fuelTypes.length +
+      transmissions.length +
+      bodyTypes.length +
+      seatingOptions.length +
+      brands.length
+    );
   };
 
   // Data options
   const indianCities = [
-    'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Surat', 'Jaipur',
-    'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 'Patna', 'Vadodara',
-    'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Kalyan-Dombivli', 'Vasai-Virar', 'Varanasi',
-    'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur',
-    'Gwalior', 'Vijayawada', 'Jodhpur', 'Madurai', 'Raipur', 'Kota', 'Guwahati', 'Chandigarh', 'Solapur', 'Hubballi-Dharwad'
+    "Mumbai",
+    "Delhi",
+    "Bangalore",
+    "Chennai",
+    "Kolkata",
+    "Hyderabad",
+    "Pune",
+    "Ahmedabad",
+    "Surat",
+    "Jaipur",
+    "Lucknow",
+    "Kanpur",
+    "Nagpur",
+    "Indore",
+    "Thane",
+    "Bhopal",
+    "Visakhapatnam",
+    "Pimpri-Chinchwad",
+    "Patna",
+    "Vadodara",
+    "Ghaziabad",
+    "Ludhiana",
+    "Agra",
+    "Nashik",
+    "Faridabad",
+    "Meerut",
+    "Rajkot",
+    "Kalyan-Dombivli",
+    "Vasai-Virar",
+    "Varanasi",
+    "Srinagar",
+    "Aurangabad",
+    "Dhanbad",
+    "Amritsar",
+    "Navi Mumbai",
+    "Allahabad",
+    "Ranchi",
+    "Howrah",
+    "Coimbatore",
+    "Jabalpur",
+    "Gwalior",
+    "Vijayawada",
+    "Jodhpur",
+    "Madurai",
+    "Raipur",
+    "Kota",
+    "Guwahati",
+    "Chandigarh",
+    "Solapur",
+    "Hubballi-Dharwad",
   ];
 
   const budgetRanges = [
-    'Under ₹5 Lakh', '₹5-10 Lakh', '₹10-15 Lakh', '₹15-20 Lakh', 
-    '₹20-30 Lakh', '₹30-50 Lakh', '₹50 Lakh - ₹1 Crore', 'Above ₹1 Crore'
+    "Under ₹5 Lakh",
+    "₹5-10 Lakh",
+    "₹10-15 Lakh",
+    "₹15-20 Lakh",
+    "₹20-30 Lakh",
+    "₹30-50 Lakh",
+    "₹50 Lakh - ₹1 Crore",
+    "Above ₹1 Crore",
   ];
 
   const carBrands = [
-    'Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Honda', 'Toyota', 'BMW', 'Mercedes-Benz', 'Audi',
-    'Volkswagen', 'Skoda', 'Nissan', 'Renault', 'Ford', 'Kia', 'MG', 'Jeep', 'Volvo', 'Jaguar', 'Land Rover'
+    "Maruti Suzuki",
+    "Hyundai",
+    "Tata",
+    "Mahindra",
+    "Honda",
+    "Toyota",
+    "BMW",
+    "Mercedes-Benz",
+    "Audi",
+    "Volkswagen",
+    "Skoda",
+    "Nissan",
+    "Renault",
+    "Ford",
+    "Kia",
+    "MG",
+    "Jeep",
+    "Volvo",
+    "Jaguar",
+    "Land Rover",
   ];
 
   const filterOptions = {
-    fuelTypes: ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'],
-    transmissions: ['Manual', 'Automatic', 'CVT'],
-    bodyTypes: ['Hatchback', 'Sedan', 'SUV', 'Coupe', 'Convertible'],
-    seatingOptions: ['2', '4', '5', '7', '8+'],
-    brands: ['Maruti', 'Hyundai', 'Tata', 'Mahindra', 'Honda', 'Toyota', 'BMW', 'Mercedes', 'Audi']
+    fuelTypes: ["Petrol", "Diesel", "Electric", "Hybrid", "CNG"],
+    transmissions: ["Manual", "Automatic", "CVT"],
+    bodyTypes: ["Hatchback", "Sedan", "SUV", "Coupe", "Convertible"],
+    seatingOptions: ["2", "4", "5", "7", "8+"],
+    brands: [
+      "Maruti",
+      "Hyundai",
+      "Tata",
+      "Mahindra",
+      "Honda",
+      "Toyota",
+      "BMW",
+      "Mercedes",
+      "Audi",
+    ],
   };
 
-  
-  const handleSearch = () => {
-    // You can also pass filters via query params
-    navigate("/cars", {
-      state: {
-        carType,
-        selectedCity,
-        selectedBudget,
-        selectedBrand,
-        filters: {
-          fuelTypes,
-          transmissions,
-          bodyTypes,
-          seatingOptions,
-          brands,
-          priceRange,
-          mileageRange,
+  // Build search query based on selected filters
+  const buildSearchQuery = () => {
+    const searchTerms = [];
+
+    if (selectedBrand) {
+      searchTerms.push(selectedBrand);
+    }
+
+    if (carType === "new") {
+      searchTerms.push("new");
+    } else if (carType === "certified") {
+      searchTerms.push("certified");
+    } else if (carType === "premium") {
+      searchTerms.push("premium");
+    }
+
+    // Add advanced filter brands
+    if (brands.length > 0) {
+      searchTerms.push(...brands);
+    }
+
+    // Add fuel types
+    if (fuelTypes.length > 0) {
+      searchTerms.push(...fuelTypes);
+    }
+
+    // Add body types
+    if (bodyTypes.length > 0) {
+      searchTerms.push(...bodyTypes);
+    }
+
+    return searchTerms.join(" ");
+  };
+
+  // Build filter parameters for API call
+  const buildFilterParams = () => {
+    const params = new URLSearchParams();
+
+    // Add basic filters
+    if (selectedBrand) {
+      params.append("brand", selectedBrand);
+    }
+
+    // Add price range (convert from lakh to actual price)
+    if (priceRange[0] > 5 || priceRange[1] < 50) {
+      params.append("minPrice", (priceRange[0] * 100000).toString());
+      params.append("maxPrice", (priceRange[1] * 100000).toString());
+    }
+
+    // Add advanced filters as query terms
+    const query = buildSearchQuery();
+    if (query.trim()) {
+      params.append("q", query.trim());
+    }
+
+    return params;
+  };
+
+  // API call to search cars
+  const searchCars = async () => {
+    setIsSearching(true);
+    try {
+      const query = buildSearchQuery();
+      const filterParams = buildFilterParams();
+
+      let apiUrl = "";
+
+      if (query.trim()) {
+        // Use search endpoint if there's a search query
+        apiUrl = `/api/cars/search?${filterParams.toString()}`;
+      } else {
+        // Use general cars endpoint with filters
+        apiUrl = `/api/cars?${filterParams.toString()}`;
+      }
+
+      console.log("Searching with URL:", apiUrl);
+
+      const response = await fetch(apiUrl);
+      const result = await response.json();
+
+      if (result.success) {
+        setSearchResults(result.data);
+
+        // Navigate to cars page with results
+        navigate("/cars", {
+          state: {
+            searchResults: result.data,
+            searchQuery: query,
+            filters: {
+              carType,
+              selectedCity,
+              selectedBudget,
+              selectedBrand,
+              fuelTypes,
+              transmissions,
+              bodyTypes,
+              seatingOptions,
+              brands,
+              priceRange,
+              mileageRange,
+            },
+          },
+        });
+      } else {
+        console.error("Search failed:", result.error);
+        // Still navigate but with empty results
+        navigate("/cars", {
+          state: {
+            searchResults: [],
+            searchQuery: query,
+            error: result.error,
+            filters: {
+              carType,
+              selectedCity,
+              selectedBudget,
+              selectedBrand,
+              fuelTypes,
+              transmissions,
+              bodyTypes,
+              seatingOptions,
+              brands,
+              priceRange,
+              mileageRange,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      // Navigate with error state
+      navigate("/cars", {
+        state: {
+          searchResults: [],
+          error: "Failed to search cars. Please try again.",
+          filters: {
+            carType,
+            selectedCity,
+            selectedBudget,
+            selectedBrand,
+            fuelTypes,
+            transmissions,
+            bodyTypes,
+            seatingOptions,
+            brands,
+            priceRange,
+            mileageRange,
+          },
         },
-      },
-    });
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearch = () => {
+    searchCars();
   };
 
   const handleEmiCalculator = () => {
     navigate("/emi-calculator");
   };
-
-  
 
   return (
     <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -285,7 +522,7 @@ const HeroSection = () => {
             </p>
           </div>
 
-          {/* Search card matching reference code exactly */}
+          {/* Search card */}
           <Card
             className="max-w-3xl mx-auto rounded-2xl overflow-hidden 
   opacity-0 translate-y-12 scale-95 animate-[fadeInScale_1.2s_ease-out_1.4s_forwards]
@@ -550,14 +787,24 @@ const HeroSection = () => {
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 <button
                   onClick={handleSearch}
+                  disabled={isSearching}
                   className="flex-1 h-12 md:h-14 text-base md:text-lg font-semibold 
         bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white 
         rounded-xl shadow-lg hover:opacity-90 transition-all duration-300 
-        group relative overflow-hidden"
+        group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                  <Search className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 inline" />
-                  Search Cars
+                  {isSearching ? (
+                    <>
+                      <div className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 inline border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 inline" />
+                      Search Cars
+                    </>
+                  )}
                 </button>
 
                 <button
