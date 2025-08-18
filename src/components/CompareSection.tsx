@@ -1487,7 +1487,7 @@ const CompareSection = () => {
             </div>
           )}
         </div> */}
-
+{/* 
         <div className="text-center mt-8">
           <Button
             variant="outline"
@@ -1495,7 +1495,7 @@ const CompareSection = () => {
           >
             View All Comparisons
           </Button>
-        </div>
+        </div> */}
 
         <CarSelectorModal
           isOpen={showCarSelector}
