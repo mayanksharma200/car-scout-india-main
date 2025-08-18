@@ -671,26 +671,66 @@ const CompareSection = () => {
                 </div>
               </div>
 
-              {/* Tabbed Comparison */}
+              {/* Mobile-Responsive Tabbed Comparison */}
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="specs">Specifications</TabsTrigger>
-                  <TabsTrigger value="features">Features</TabsTrigger>
-                  <TabsTrigger value="performance">Performance</TabsTrigger>
-                  <TabsTrigger value="verdict">Verdict</TabsTrigger>
-                </TabsList>
+                {/* Scrollable tabs for mobile, grid for desktop */}
+                <div className="w-full mb-8">
+                  <div className="overflow-x-auto">
+                    <TabsList className="inline-flex w-full min-w-max md:grid md:grid-cols-5 h-auto p-1">
+                      <TabsTrigger
+                        value="overview"
+                        className="flex-shrink-0 px-3 py-2 text-sm md:px-4 md:py-3"
+                      >
+                        <span className="hidden sm:inline">Overview</span>
+                        <span className="sm:hidden">Info</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="specs"
+                        className="flex-shrink-0 px-3 py-2 text-sm md:px-4 md:py-3"
+                      >
+                        <span className="hidden sm:inline">Specifications</span>
+                        <span className="sm:hidden">Specs</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="features"
+                        className="flex-shrink-0 px-3 py-2 text-sm md:px-4 md:py-3"
+                      >
+                        <span className="hidden sm:inline">Features</span>
+                        <span className="sm:hidden">Features</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="performance"
+                        className="flex-shrink-0 px-3 py-2 text-sm md:px-4 md:py-3"
+                      >
+                        <span className="hidden sm:inline">Performance</span>
+                        <span className="sm:hidden">Power</span>
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="verdict"
+                        className="flex-shrink-0 px-3 py-2 text-sm md:px-4 md:py-3"
+                      >
+                        <span className="hidden sm:inline">Verdict</span>
+                        <span className="sm:hidden">Result</span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                </div>
 
-                <TabsContent value="overview" className="space-y-6">
+                <TabsContent
+                  value="overview"
+                  className="space-y-4 md:space-y-6"
+                >
                   {/* Quick Comparison */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Quick Overview</CardTitle>
+                      <CardTitle className="text-lg md:text-xl">
+                        Quick Overview
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <h5 className="font-semibold text-blue-600 text-lg">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                        <div className="space-y-3 md:space-y-4">
+                          <h5 className="font-semibold text-blue-600 text-base md:text-lg">
                             {selectedCar1.brand} {selectedCar1.model}
                           </h5>
                           {[
@@ -729,29 +769,29 @@ const CompareSection = () => {
                           ].map((spec, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                              className="flex items-center justify-between p-2 md:p-3 bg-blue-50 rounded-lg"
                             >
                               <div className="flex items-center gap-2">
                                 {typeof spec.icon === "string" ? (
-                                  <span className="text-blue-600 font-bold">
+                                  <span className="text-blue-600 font-bold text-sm">
                                     {spec.icon}
                                   </span>
                                 ) : (
-                                  <spec.icon className="w-4 h-4 text-blue-600" />
+                                  <spec.icon className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
                                 )}
-                                <span className="font-medium">
+                                <span className="font-medium text-sm md:text-base">
                                   {spec.label}
                                 </span>
                               </div>
-                              <span className="font-semibold text-blue-600">
+                              <span className="font-semibold text-blue-600 text-sm md:text-base">
                                 {spec.value}
                               </span>
                             </div>
                           ))}
                         </div>
 
-                        <div className="space-y-4">
-                          <h5 className="font-semibold text-orange-600 text-lg">
+                        <div className="space-y-3 md:space-y-4">
+                          <h5 className="font-semibold text-orange-600 text-base md:text-lg">
                             {selectedCar2.brand} {selectedCar2.model}
                           </h5>
                           {[
@@ -790,21 +830,21 @@ const CompareSection = () => {
                           ].map((spec, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-3 bg-orange-50 rounded-lg"
+                              className="flex items-center justify-between p-2 md:p-3 bg-orange-50 rounded-lg"
                             >
                               <div className="flex items-center gap-2">
                                 {typeof spec.icon === "string" ? (
-                                  <span className="text-orange-600 font-bold">
+                                  <span className="text-orange-600 font-bold text-sm">
                                     {spec.icon}
                                   </span>
                                 ) : (
-                                  <spec.icon className="w-4 h-4 text-orange-600" />
+                                  <spec.icon className="w-3 h-3 md:w-4 md:h-4 text-orange-600" />
                                 )}
-                                <span className="font-medium">
+                                <span className="font-medium text-sm md:text-base">
                                   {spec.label}
                                 </span>
                               </div>
-                              <span className="font-semibold text-orange-600">
+                              <span className="font-semibold text-orange-600 text-sm md:text-base">
                                 {spec.value}
                               </span>
                             </div>
@@ -815,15 +855,17 @@ const CompareSection = () => {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="specs" className="space-y-6">
+                <TabsContent value="specs" className="space-y-4 md:space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Detailed Specifications</CardTitle>
+                      <CardTitle className="text-lg md:text-xl">
+                        Detailed Specifications
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <h5 className="font-semibold text-blue-600 text-lg">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                        <div className="space-y-2 md:space-y-3">
+                          <h5 className="font-semibold text-blue-600 text-base md:text-lg">
                             {selectedCar1.brand} {selectedCar1.model}
                           </h5>
                           {[
@@ -851,18 +893,18 @@ const CompareSection = () => {
                               key={index}
                               className="flex justify-between items-center p-2 border-b border-blue-100"
                             >
-                              <span className="text-gray-700">
+                              <span className="text-gray-700 text-sm md:text-base">
                                 {spec.label}
                               </span>
-                              <span className="font-semibold text-blue-600">
+                              <span className="font-semibold text-blue-600 text-sm md:text-base">
                                 {spec.value}
                               </span>
                             </div>
                           ))}
                         </div>
 
-                        <div className="space-y-3">
-                          <h5 className="font-semibold text-orange-600 text-lg">
+                        <div className="space-y-2 md:space-y-3">
+                          <h5 className="font-semibold text-orange-600 text-base md:text-lg">
                             {selectedCar2.brand} {selectedCar2.model}
                           </h5>
                           {[
@@ -890,10 +932,10 @@ const CompareSection = () => {
                               key={index}
                               className="flex justify-between items-center p-2 border-b border-orange-100"
                             >
-                              <span className="text-gray-700">
+                              <span className="text-gray-700 text-sm md:text-base">
                                 {spec.label}
                               </span>
-                              <span className="font-semibold text-orange-600">
+                              <span className="font-semibold text-orange-600 text-sm md:text-base">
                                 {spec.value}
                               </span>
                             </div>
@@ -904,22 +946,27 @@ const CompareSection = () => {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="features" className="space-y-6">
+                <TabsContent
+                  value="features"
+                  className="space-y-4 md:space-y-6"
+                >
                   <Card>
                     <CardHeader>
-                      <CardTitle>Features & Equipment</CardTitle>
+                      <CardTitle className="text-lg md:text-xl">
+                        Features & Equipment
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                         <div>
-                          <h5 className="font-semibold text-blue-600 text-lg mb-4">
+                          <h5 className="font-semibold text-blue-600 text-base md:text-lg mb-3 md:mb-4">
                             {selectedCar1.brand} {selectedCar1.model}
                           </h5>
 
-                          <div className="space-y-4">
+                          <div className="space-y-3 md:space-y-4">
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Shield className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Shield className="w-3 h-3 md:w-4 md:h-4" />
                                 Safety Features
                               </h6>
                               <div className="space-y-1">
@@ -932,9 +979,9 @@ const CompareSection = () => {
                                 ].map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
@@ -942,8 +989,8 @@ const CompareSection = () => {
                             </div>
 
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Settings className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Settings className="w-3 h-3 md:w-4 md:h-4" />
                                 Comfort Features
                               </h6>
                               <div className="space-y-1">
@@ -960,9 +1007,9 @@ const CompareSection = () => {
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
@@ -970,8 +1017,8 @@ const CompareSection = () => {
                             </div>
 
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Smartphone className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Smartphone className="w-3 h-3 md:w-4 md:h-4" />
                                 Entertainment
                               </h6>
                               <div className="space-y-1">
@@ -983,9 +1030,9 @@ const CompareSection = () => {
                                 ].map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
@@ -995,14 +1042,14 @@ const CompareSection = () => {
                         </div>
 
                         <div>
-                          <h5 className="font-semibold text-orange-600 text-lg mb-4">
+                          <h5 className="font-semibold text-orange-600 text-base md:text-lg mb-3 md:mb-4">
                             {selectedCar2.brand} {selectedCar2.model}
                           </h5>
 
-                          <div className="space-y-4">
+                          <div className="space-y-3 md:space-y-4">
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Shield className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Shield className="w-3 h-3 md:w-4 md:h-4" />
                                 Safety Features
                               </h6>
                               <div className="space-y-1">
@@ -1015,9 +1062,9 @@ const CompareSection = () => {
                                 ].map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
@@ -1025,8 +1072,8 @@ const CompareSection = () => {
                             </div>
 
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Settings className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Settings className="w-3 h-3 md:w-4 md:h-4" />
                                 Comfort Features
                               </h6>
                               <div className="space-y-1">
@@ -1043,9 +1090,9 @@ const CompareSection = () => {
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
@@ -1053,8 +1100,8 @@ const CompareSection = () => {
                             </div>
 
                             <div>
-                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                <Smartphone className="w-4 h-4" />
+                              <h6 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm md:text-base">
+                                <Smartphone className="w-3 h-3 md:w-4 md:h-4" />
                                 Entertainment
                               </h6>
                               <div className="space-y-1">
@@ -1067,9 +1114,9 @@ const CompareSection = () => {
                                 ].map((feature, index) => (
                                   <div
                                     key={index}
-                                    className="flex items-center gap-2 text-sm"
+                                    className="flex items-center gap-2 text-xs md:text-sm"
                                   >
-                                    <Check className="w-3 h-3 text-green-600" />
+                                    <Check className="w-2 h-2 md:w-3 md:h-3 text-green-600 flex-shrink-0" />
                                     <span>{feature}</span>
                                   </div>
                                 ))}
