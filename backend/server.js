@@ -441,7 +441,7 @@ app.get("/api/cars/featured", async (req, res) => {
 
 app.get("/api/cars/search", async (req, res) => {
   try {
-    const { q, limit = 50 } = req.query;
+    const { q, limit = 500 } = req.query;
 
     if (!q) {
       return res.status(400).json({
@@ -481,7 +481,7 @@ app.get("/api/cars", async (req, res) => {
       model,
       minPrice,
       maxPrice,
-      limit = 50,
+      limit = 500,
       offset = 0,
       sortBy = "created_at",
       sortOrder = "desc",
