@@ -20,8 +20,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { useUserAuth } from "@/contexts/UserAuthContext";
+import ProfileModal from "@/components/ProfileModal";
 import autoscopeLogo from "@/assets/autoscope-logo.png";
-
 
 const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -32,9 +33,8 @@ const Header = () => {
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [searchError, setSearchError] = useState("");
 
-  // Mock auth data for demonstration
-  const user = null;
-  const loading = false;
+  // Use the actual auth context instead of mock data
+  const { user, loading, logout } = useUserAuth();
 
   const searchRef = useRef(null);
   const mobileSearchRef = useRef(null);
@@ -233,7 +233,12 @@ const Header = () => {
   }, []);
 
   const handleSignOut = async () => {
-    console.log("Sign out");
+    try {
+      await logout();
+      window.location.href = "/"; // Redirect to home after logout
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Handle car selection from dropdown
@@ -441,37 +446,10 @@ const Header = () => {
                 Loading...
               </Button>
             ) : user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="hidden md:inline text-sm">
-                      {user.user_metadata?.firstName ||
-                        user.email?.split("@")[0] ||
-                        "User"}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/wishlist" className="flex items-center w-full">
-                      <Heart className="w-4 h-4 mr-2" />
-                      My Wishlist
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              // Show ProfileModal when user is logged in
+              <ProfileModal />
             ) : (
+              // Show Login button when user is not logged in
               <a href="/login">
                 <Button
                   size="sm"
@@ -521,6 +499,41 @@ const Header = () => {
                   >
                     Wishlist
                   </a>
+
+                  {/* Mobile Auth */}
+                  {user ? (
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {user.firstName ||
+                              user.email?.split("@")[0] ||
+                              "User"}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleSignOut}
+                        className="w-full justify-start"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="pt-4 border-t">
+                      <a href="/login" className="w-full">
+                        <Button className="w-full">Login</Button>
+                      </a>
+                    </div>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
