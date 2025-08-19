@@ -57,8 +57,9 @@ export const useUserAuth = () => {
 
 const REFRESH_THRESHOLD = 2 * 60 * 1000; // Refresh token 2 minutes before expiry
 const USER_STORAGE_KEY = "user_auth_user";
+const ACCESS_TOKEN_KEY = "user_access_token";
 
-// Enhanced cookie utilities for secure storage
+// Cookie utilities for secure storage
 const cookieUtils = {
   set: (
     name: string,
@@ -68,7 +69,6 @@ const cookieUtils = {
       expires?: Date;
       secure?: boolean;
       sameSite?: "strict" | "lax" | "none";
-      httpOnly?: boolean;
       path?: string;
     } = {}
   ) => {
@@ -133,48 +133,29 @@ const cookieUtils = {
   },
 };
 
-// Safe storage wrapper that prefers cookies over localStorage
-const safeStorage = {
+// Cookie-only storage wrapper
+const cookieStorage = {
   getItem: (key: string): string | null => {
-    // First try cookies (more secure for auth data)
-    const cookieValue = cookieUtils.get(key);
-    if (cookieValue) {
-      return cookieValue;
-    }
-
-    // Fallback to localStorage for development
-    try {
-      return localStorage.getItem(key);
-    } catch (error) {
-      console.warn("Storage access denied, using memory storage");
-      return null;
-    }
+    const value = cookieUtils.get(key);
+    console.log(
+      `🍪 Retrieved from cookie [${key}]:`,
+      value ? "Found" : "Not found"
+    );
+    return value;
   },
 
   setItem: (key: string, value: string): void => {
-    // Set in cookie (secure, httpOnly cookies are handled by backend)
+    console.log(`🍪 Storing in cookie [${key}]`);
     cookieUtils.set(key, value, {
       maxAge: 7 * 24 * 60 * 60, // 7 days
       secure: window.location.protocol === "https:",
       sameSite: "lax",
     });
-
-    // Also set in localStorage for development fallback
-    try {
-      localStorage.setItem(key, value);
-    } catch (error) {
-      console.warn("localStorage access denied, using cookies only");
-    }
   },
 
   removeItem: (key: string): void => {
+    console.log(`🍪 Removing cookie [${key}]`);
     cookieUtils.remove(key);
-
-    try {
-      localStorage.removeItem(key);
-    } catch (error) {
-      console.warn("localStorage access denied, cookies cleared only");
-    }
   },
 };
 
@@ -191,9 +172,11 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
-  // Secure storage for access token and user data
+  // Save tokens and user data to cookies
   const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
+      console.log("💾 Saving tokens and user data to cookies...");
+
       // Calculate expiration time
       const expiresAt = Date.now() + tokenData.expiresIn * 1000;
       const enhancedTokenData = { ...tokenData, expiresAt };
@@ -218,12 +201,19 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         provider: userData.provider || "email",
       };
 
-      // Store user data securely
-      safeStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
+      // Store user data and access token in cookies
+      cookieStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
+      cookieStorage.setItem(
+        ACCESS_TOKEN_KEY,
+        JSON.stringify(enhancedTokenData)
+      );
+
       setTokens(enhancedTokenData);
       setUser(normalizedUser);
 
-      console.log("✅ User session saved securely");
+      console.log("✅ User session saved to cookies");
+      console.log("📋 Saved user:", normalizedUser);
+      console.log("🔑 Token expires at:", new Date(expiresAt).toISOString());
     } catch (error) {
       console.error("Failed to save tokens:", error);
     }
@@ -231,12 +221,14 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearTokens = useCallback(() => {
     try {
-      // Clear all auth-related storage
-      safeStorage.removeItem(USER_STORAGE_KEY);
+      console.log("🧹 Clearing user session from cookies...");
 
-      // Clear refresh token cookie (backend will also clear httpOnly cookies)
-      cookieUtils.remove("refreshToken");
-      cookieUtils.remove("userRefreshToken");
+      // Clear all auth-related cookies
+      cookieStorage.removeItem(USER_STORAGE_KEY);
+      cookieStorage.removeItem(ACCESS_TOKEN_KEY);
+      cookieStorage.removeItem("refreshToken");
+      cookieStorage.removeItem("userRefreshToken");
+      cookieStorage.removeItem("hasRefreshToken"); // Clear the indicator cookie
 
       setTokens(null);
       setUser(null);
@@ -246,7 +238,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         refreshTimer.current = null;
       }
 
-      console.log("✅ User session cleared");
+      console.log("✅ User session cleared from cookies");
     } catch (error) {
       console.error("Failed to clear tokens:", error);
       // Fallback to memory-only clearing
@@ -257,31 +249,74 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getStoredUser = useCallback((): User | null => {
     try {
-      const storedUser = safeStorage.getItem(USER_STORAGE_KEY);
-      return storedUser ? JSON.parse(storedUser) : null;
+      const storedUser = cookieStorage.getItem(USER_STORAGE_KEY);
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        console.log("📋 Retrieved stored user from cookie:", parsed);
+        return parsed;
+      }
+      console.log("📋 No stored user found in cookies");
+      return null;
     } catch (error) {
-      console.error("Failed to retrieve stored user:", error);
+      console.error("Failed to retrieve stored user from cookies:", error);
       return null;
     }
   }, []);
 
-  // Get refresh token from cookies (backend handles httpOnly cookies)
-  const getRefreshToken = useCallback((): string | null => {
-    // Check for client-side accessible refresh token cookie
-    return (
-      cookieUtils.get("userRefreshToken") || cookieUtils.get("refreshToken")
-    );
+  const getStoredTokens = useCallback((): TokenData | null => {
+    try {
+      const storedTokens = cookieStorage.getItem(ACCESS_TOKEN_KEY);
+      if (storedTokens) {
+        const parsed = JSON.parse(storedTokens);
+        console.log("🔑 Retrieved stored tokens from cookie");
+        return parsed;
+      }
+      console.log("🔑 No stored tokens found in cookies");
+      return null;
+    } catch (error) {
+      console.error("Failed to retrieve stored tokens from cookies:", error);
+      return null;
+    }
+  }, []);
+
+  // Check if we have any refresh token available (including httpOnly)
+  const hasRefreshToken = useCallback((): boolean => {
+    // In production, check for the indicator cookie
+    const hasIndicator = !!cookieUtils.get("hasRefreshToken");
+
+    // In development, check for the actual refresh token
+    const hasDevToken = !!cookieUtils.get("userRefreshToken");
+
+    // Also check if any refresh token exists in document.cookie string
+    const hasHttpOnlyToken = document.cookie.includes("refreshToken=");
+
+    const hasToken = hasIndicator || hasDevToken || hasHttpOnlyToken;
+    console.log("🍪 Refresh token available:", hasToken ? "Yes" : "No", {
+      hasIndicator,
+      hasDevToken,
+      hasHttpOnlyToken,
+    });
+    return hasToken;
   }, []);
 
   // Check if access token is expired or will expire soon
   const isTokenExpired = useCallback((): boolean => {
-    if (!tokens?.expiresAt) return true;
-    return Date.now() >= tokens.expiresAt - REFRESH_THRESHOLD;
+    if (!tokens?.expiresAt) {
+      console.log("⏰ No token expiration time found");
+      return true;
+    }
+
+    const isExpired = Date.now() >= tokens.expiresAt - REFRESH_THRESHOLD;
+    if (isExpired) {
+      console.log("⏰ Token is expired or will expire soon");
+    }
+    return isExpired;
   }, [tokens]);
 
   // Refresh access token
   const refreshTokens = useCallback(async (): Promise<boolean> => {
     if (refreshPromise.current) {
+      console.log("🔄 Token refresh already in progress, waiting...");
       return refreshPromise.current;
     }
 
@@ -299,10 +334,15 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         });
 
         if (!response.ok) {
-          console.error("Token refresh failed:", response.status);
+          console.error(
+            "Token refresh failed:",
+            response.status,
+            response.statusText
+          );
 
           // If refresh fails, clear session
           if (response.status === 401) {
+            console.log("🧹 Clearing session due to refresh failure");
             clearTokens();
           }
 
@@ -310,6 +350,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const result = await response.json();
+        console.log("🔄 Refresh response:", result);
 
         if (result.success && result.data) {
           console.log("✅ User tokens refreshed successfully");
@@ -318,6 +359,8 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
             saveTokens(result.data, userData);
             scheduleTokenRefresh(result.data.expiresIn);
             return true;
+          } else {
+            console.error("❌ No stored user data found for token refresh");
           }
         }
         return false;
@@ -409,6 +452,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const result = await response.json();
+      console.log("🔐 Login response:", result);
 
       if (!response.ok || !result.success) {
         return {
@@ -487,38 +531,48 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const initializeAuth = async () => {
       try {
-        console.log("🔄 Initializing user authentication...");
+        console.log("🔄 Initializing user authentication from cookies...");
 
         const userData = getStoredUser();
+        const tokenData = getStoredTokens();
+
         console.log("📋 Found stored user:", userData ? "Yes" : "No");
+        console.log("🔑 Found stored tokens:", tokenData ? "Yes" : "No");
 
-        if (userData) {
+        if (userData && tokenData) {
           setUser(userData);
+          setTokens(tokenData);
 
-          // Check if we have a valid refresh token
-          const hasRefreshToken =
-            getRefreshToken() ||
-            document.cookie.includes("refreshToken=") ||
-            document.cookie.includes("userRefreshToken=");
+          // Check if we have any refresh token available (including httpOnly)
+          const hasRefresh = hasRefreshToken();
 
-          console.log("🍪 Has refresh token:", hasRefreshToken ? "Yes" : "No");
+          if (hasRefresh) {
+            // Check if token is still valid
+            const isExpired = tokenData.expiresAt
+              ? Date.now() >= tokenData.expiresAt - REFRESH_THRESHOLD
+              : true;
 
-          if (hasRefreshToken) {
-            // Attempt to refresh tokens
-            console.log("🔄 Attempting to refresh session...");
-            const refreshed = await refreshTokens();
-            if (!refreshed) {
-              console.log("❌ Token refresh failed, clearing user session");
-              clearTokens();
+            if (isExpired) {
+              console.log("🔄 Token expired, attempting to refresh...");
+              const refreshed = await refreshTokens();
+              if (!refreshed) {
+                console.log("❌ Token refresh failed, clearing user session");
+                clearTokens();
+              } else {
+                console.log("✅ Session restored successfully after refresh");
+              }
             } else {
-              console.log("✅ Session restored successfully");
+              console.log("✅ Valid session restored from cookies");
+              // Schedule next refresh
+              const timeToExpiry = tokenData.expiresAt - Date.now();
+              scheduleTokenRefresh(Math.floor(timeToExpiry / 1000));
             }
           } else {
             console.log("❌ No refresh token found, clearing user session");
             clearTokens();
           }
         } else {
-          console.log("📋 No stored user found");
+          console.log("📋 No valid session found in cookies");
         }
       } catch (error) {
         console.error("User auth initialization error:", error);
@@ -530,7 +584,14 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     initializationPromise.current = initializeAuth();
-  }, [clearTokens, getRefreshToken, getStoredUser, refreshTokens]);
+  }, [
+    clearTokens,
+    getStoredUser,
+    getStoredTokens,
+    refreshTokens,
+    scheduleTokenRefresh,
+    hasRefreshToken,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUserAuth } from "@/contexts/UserAuthContext";
-import { createApiClient } from "@/utils/apiClient";
+import { useAuthenticatedApi } from "@/hooks/useAuthenticatedApi";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -115,7 +115,7 @@ const Login = () => {
   const from = (location.state as any)?.from?.pathname || "/";
 
   // Create API client instance for this component
-  const api = createApiClient();
+const api = useAuthenticatedApi();
 
   const validateForm = () => {
     const errors: Record<string, string> = {};

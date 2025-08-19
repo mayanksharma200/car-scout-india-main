@@ -771,6 +771,7 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
 // Login endpoint with environment-aware token handling
 // Login endpoint with consistent response structure
 // Login endpoint with consistent response structure and error handling
+// Updated Login endpoint with proper cookie handling
 app.post("/api/auth/login", async (req, res) => {
   const ipAddress = req.ip;
   const userAgent = req.get("User-Agent");
@@ -890,14 +891,34 @@ app.post("/api/auth/login", async (req, res) => {
       tokenType: tokens.tokenType || "Bearer"
     };
 
-    // In production, set HttpOnly cookie for refresh token
+    // Environment-aware cookie setting
     if (IS_PRODUCTION) {
+      // Set the actual httpOnly refresh token (secure)
       res.cookie("refreshToken", tokens.refreshToken, {
         ...COOKIE_CONFIG,
         maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined // 30 days if "remember me"
       });
+      
+      // Set a client-readable indicator cookie (not the actual token, just a flag)
+      res.cookie("hasRefreshToken", "true", {
+        httpOnly: false, // Client can read this
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+        maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+      
       // Remove refreshToken from response in production
       delete responseData.refreshToken;
+    } else {
+      // In development, set a client-readable refresh token for easier debugging
+      res.cookie("userRefreshToken", tokens.refreshToken, {
+        httpOnly: false, // Client can read this in development
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
     }
 
     // Log successful login
@@ -941,91 +962,7 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// Updated generateTokens function with better error handling
-// const generateTokens = async (user) => {
-//   try {
-//     const { data: profile } = await supabase
-//       .from("profiles")
-//       .select("role, first_name, last_name, is_active, email_verified")
-//       .eq("id", user.id)
-//       .single();
-
-//     if (profile && !profile.is_active) {
-//       throw new Error("Account is deactivated");
-//     }
-
-//     const payload = {
-//       userId: user.id,
-//       email: user.email,
-//       role: profile?.role || "user",
-//       firstName: profile?.first_name,
-//       lastName: profile?.last_name,
-//       emailVerified: user.email_confirmed_at ? true : false,
-//       iat: Math.floor(Date.now() / 1000),
-//     };
-
-//     // Generate access token
-//     const accessToken = jwt.sign(payload, TOKEN_CONFIG.secret, {
-//       expiresIn: TOKEN_CONFIG.accessTokenExpiry,
-//       issuer: TOKEN_CONFIG.issuer,
-//       audience: TOKEN_CONFIG.audience,
-//       subject: user.id,
-//     });
-
-//     // Generate refresh token
-//     const refreshTokenPayload = {
-//       userId: user.id,
-//       type: "refresh",
-//       iat: Math.floor(Date.now() / 1000),
-//     };
-
-//     const refreshToken = jwt.sign(
-//       refreshTokenPayload,
-//       TOKEN_CONFIG.refreshSecret,
-//       {
-//         expiresIn: TOKEN_CONFIG.refreshTokenExpiry,
-//         issuer: TOKEN_CONFIG.issuer,
-//         audience: TOKEN_CONFIG.audience,
-//         subject: user.id,
-//       }
-//     );
-
-//     // Store refresh token in database
-//     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-//     const { error: sessionError } = await supabase.from("user_sessions").insert({
-//       user_id: user.id,
-//       refresh_token: refreshToken,
-//       expires_at: expiresAt.toISOString(),
-//       created_at: new Date().toISOString(),
-//       is_active: true,
-//     });
-
-//     if (sessionError) {
-//       console.error("Failed to store refresh token:", sessionError);
-//       throw new Error("Failed to store session");
-//     }
-
-//     const tokenResponse = {
-//       accessToken,
-//       refreshToken,
-//       expiresIn: 900, // Explicit 15 minutes in seconds
-//       tokenType: "Bearer",
-//     };
-
-//     console.log(
-//       `✅ Generated tokens for ${user.email} (${
-//         IS_PRODUCTION ? "Production" : "Development"
-//       } mode) - expiresIn: ${tokenResponse.expiresIn}`
-//     );
-    
-//     return tokenResponse;
-//   } catch (error) {
-//     console.error("Token generation error:", error);
-//     throw new Error(`Failed to generate tokens: ${error.message}`);
-//   }
-// };
-
-// Refresh token endpoint (environment-aware)
+// Updated Refresh token endpoint
 app.post("/api/auth/refresh", async (req, res) => {
   try {
     let refreshToken;
@@ -1034,8 +971,8 @@ app.post("/api/auth/refresh", async (req, res) => {
       // Production: Get refresh token from httpOnly cookie
       refreshToken = req.cookies.refreshToken;
     } else {
-      // Development: Get refresh token from request body
-      refreshToken = req.body.refreshToken;
+      // Development: Get refresh token from request body OR cookie
+      refreshToken = req.body.refreshToken || req.cookies.userRefreshToken;
     }
 
     if (!refreshToken) {
@@ -1059,8 +996,20 @@ app.post("/api/auth/refresh", async (req, res) => {
       .single();
 
     if (error || !session) {
+      // Clear cookies on refresh failure
       if (IS_PRODUCTION) {
         res.clearCookie("refreshToken", COOKIE_CONFIG);
+        res.clearCookie("hasRefreshToken", {
+          path: "/",
+          secure: IS_PRODUCTION,
+          sameSite: IS_PRODUCTION ? "strict" : "lax",
+        });
+      } else {
+        res.clearCookie("userRefreshToken", {
+          path: "/",
+          secure: false,
+          sameSite: "lax",
+        });
       }
 
       await logAuthEvent(
@@ -1110,32 +1059,65 @@ app.post("/api/auth/refresh", async (req, res) => {
       true
     );
 
-    // Environment-aware response
+    // Environment-aware response with updated cookies
     if (IS_PRODUCTION) {
-      // Production: Update httpOnly cookie
+      // Update httpOnly cookie and indicator
       res.cookie("refreshToken", tokens.refreshToken, COOKIE_CONFIG);
+      res.cookie("hasRefreshToken", "true", {
+        httpOnly: false,
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
 
       res.json({
         success: true,
         data: {
           accessToken: tokens.accessToken,
           expiresIn: tokens.expiresIn,
+          tokenType: tokens.tokenType || "Bearer"
         },
         message: "Tokens refreshed successfully",
       });
     } else {
-      // Development: Send complete tokens
+      // Development: Update client-readable token
+      res.cookie("userRefreshToken", tokens.refreshToken, {
+        httpOnly: false,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+
       res.json({
         success: true,
-        data: tokens,
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+          tokenType: tokens.tokenType || "Bearer"
+        },
         message: "Tokens refreshed successfully",
       });
     }
   } catch (error) {
     console.error("Refresh token error:", error);
 
+    // Clear cookies on error
     if (IS_PRODUCTION) {
       res.clearCookie("refreshToken", COOKIE_CONFIG);
+      res.clearCookie("hasRefreshToken", {
+        path: "/",
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+      });
+    } else {
+      res.clearCookie("userRefreshToken", {
+        path: "/",
+        secure: false,
+        sameSite: "lax",
+      });
     }
 
     res.status(401).json({
@@ -1146,7 +1128,7 @@ app.post("/api/auth/refresh", async (req, res) => {
   }
 });
 
-// Google OAuth conversion endpoint
+// Updated Google OAuth conversion endpoint
 app.post("/api/auth/google-oauth", async (req, res) => {
   const ipAddress = req.ip;
   const userAgent = req.get("User-Agent");
@@ -1262,10 +1244,9 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         email: email,
         emailVerified: userData?.emailVerified || true,
         role: profile?.role || "user",
-        firstName:
-          profile?.first_name || userData?.firstName || email.split("@")[0],
+        firstName: profile?.first_name || userData?.firstName || email.split("@")[0],
         lastName: profile?.last_name || userData?.lastName || "",
-        // Add any other fields your UserAuthContext expects
+        provider: "google"
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -1273,13 +1254,28 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       tokenType: tokens.tokenType || "Bearer",
     };
 
-    // In production, set HttpOnly cookie for refresh token
+    // Environment-aware cookie setting for Google OAuth
     if (IS_PRODUCTION) {
-      res.cookie("userRefreshToken", tokens.refreshToken, {
+      res.cookie("refreshToken", tokens.refreshToken, {
         ...COOKIE_CONFIG,
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for Google OAuth
       });
+      res.cookie("hasRefreshToken", "true", {
+        httpOnly: false,
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
       delete responseData.refreshToken;
+    } else {
+      res.cookie("userRefreshToken", tokens.refreshToken, {
+        httpOnly: false,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
     }
 
     // Log successful conversion
@@ -1305,60 +1301,28 @@ app.post("/api/auth/google-oauth", async (req, res) => {
   }
 });
 
-// In your backend (API route)
-// In your backend API route (/api/auth/supabase-token)
-app.post('/api/auth/supabase-token', async (req, res) => {
-  try {
-    const { supabaseUserId, email, userData } = req.body;
-
-    // Simple token generation (replace with your actual JWT logic)
-    const accessToken = generateSimpleToken(supabaseUserId);
-    
-    const responseData = {
-      user: {
-        id: supabaseUserId,
-        email: email,
-        firstName: userData?.first_name || userData?.given_name || email.split('@')[0],
-        lastName: userData?.last_name || userData?.family_name || '',
-        role: 'user',
-        emailVerified: true,
-        provider: userData?.provider || 'email'
-      },
-      accessToken: accessToken,
-      expiresIn: 3600,
-      tokenType: 'Bearer'
-    };
-
-    res.json({
-      success: true,
-      data: responseData
-    });
-
-  } catch (error) {
-    console.error('Token generation error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to generate tokens'
-    });
-  }
-});
-
-// Simple token generator (replace with your actual JWT implementation)
-function generateSimpleToken(userId) {
-  return `supabase-${userId}-${Date.now()}`;
-}
-
-// Logout endpoint (environment-aware)
+// Updated Logout endpoint
 app.post("/api/auth/logout", validateToken, async (req, res) => {
   try {
     let refreshToken;
 
     if (IS_PRODUCTION) {
       refreshToken = req.cookies.refreshToken;
-      // Clear httpOnly cookie
+      // Clear httpOnly cookie and indicator
       res.clearCookie("refreshToken", COOKIE_CONFIG);
+      res.clearCookie("hasRefreshToken", {
+        path: "/",
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+      });
     } else {
-      refreshToken = req.body.refreshToken;
+      refreshToken = req.body.refreshToken || req.cookies.userRefreshToken;
+      // Clear development cookie
+      res.clearCookie("userRefreshToken", {
+        path: "/",
+        secure: false,
+        sameSite: "lax",
+      });
     }
 
     const userId = req.user?.id;
@@ -1393,55 +1357,53 @@ app.post("/api/auth/logout", validateToken, async (req, res) => {
   }
 });
 
-// Separate endpoint for Supabase logout
-// /api/auth/supabase-logout - Fixed version
+// Updated Supabase logout endpoint
 app.post("/api/auth/supabase-logout", async (req, res) => {
   try {
     console.log('🔄 Supabase logout request received');
     
-    // Get the Supabase token from Authorization header OR from session
+    // Get the Supabase token from Authorization header
     let token;
-    
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
       console.log('📋 Token from header:', token?.substring(0, 20) + '...');
-    } else {
-      // Alternative: Get from session or cookies if available
-      token = req.session?.supabaseToken || req.cookies?.supabase_token;
-      console.log('📋 Token from session/cookies:', token?.substring(0, 20) + '...');
     }
 
-    if (!token) {
-      console.log('❌ No token provided for Supabase logout');
-      return res.status(401).json({
-        success: false,
-        error: "No authentication token provided",
-        code: "MISSING_TOKEN"
+    // Clear cookies regardless of token presence
+    if (IS_PRODUCTION) {
+      res.clearCookie("refreshToken", COOKIE_CONFIG);
+      res.clearCookie("hasRefreshToken", {
+        path: "/",
+        secure: IS_PRODUCTION,
+        sameSite: IS_PRODUCTION ? "strict" : "lax",
+      });
+    } else {
+      res.clearCookie("userRefreshToken", {
+        path: "/",
+        secure: false,
+        sameSite: "lax",
       });
     }
 
-    // For Supabase logout, we don't need to validate the token first
-    // We can directly call signOut which handles token validation internally
-    console.log('🔐 Attempting Supabase sign out...');
-    
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.log('❌ Supabase sign out error:', error);
-      
-      // If signOut fails, it might be because the token is already invalid
-      // We can still proceed with cleaning up our local sessions
-      console.log('🔄 Proceeding with local session cleanup despite Supabase error');
-    } else {
-      console.log('✅ Supabase sign out successful');
+    // Try to sign out from Supabase
+    if (token) {
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.log('❌ Supabase sign out error:', error);
+        } else {
+          console.log('✅ Supabase sign out successful');
+        }
+      } catch (supabaseError) {
+        console.log('❌ Supabase sign out failed:', supabaseError);
+      }
     }
 
     // Extract user ID from the token if possible (for logging)
     let userId = 'unknown';
     try {
-      // Simple JWT parsing (without verification since we're logging out)
-      if (token.includes('.')) {
+      if (token && token.includes('.')) {
         const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
         userId = payload.sub || payload.user_id || 'unknown';
         console.log('👤 Extracted user ID from token:', userId);
@@ -1450,7 +1412,7 @@ app.post("/api/auth/supabase-logout", async (req, res) => {
       console.log('⚠️ Could not parse token for user ID:', parseError);
     }
 
-    // Invalidate sessions in your database using the user ID if available
+    // Invalidate sessions in database
     if (userId !== 'unknown') {
       try {
         await supabase
