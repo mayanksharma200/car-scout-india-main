@@ -1759,7 +1759,6 @@ app.post("/api/auth/create-admin", async (req, res) => {
 // ===== WISHLIST ROUTES =====
 
 // Fixed GET wishlist endpoint with better error handling and fallbacks
-
 app.get("/api/wishlist", validateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1769,7 +1768,8 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
     // First, try to get wishlist with car join
     let { data: wishlistData, error } = await supabase
       .from("user_wishlist")
-      .select(`
+      .select(
+        `
         id,
         user_id,
         car_id,
@@ -1785,18 +1785,22 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
           fuel_type,
           transmission,
           mileage,
+          body_type,
           seating_capacity,
-          rating,
           status
         )
-      `)
+      `
+      )
       .eq("user_id", userId)
       .order("added_at", { ascending: false });
 
     // If join fails, try alternative approach
     if (error) {
-      console.warn("Join query failed, trying alternative approach:", error.message);
-      
+      console.warn(
+        "Join query failed, trying alternative approach:",
+        error.message
+      );
+
       // Get wishlist items without join
       const { data: wishlistItems, error: wishlistError } = await supabase
         .from("user_wishlist")
@@ -1809,16 +1813,18 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
         return res.status(500).json({
           success: false,
           error: "Failed to fetch wishlist",
-          code: "WISHLIST_FETCH_FAILED"
+          code: "WISHLIST_FETCH_FAILED",
         });
       }
 
       // Manually fetch car details for each item
       if (wishlistItems && wishlistItems.length > 0) {
-        const carIds = wishlistItems.map(item => item.car_id);
+        const carIds = wishlistItems.map((item) => item.car_id);
         const { data: cars, error: carsError } = await supabase
           .from("cars")
-          .select("id, brand, model, variant, price_min, price_max, images, fuel_type, transmission, mileage, seating_capacity, rating, status")
+          .select(
+            "id, brand, model, variant, price_min, price_max, images, fuel_type, transmission, mileage, body_type, seating_capacity, status"
+          )
           .in("id", carIds);
 
         if (carsError) {
@@ -1826,18 +1832,20 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
           return res.status(500).json({
             success: false,
             error: "Failed to fetch car details",
-            code: "CAR_FETCH_FAILED"
+            code: "CAR_FETCH_FAILED",
           });
         }
 
         // Combine wishlist items with car data
-        wishlistData = wishlistItems.map(item => {
-          const car = cars?.find(c => c.id === item.car_id);
-          return {
-            ...item,
-            cars: car || null
-          };
-        }).filter(item => item.cars !== null); // Remove items where car wasn't found
+        wishlistData = wishlistItems
+          .map((item) => {
+            const car = cars?.find((c) => c.id === item.car_id);
+            return {
+              ...item,
+              cars: car || null,
+            };
+          })
+          .filter((item) => item.cars !== null); // Remove items where car wasn't found
       } else {
         wishlistData = [];
       }
@@ -1849,7 +1857,7 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
       return res.json({
         success: true,
         data: [],
-        count: 0
+        count: 0,
       });
     }
 
@@ -1877,7 +1885,10 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
             alertData = data;
           }
         } catch (alertError) {
-          console.warn(`Failed to check price alert for car ${item.car_id}:`, alertError);
+          console.warn(
+            `Failed to check price alert for car ${item.car_id}:`,
+            alertError
+          );
         }
 
         return {
@@ -1893,37 +1904,41 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
             onRoadPrice: item.cars.price_max || item.cars.price_min || 0,
             fuelType: item.cars.fuel_type || "Petrol",
             transmission: item.cars.transmission || "Manual",
+            bodyType: item.cars.body_type || "Hatchback",
             mileage: parseFloat(
               item.cars.mileage?.toString().replace(/[^\d.]/g, "") || "0"
             ),
             seating: item.cars.seating_capacity || 5,
-            rating: item.cars.rating || 4.2,
-            image: Array.isArray(item.cars.images) && item.cars.images.length > 0 
-              ? item.cars.images[0] 
-              : "/placeholder.svg"
-          }
+            rating: 4.2, // Default rating since column doesn't exist
+            image:
+              Array.isArray(item.cars.images) && item.cars.images.length > 0
+                ? item.cars.images[0]
+                : "/placeholder.svg",
+          },
         };
       })
     );
 
     // Filter out null items (where car data wasn't found)
-    const validWishlistItems = transformedWishlist.filter(item => item !== null);
+    const validWishlistItems = transformedWishlist.filter(
+      (item) => item !== null
+    );
 
     console.log(`✅ Found ${validWishlistItems.length} cars in wishlist`);
 
     res.json({
       success: true,
       data: validWishlistItems,
-      count: validWishlistItems.length
+      count: validWishlistItems.length,
     });
-
   } catch (error) {
     console.error("Wishlist error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to fetch wishlist",
       code: "WISHLIST_ERROR",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -1981,59 +1996,7 @@ app.get("/api/wishlist/test", validateToken, async (req, res) => {
     });
   }
 });
-// Enhanced validateToken middleware with better debugging
-const validateTokenWithDebug = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    console.log('🔐 Token validation:', {
-      hasAuthHeader: !!authHeader,
-      headerFormat: authHeader ? authHeader.substring(0, 20) + '...' : null,
-      cookies: Object.keys(req.cookies)
-    });
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ No valid authorization header');
-      return res.status(401).json({
-        success: false,
-        error: "No valid authorization token provided",
-        code: "MISSING_TOKEN"
-      });
-    }
-
-    const token = authHeader.substring(7);
-    
-    // First decode to check expiration
-    const decoded = jwt.decode(token);
-    if (decoded?.exp && Date.now() / 1000 > decoded.exp) {
-      console.log('❌ Token expired:', {
-        exp: decoded.exp,
-        now: Date.now() / 1000,
-        expiredBy: Date.now() / 1000 - decoded.exp
-      });
-      return res.status(401).json({
-        success: false,
-        error: "Token expired",
-        code: "TOKEN_EXPIRED"
-      });
-    }
-
-    // Then verify signature
-    const verified = jwt.verify(token, TOKEN_CONFIG.secret);
-    console.log('✅ Token valid for user:', verified.userId || verified.sub);
-    
-    req.user = verified;
-    next();
-  } catch (error) {
-    console.error('❌ Token validation error:', error.message);
-    return res.status(401).json({
-      success: false,
-      error: "Invalid or expired token",
-      code: "INVALID_TOKEN",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
 
 
 // Add this debug endpoint to check authentication
