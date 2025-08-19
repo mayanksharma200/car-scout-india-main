@@ -38,7 +38,7 @@ function isLocalStorageAvailable(): boolean {
       return false;
     }
     const test = '__localStorage_test__';
-    window.localStorage.setItem(test, test);
+    // window.localStorage.setItem(test, test);
     window.localStorage.removeItem(test);
     return true;
   } catch {

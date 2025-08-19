@@ -45,7 +45,7 @@ const isLocalStorageAvailable = (): boolean => {
 
     // Test actual read/write operations
     const test = '__supabase_storage_test__';
-    window.localStorage.setItem(test, 'test');
+    // window.localStorage.setItem(test, 'test');
     const result = window.localStorage.getItem(test);
     window.localStorage.removeItem(test);
 

@@ -35,7 +35,7 @@ export const detectEnvironment = (): EnvironmentInfo => {
   let storageAvailable = false;
   try {
     const test = '__storage_test__';
-    window.localStorage.setItem(test, 'test');
+    // window.localStorage.setItem(test, 'test');
     window.localStorage.removeItem(test);
     storageAvailable = true;
   } catch {

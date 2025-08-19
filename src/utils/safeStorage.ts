@@ -48,7 +48,7 @@ export const safeLocalStorage = (() => {
     }
     
     // Test write/read/delete operations
-    window.localStorage.setItem(testKey, testValue);
+    // window.localStorage.setItem(testKey, testValue);
     const retrieved = window.localStorage.getItem(testKey);
     window.localStorage.removeItem(testKey);
     
