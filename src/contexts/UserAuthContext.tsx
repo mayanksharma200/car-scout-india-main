@@ -344,14 +344,39 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Logout function
+  // In your UserAuthContext.tsx - Update the logout function
   const logout = async (): Promise<void> => {
     try {
-      // Notify backend to invalidate tokens
-      await fetch(`${backendUrl}/auth/logout`, {
+      // Check if this is a Supabase user (Google login)
+      const isSupabaseUser =
+        user?.provider === "google" ||
+        (tokens?.accessToken &&
+          (tokens.accessToken.startsWith("sbp_") ||
+            tokens.accessToken.includes(".")));
+
+      let logoutUrl = `${backendUrl}/auth/logout`;
+      let logoutOptions: RequestInit = {
         method: "POST",
-        credentials: "include", // Important for cookies
+        credentials: "include",
         headers: getAuthHeaders(),
-      }).catch((error) => console.warn("Logout API call failed:", error));
+      };
+
+      // If it's a Supabase user, use a different endpoint or strategy
+      if (isSupabaseUser) {
+        logoutUrl = `${backendUrl}/auth/supabase-logout`;
+
+        // Also sign out directly from Supabase on the client side
+        try {
+          await supabase.auth.signOut();
+        } catch (supabaseError) {
+          console.warn("Supabase client sign out failed:", supabaseError);
+        }
+      }
+
+      // Notify backend to invalidate tokens
+      await fetch(logoutUrl, logoutOptions).catch((error) =>
+        console.warn("Logout API call failed:", error)
+      );
     } finally {
       clearTokens();
       console.log("✅ User logged out successfully");

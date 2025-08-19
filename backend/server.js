@@ -1393,6 +1393,58 @@ app.post("/api/auth/logout", validateToken, async (req, res) => {
   }
 });
 
+// Separate endpoint for Supabase logout
+app.post("/api/auth/supabase-logout", async (req, res) => {
+  try {
+    // Get the Supabase token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: "Authorization header required",
+        code: "MISSING_AUTH_HEADER"
+      });
+    }
+
+    const token = authHeader.substring(7);
+    
+    // Verify the Supabase token and get user
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid Supabase token",
+        code: "INVALID_SUPABASE_TOKEN"
+      });
+    }
+
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+
+    // Invalidate sessions in your database
+    await supabase
+      .from("user_sessions")
+      .update({ is_active: false })
+      .eq("user_id", user.id);
+
+    // Log logout event
+    await logAuthEvent(user.id, "supabase_logout", req.ip, req.get("User-Agent"), true);
+
+    res.json({
+      success: true,
+      message: "Logged out successfully from Supabase",
+    });
+
+  } catch (error) {
+    console.error("Supabase logout error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Supabase logout failed",
+    });
+  }
+});
+
 // Other authentication endpoints (signup, verify, etc.) remain the same...
 app.post("/api/auth/signup", async (req, res) => {
   try {
