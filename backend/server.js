@@ -2019,7 +2019,7 @@ const validateTokenWithDebug = async (req, res, next) => {
     }
 
     // Then verify signature
-    const verified = jwt.verify(token, TOKEN_CONFIG.accessSecret);
+    const verified = jwt.verify(token, TOKEN_CONFIG.secret);
     console.log('✅ Token valid for user:', verified.userId || verified.sub);
     
     req.user = verified;
@@ -2077,7 +2077,7 @@ app.get("/api/auth/debug", async (req, res) => {
 
         // Now try to verify
         try {
-          const verified = jwt.verify(token, TOKEN_CONFIG.accessSecret);
+          const verified = jwt.verify(token, TOKEN_CONFIG.secret);
           debugInfo.tokenPayload.valid = true;
           debugInfo.tokenPayload.verificationError = null;
         } catch (verifyError) {
@@ -2103,114 +2103,6 @@ app.get("/api/auth/debug", async (req, res) => {
 
 
 
-// Simplified GET wishlist endpoint that works with any cars table structure
-app.get("/api/wishlist", validateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    console.log(`📋 Fetching wishlist for user: ${userId}`);
-
-    // Get wishlist items
-    const { data: wishlistItems, error: wishlistError } = await supabase
-      .from("user_wishlist")
-      .select("id, car_id, added_at")
-      .eq("user_id", userId)
-      .order("added_at", { ascending: false });
-
-    if (wishlistError) {
-      console.error("Wishlist fetch error:", wishlistError);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to fetch wishlist items",
-        code: "WISHLIST_FETCH_FAILED"
-      });
-    }
-
-    if (!wishlistItems || wishlistItems.length === 0) {
-      return res.json({
-        success: true,
-        data: [],
-        count: 0
-      });
-    }
-
-    // Get car details - first let's see what columns exist
-    const carIds = wishlistItems.map(item => item.car_id);
-    let { data: cars, error: carsError } = await supabase
-      .from("cars")
-      .select("*") // Select all columns first
-      .in("id", carIds);
-
-    if (carsError) {
-      console.error("Cars fetch error:", carsError);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to fetch car details",
-        code: "CAR_FETCH_FAILED",
-        details: carsError.message
-      });
-    }
-
-    // Transform data with whatever columns we have
-    const transformedWishlist = wishlistItems.map(item => {
-      const car = cars?.find(c => c.id === item.car_id);
-      
-      if (!car) {
-        return null; // Skip if car not found
-      }
-
-      // Map car data flexibly based on available columns
-      const transformedCar = {
-        id: car.id,
-        brand: car.brand || car.make || "Unknown",
-        model: car.model || "Unknown", 
-        variant: car.variant || car.trim || "",
-        price: car.price_min || car.price || car.starting_price || 0,
-        onRoadPrice: car.price_max || car.on_road_price || car.price_min || car.price || 0,
-        fuelType: car.fuel_type || car.fuel || "Petrol",
-        transmission: car.transmission || car.gearbox || "Manual",
-        mileage: parseFloat(
-          (car.mileage || car.fuel_efficiency || "0").toString().replace(/[^\d.]/g, "")
-        ),
-        seating: car.seating_capacity || car.seats || 5,
-        rating: car.rating || car.user_rating || 4.2,
-        image: (() => {
-          if (Array.isArray(car.images) && car.images.length > 0) {
-            return car.images[0];
-          } else if (typeof car.images === 'string') {
-            return car.images;
-          } else if (car.image_url || car.main_image) {
-            return car.image_url || car.main_image;
-          }
-          return "/placeholder.svg";
-        })()
-      };
-
-      return {
-        id: item.id,
-        savedDate: item.added_at,
-        priceAlert: false, // We'll add this functionality later
-        car: transformedCar
-      };
-    }).filter(item => item !== null);
-
-    console.log(`✅ Found ${transformedWishlist.length} cars in wishlist`);
-
-    res.json({
-      success: true,
-      data: transformedWishlist,
-      count: transformedWishlist.length
-    });
-
-  } catch (error) {
-    console.error("Wishlist error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch wishlist",
-      code: "WISHLIST_ERROR",
-      details: error.message
-    });
-  }
-});
 
 
 // Add car to wishlist
