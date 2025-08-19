@@ -111,8 +111,12 @@ export const wishlistAPI = {
   },
 
   // Check if car is in wishlist
+//   check: async (carId: string) => {
+//     return fetchAuthenticatedAPI(`/wishlist/check/${carId}`);
+//   },
+
   check: async (carId: string) => {
-    return fetchAuthenticatedAPI(`/wishlist/check/${carId}`);
+    return console.log("test - Checking wishlist status for all cars");
   },
 
   // Get wishlist statistics
