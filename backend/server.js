@@ -439,6 +439,8 @@ app.get("/api/cars/featured", async (req, res) => {
   }
 });
 
+// Replace your existing /api/cars/search endpoint with this improved version
+
 app.get("/api/cars/search", async (req, res) => {
   try {
     const { q, limit = 500 } = req.query;
@@ -450,25 +452,197 @@ app.get("/api/cars/search", async (req, res) => {
       });
     }
 
+    console.log(`🔍 Searching for: "${q}"`);
+
+    // Clean and split the search query into individual words
+    const searchTerms = q.trim()
+      .toLowerCase()
+      .split(/\s+/) // Split by whitespace
+      .filter(term => term.length > 0); // Remove empty strings
+
+    console.log(`📝 Search terms:`, searchTerms);
+
+    let query = supabase
+      .from("cars")
+      .select("*")
+      .eq("status", "active");
+
+    if (searchTerms.length === 1) {
+      // Single word search - use the original OR logic
+      const term = searchTerms[0];
+      query = query.or(`brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`);
+    } else {
+      // Multi-word search - each term must match somewhere in brand, model, or variant
+      for (const term of searchTerms) {
+        query = query.or(`brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`);
+      }
+    }
+
+    query = query
+      .order('brand', { ascending: true })
+      .order('model', { ascending: true })
+      .order('variant', { ascending: true })
+      .limit(parseInt(limit));
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("❌ Database error:", error);
+      throw error;
+    }
+
+    // For multi-word searches, filter results to ensure ALL terms are found
+    let filteredData = data;
+    
+    if (searchTerms.length > 1) {
+      filteredData = data.filter(car => {
+        const carText = `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
+        return searchTerms.every(term => carText.includes(term));
+      });
+    }
+
+    console.log(`✅ Found ${filteredData.length} cars matching "${q}"`);
+    
+    // Log first few results for debugging
+    filteredData.slice(0, 5).forEach(car => {
+      console.log(`🚗 ${car.brand} ${car.model} ${car.variant}`);
+    });
+
+    res.json({
+      success: true,
+      data: filteredData || [],
+      query: q,
+      searchTerms: searchTerms,
+      totalFound: filteredData.length
+    });
+  } catch (error) {
+    console.error("💥 Search error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to search cars",
+      details: error.message
+    });
+  }
+});
+
+// Alternative: More sophisticated search with PostgreSQL full-text search
+app.get("/api/cars/search-advanced", async (req, res) => {
+  try {
+    const { q, limit = 500 } = req.query;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        error: "Search query is required",
+      });
+    }
+
+    console.log(`🔍 Advanced searching for: "${q}"`);
+
+    // Use PostgreSQL's full-text search capabilities
     const { data, error } = await supabase
       .from("cars")
       .select("*")
-      .or(`brand.ilike.%${q}%,model.ilike.%${q}%,variant.ilike.%${q}%`)
       .eq("status", "active")
+      .textSearch('brand', q, { type: 'websearch' })
+      .or(`model.ilike.%${q}%,variant.ilike.%${q}%`)
+      .order('brand', { ascending: true })
+      .order('model', { ascending: true })
       .limit(parseInt(limit));
 
     if (error) throw error;
+
+    console.log(`✅ Advanced search found ${data.length} cars`);
 
     res.json({
       success: true,
       data: data || [],
       query: q,
+      searchType: 'advanced'
     });
   } catch (error) {
-    console.error("Error searching cars:", error);
+    console.error("💥 Advanced search error:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to search cars",
+      error: "Failed to perform advanced search",
+      details: error.message
+    });
+  }
+});
+
+// Even better: Weighted search with scoring
+app.get("/api/cars/search-weighted", async (req, res) => {
+  try {
+    const { q, limit = 500 } = req.query;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        error: "Search query is required",
+      });
+    }
+
+    console.log(`🔍 Weighted searching for: "${q}"`);
+
+    const searchTerms = q.trim().toLowerCase().split(/\s+/).filter(term => term.length > 0);
+    
+    // Build a more sophisticated query with scoring
+    const { data, error } = await supabase
+      .rpc('search_cars_weighted', {
+        search_query: q,
+        search_limit: parseInt(limit)
+      });
+
+    if (error) {
+      // Fallback to simple search if RPC function doesn't exist
+      console.warn("Weighted search function not available, using fallback");
+      
+      let query = supabase
+        .from("cars")
+        .select("*")
+        .eq("status", "active");
+
+      // Build dynamic OR conditions for each search term
+      const conditions = searchTerms.map(term => 
+        `brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`
+      ).join(',');
+
+      const { data: fallbackData, error: fallbackError } = await query
+        .or(conditions)
+        .order('brand', { ascending: true })
+        .order('model', { ascending: true })
+        .limit(parseInt(limit));
+
+      if (fallbackError) throw fallbackError;
+
+      // Filter for multi-word matches
+      const filteredData = fallbackData.filter(car => {
+        const carText = `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
+        return searchTerms.every(term => carText.includes(term));
+      });
+
+      return res.json({
+        success: true,
+        data: filteredData,
+        query: q,
+        searchType: 'fallback'
+      });
+    }
+
+    console.log(`✅ Weighted search found ${data.length} cars`);
+
+    res.json({
+      success: true,
+      data: data || [],
+      query: q,
+      searchType: 'weighted'
+    });
+  } catch (error) {
+    console.error("💥 Weighted search error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to perform weighted search",
+      details: error.message
     });
   }
 });
