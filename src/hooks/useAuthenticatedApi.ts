@@ -1,8 +1,11 @@
+// src/hooks/useAuthenticatedApi.ts
+// Updated hook with proper return types
+
 import { useEffect, useMemo } from 'react';
 import { useUserAuth } from '@/contexts/UserAuthContext';
-import { createApiClient } from '@/utils/apiClient';
+import { createApiClient, type ApiClient } from '@/services/api';
 
-export const useAuthenticatedApi = () => {
+export const useAuthenticatedApi = (): ApiClient => {
   const { getAuthHeaders, isTokenExpired, refreshTokens, isAuthenticated } = useUserAuth();
 
   const api = useMemo(() => {
