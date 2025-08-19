@@ -1305,6 +1305,49 @@ app.post("/api/auth/google-oauth", async (req, res) => {
   }
 });
 
+// In your backend (API route)
+app.post('/api/auth/supabase-token', async (req, res) => {
+  try {
+    const { supabaseUserId, email, userData } = req.body;
+
+    // Verify this is a valid Supabase user
+    // (You might want to add additional verification here)
+
+    // Generate tokens in your system's format
+    const tokenData = {
+      accessToken: generateAccessToken(supabaseUserId),
+      expiresIn: 3600, // 1 hour
+      tokenType: 'Bearer'
+    };
+
+    const user = {
+      id: supabaseUserId,
+      email: email,
+      firstName: userData?.first_name || userData?.given_name || email.split('@')[0],
+      lastName: userData?.last_name || userData?.family_name || '',
+      role: 'user',
+      emailVerified: true,
+      provider: userData?.provider || 'email'
+    };
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        accessToken: tokenData.accessToken,
+        expiresIn: tokenData.expiresIn,
+        tokenType: tokenData.tokenType
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate tokens'
+    });
+  }
+});
+
 // Logout endpoint (environment-aware)
 app.post("/api/auth/logout", validateToken, async (req, res) => {
   try {

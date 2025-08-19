@@ -8,6 +8,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SystemStatus from "@/components/SystemStatus";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
+import { SupabaseAuthSync } from "@/components/SupabaseAuthSync";
+
 import AuthStatus from "@/components/AuthStatus";
 import { TokenAuthProvider } from "@/contexts/TokenAuthContext";
 import { UserAuthProvider } from "@/contexts/UserAuthContext";
@@ -74,8 +76,11 @@ const App = () => {
         <SystemStatus />
         <EnvironmentBanner />
         <BrowserRouter>
-          {/* Wrap the entire app with UserAuthProvider for regular user authentication */}
+          {/* Add SupabaseAuthSync at the top level to sync auth state */}
           <UserAuthProvider>
+            <SupabaseAuthSync />
+
+            {/* Wrap the entire app with UserAuthProvider for regular user authentication */}
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
