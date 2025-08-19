@@ -9,6 +9,8 @@ import SystemStatus from "@/components/SystemStatus";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
 import { SupabaseAuthSync } from "@/components/SupabaseAuthSync";
+import GoogleOAuthHandler from "@/components/GoogleOAuthHandler";
+
 
 import AuthStatus from "@/components/AuthStatus";
 import { TokenAuthProvider } from "@/contexts/TokenAuthContext";
@@ -93,6 +95,10 @@ const App = () => {
               <Route path="/news" element={<News />} />
               <Route path="/loan-application" element={<LoanApplication />} />
               <Route path="/login" element={<Login />} />
+              <Route
+                path="/auth/google/callback"
+                element={<GoogleOAuthHandler />}
+              />
               <Route path="/register" element={<Register />} />
               <Route path="/wishlist" element={<Wishlist />} />
 

@@ -37,9 +37,13 @@ const Login = () => {
   const { login, loading } = useUserAuth();
 
   // Google Sign-In function
+  // Updated Google Sign-In function for your Login component
   const handleGoogleSignIn = async () => {
     try {
       console.log("🔐 Attempting Google sign-in...");
+
+      // Store the intended redirect path
+      sessionStorage.setItem("oauth_redirect_path", from);
 
       // Try to import and use supabase
       let supabase;
@@ -63,11 +67,11 @@ const Login = () => {
           "Please wait while we redirect you to Google for authentication...",
       });
 
-      // For Supabase Google Auth
+      // For Supabase Google Auth - redirect to OAuth handler
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin + (from || "/"),
+          redirectTo: `${window.location.origin}/auth/google/callback`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -83,6 +87,9 @@ const Login = () => {
       console.log("✅ Google sign-in initiated");
     } catch (error: any) {
       console.error("❌ Google sign-in error:", error);
+
+      // Clear stored redirect path on error
+      sessionStorage.removeItem("oauth_redirect_path");
 
       let errorMessage = "Failed to sign in with Google";
 
@@ -115,7 +122,7 @@ const Login = () => {
   const from = (location.state as any)?.from?.pathname || "/";
 
   // Create API client instance for this component
-const api = useAuthenticatedApi();
+  const api = useAuthenticatedApi();
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
