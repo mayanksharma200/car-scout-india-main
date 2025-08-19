@@ -14,7 +14,7 @@ interface User {
   lastName?: string;
   role: string;
   emailVerified: boolean;
-  provider?: string; // Added provider field
+  provider?: string;
 }
 
 interface TokenData {
@@ -58,28 +58,122 @@ export const useUserAuth = () => {
 const REFRESH_THRESHOLD = 2 * 60 * 1000; // Refresh token 2 minutes before expiry
 const USER_STORAGE_KEY = "user_auth_user";
 
-// Safe localStorage wrapper - fallback to memory storage
-const safeLocalStorage = {
-  getItem: (key: string): string | null => {
+// Enhanced cookie utilities for secure storage
+const cookieUtils = {
+  set: (
+    name: string,
+    value: string,
+    options: {
+      maxAge?: number;
+      expires?: Date;
+      secure?: boolean;
+      sameSite?: "strict" | "lax" | "none";
+      httpOnly?: boolean;
+      path?: string;
+    } = {}
+  ) => {
     try {
-      return localStorage.getItem(key);
+      const {
+        maxAge,
+        expires,
+        secure = window.location.protocol === "https:",
+        sameSite = "lax",
+        path = "/",
+      } = options;
+
+      let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
+        value
+      )}`;
+
+      if (maxAge !== undefined) {
+        cookieString += `; Max-Age=${maxAge}`;
+      }
+
+      if (expires) {
+        cookieString += `; Expires=${expires.toUTCString()}`;
+      }
+
+      if (secure) {
+        cookieString += `; Secure`;
+      }
+
+      cookieString += `; SameSite=${sameSite}`;
+      cookieString += `; Path=${path}`;
+
+      document.cookie = cookieString;
+      console.log(`🍪 Cookie set: ${name}`);
     } catch (error) {
-      console.warn("localStorage access denied, using memory storage");
+      console.warn("Failed to set cookie:", error);
+    }
+  },
+
+  get: (name: string): string | null => {
+    try {
+      const value = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${encodeURIComponent(name)}=`))
+        ?.split("=")[1];
+
+      return value ? decodeURIComponent(value) : null;
+    } catch (error) {
+      console.warn("Failed to get cookie:", error);
       return null;
     }
   },
-  setItem: (key: string, value: string): void => {
+
+  remove: (name: string, path: string = "/") => {
     try {
-    //   localStorage.setItem(key, value);
+      document.cookie = `${encodeURIComponent(
+        name
+      )}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      console.log(`🍪 Cookie removed: ${name}`);
     } catch (error) {
-      console.warn("localStorage access denied, using memory storage");
+      console.warn("Failed to remove cookie:", error);
     }
   },
+};
+
+// Safe storage wrapper that prefers cookies over localStorage
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    // First try cookies (more secure for auth data)
+    const cookieValue = cookieUtils.get(key);
+    if (cookieValue) {
+      return cookieValue;
+    }
+
+    // Fallback to localStorage for development
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn("Storage access denied, using memory storage");
+      return null;
+    }
+  },
+
+  setItem: (key: string, value: string): void => {
+    // Set in cookie (secure, httpOnly cookies are handled by backend)
+    cookieUtils.set(key, value, {
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      secure: window.location.protocol === "https:",
+      sameSite: "lax",
+    });
+
+    // Also set in localStorage for development fallback
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn("localStorage access denied, using cookies only");
+    }
+  },
+
   removeItem: (key: string): void => {
+    cookieUtils.remove(key);
+
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.warn("localStorage access denied, using memory storage");
+      console.warn("localStorage access denied, cookies cleared only");
     }
   },
 };
@@ -92,14 +186,19 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const refreshTimer = useRef<NodeJS.Timeout | null>(null);
   const refreshPromise = useRef<Promise<boolean> | null>(null);
+  const initializationPromise = useRef<Promise<void> | null>(null);
 
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
-  // Secure storage for access token (in-memory only)
+  // Secure storage for access token and user data
   const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
-      // Normalize Google user data structure
+      // Calculate expiration time
+      const expiresAt = Date.now() + tokenData.expiresIn * 1000;
+      const enhancedTokenData = { ...tokenData, expiresAt };
+
+      // Normalize user data structure
       const normalizedUser: User = {
         id: userData.id || userData.sub || "",
         email: userData.email || "",
@@ -119,13 +218,12 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         provider: userData.provider || "email",
       };
 
-      // Store normalized user data
-    //   safeLocalStorage.setItem(
-    //     USER_STORAGE_KEY,
-    //     JSON.stringify(normalizedUser)
-    //   );
-      setTokens(tokenData);
+      // Store user data securely
+      safeStorage.setItem(USER_STORAGE_KEY, JSON.stringify(normalizedUser));
+      setTokens(enhancedTokenData);
       setUser(normalizedUser);
+
+      console.log("✅ User session saved securely");
     } catch (error) {
       console.error("Failed to save tokens:", error);
     }
@@ -133,7 +231,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearTokens = useCallback(() => {
     try {
-      safeLocalStorage.removeItem(USER_STORAGE_KEY);
+      // Clear all auth-related storage
+      safeStorage.removeItem(USER_STORAGE_KEY);
+
+      // Clear refresh token cookie (backend will also clear httpOnly cookies)
+      cookieUtils.remove("refreshToken");
+      cookieUtils.remove("userRefreshToken");
+
       setTokens(null);
       setUser(null);
 
@@ -142,8 +246,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         refreshTimer.current = null;
       }
 
-      // Clear the refresh token cookie by setting an expired cookie
-      document.cookie = `userRefreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict`;
+      console.log("✅ User session cleared");
     } catch (error) {
       console.error("Failed to clear tokens:", error);
       // Fallback to memory-only clearing
@@ -152,31 +255,9 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Add this method to your UserAuthProvider
-  const googleLogin = async (): Promise<{
-    success: boolean;
-    error?: string;
-  }> => {
-    try {
-      setLoading(true);
-
-      // Redirect to your Google OAuth endpoint
-      window.location.href = `${backendUrl}/auth/google`;
-      return { success: true };
-    } catch (error: any) {
-      console.error("Google login error:", error);
-      return {
-        success: false,
-        error: error.message || "Google login failed",
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getStoredUser = useCallback((): User | null => {
     try {
-      const storedUser = safeLocalStorage.getItem(USER_STORAGE_KEY);
+      const storedUser = safeStorage.getItem(USER_STORAGE_KEY);
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (error) {
       console.error("Failed to retrieve stored user:", error);
@@ -184,13 +265,12 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Get refresh token from cookies
+  // Get refresh token from cookies (backend handles httpOnly cookies)
   const getRefreshToken = useCallback((): string | null => {
-    const cookieValue = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("userRefreshToken="))
-      ?.split("=")[1];
-    return cookieValue || null;
+    // Check for client-side accessible refresh token cookie
+    return (
+      cookieUtils.get("userRefreshToken") || cookieUtils.get("refreshToken")
+    );
   }, []);
 
   // Check if access token is expired or will expire soon
@@ -199,7 +279,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return Date.now() >= tokens.expiresAt - REFRESH_THRESHOLD;
   }, [tokens]);
 
-  // Refresh access token using refresh token from cookie
+  // Refresh access token
   const refreshTokens = useCallback(async (): Promise<boolean> => {
     if (refreshPromise.current) {
       return refreshPromise.current;
@@ -207,17 +287,11 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const refreshOperation = async (): Promise<boolean> => {
       try {
-        const refreshToken = getRefreshToken();
-        if (!refreshToken) {
-          console.log("No refresh token available");
-          return false;
-        }
-
         console.log("🔄 Refreshing user access token...");
 
         const response = await fetch(`${backendUrl}/auth/refresh`, {
           method: "POST",
-          credentials: "include", // Important for cookies
+          credentials: "include", // Important for httpOnly cookies
           headers: {
             "Content-Type": "application/json",
           },
@@ -226,6 +300,12 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!response.ok) {
           console.error("Token refresh failed:", response.status);
+
+          // If refresh fails, clear session
+          if (response.status === 401) {
+            clearTokens();
+          }
+
           return false;
         }
 
@@ -251,7 +331,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     refreshPromise.current = refreshOperation();
     return refreshPromise.current;
-  }, [backendUrl, getRefreshToken, getStoredUser, saveTokens]);
+  }, [backendUrl, getStoredUser, saveTokens, clearTokens]);
 
   // Schedule automatic token refresh
   const scheduleTokenRefresh = useCallback(
@@ -289,7 +369,27 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return headers;
   }, [tokens]);
 
-  // Login function for regular users
+  // Google login placeholder
+  const googleLogin = async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    try {
+      setLoading(true);
+      window.location.href = `${backendUrl}/auth/google`;
+      return { success: true };
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        error: error.message || "Google login failed",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Login function
   const login = async (
     email: string,
     password: string,
@@ -310,8 +410,6 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const result = await response.json();
 
-      console.log("User login response:", result);
-
       if (!response.ok || !result.success) {
         return {
           success: false,
@@ -319,14 +417,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         };
       }
 
-      // Access the data structure correctly
+      // Save tokens and user data
       const tokenData = {
         accessToken: result.data.accessToken,
         expiresIn: result.data.expiresIn,
         tokenType: result.data.tokenType || "Bearer",
       };
 
-      // Use the correct data structure
       saveTokens(tokenData, result.data.user);
       scheduleTokenRefresh(result.data.expiresIn);
 
@@ -344,25 +441,11 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Logout function
-  // In your UserAuthContext.tsx - Update the logout function
   const logout = async (): Promise<void> => {
     try {
-    console.log("🔍 Logout - Current tokens:", tokens);
-    console.log("🔍 Logout - User provider:", user?.provider);
+      console.log("🔐 Logging out user...");
 
-    if (tokens?.accessToken) {
-      console.log("🔍 Logout - Token length:", tokens.accessToken.length);
-      console.log(
-        "🔍 Logout - Token starts with:",
-        tokens.accessToken.substring(0, 10)
-      );
-      console.log(
-        "🔍 Logout - Contains dots:",
-        tokens.accessToken.includes(".")
-      );
-    }
-
-      // Check if this is a Supabase user (Google login)
+      // Determine logout endpoint based on user provider
       const isSupabaseUser =
         user?.provider === "google" ||
         (tokens?.accessToken &&
@@ -370,61 +453,83 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
             tokens.accessToken.includes(".")));
 
       let logoutUrl = `${backendUrl}/auth/logout`;
-      let logoutOptions: RequestInit = {
+      if (isSupabaseUser) {
+        logoutUrl = `${backendUrl}/auth/supabase-logout`;
+      }
+
+      // Notify backend to invalidate tokens
+      await fetch(logoutUrl, {
         method: "POST",
         credentials: "include",
         headers: getAuthHeaders(),
-      };
+      }).catch((error) => console.warn("Logout API call failed:", error));
 
-      // If it's a Supabase user, use a different endpoint or strategy
+      // If Supabase user, also sign out from Supabase client
       if (isSupabaseUser) {
-        logoutUrl = `${backendUrl}/auth/supabase-logout`;
-
-        // Also sign out directly from Supabase on the client side
         try {
+          const { supabase } = await import("@/integrations/supabase/client");
           await supabase.auth.signOut();
         } catch (supabaseError) {
           console.warn("Supabase client sign out failed:", supabaseError);
         }
       }
-
-      // Notify backend to invalidate tokens
-      await fetch(logoutUrl, logoutOptions).catch((error) =>
-        console.warn("Logout API call failed:", error)
-      );
     } finally {
       clearTokens();
       console.log("✅ User logged out successfully");
     }
   };
 
-  // Check for existing session on mount
+  // Initialize authentication state on mount
   useEffect(() => {
+    if (initializationPromise.current) {
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
-        const userData = getStoredUser();
-        const refreshToken = getRefreshToken();
+        console.log("🔄 Initializing user authentication...");
 
-        if (userData && refreshToken) {
+        const userData = getStoredUser();
+        console.log("📋 Found stored user:", userData ? "Yes" : "No");
+
+        if (userData) {
           setUser(userData);
 
-          // Attempt to refresh tokens
-          console.log("Found existing user session, attempting refresh...");
-          const refreshed = await refreshTokens();
-          if (!refreshed) {
-            console.log("Token refresh failed, clearing user session");
+          // Check if we have a valid refresh token
+          const hasRefreshToken =
+            getRefreshToken() ||
+            document.cookie.includes("refreshToken=") ||
+            document.cookie.includes("userRefreshToken=");
+
+          console.log("🍪 Has refresh token:", hasRefreshToken ? "Yes" : "No");
+
+          if (hasRefreshToken) {
+            // Attempt to refresh tokens
+            console.log("🔄 Attempting to refresh session...");
+            const refreshed = await refreshTokens();
+            if (!refreshed) {
+              console.log("❌ Token refresh failed, clearing user session");
+              clearTokens();
+            } else {
+              console.log("✅ Session restored successfully");
+            }
+          } else {
+            console.log("❌ No refresh token found, clearing user session");
             clearTokens();
           }
+        } else {
+          console.log("📋 No stored user found");
         }
       } catch (error) {
         console.error("User auth initialization error:", error);
         clearTokens();
       } finally {
         setLoading(false);
+        console.log("✅ User authentication initialization complete");
       }
     };
 
-    initializeAuth();
+    initializationPromise.current = initializeAuth();
   }, [clearTokens, getRefreshToken, getStoredUser, refreshTokens]);
 
   // Cleanup on unmount
