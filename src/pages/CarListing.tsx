@@ -1,4 +1,3 @@
-// Updated CarListing component with fixed brand filtering
 import { useState, useEffect } from "react";
 import {
   Search,
@@ -18,7 +17,7 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CarCard from "@/components/CarCard";
-import { carAPI } from "@/services/api";
+import { useAuthenticatedApi } from "@/hooks/useAuthenticatedApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +45,8 @@ const CarListing = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState("popularity");
+
+  const api = useAuthenticatedApi();
   const { toast } = useToast();
 
   const [filters, setFilters] = useState({
@@ -166,9 +167,9 @@ const CarListing = () => {
 
       let carsData = null;
 
-      // Try API first
+      // Try API first using the authenticated API client
       try {
-        const response = await carAPI.getAll({
+        const response = await api.cars.getAll({
           status: "active",
           limit: 500,
         });
@@ -823,7 +824,132 @@ const CarListing = () => {
                   </div>
                 </div>
 
-                {/* Rest of the filters remain the same... */}
+                {/* Transmission */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    Transmission
+                  </h4>
+                  <div className="space-y-2">
+                    {transmissions.map((transmission) => (
+                      <div
+                        key={transmission}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={transmission}
+                          checked={filters.transmissions.includes(transmission)}
+                          onCheckedChange={(checked) =>
+                            handleFilterChange(
+                              "transmissions",
+                              transmission,
+                              checked as boolean
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={transmission}
+                          className="text-sm cursor-pointer"
+                        >
+                          {transmission}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Palette className="w-4 h-4" />
+                    Color
+                  </h4>
+                  <div className="space-y-2">
+                    {colors.map((color) => (
+                      <div key={color} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={color}
+                          checked={filters.colors.includes(color)}
+                          onCheckedChange={(checked) =>
+                            handleFilterChange(
+                              "colors",
+                              color,
+                              checked as boolean
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={color}
+                          className="text-sm cursor-pointer"
+                        >
+                          {color}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seating Capacity */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3">Seating Capacity</h4>
+                  <div className="space-y-2">
+                    {seatingOptions.map((seating) => (
+                      <div
+                        key={seating}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={`seating-${seating}`}
+                          checked={filters.seating.includes(seating)}
+                          onCheckedChange={(checked) =>
+                            handleFilterChange(
+                              "seating",
+                              seating,
+                              checked as boolean
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={`seating-${seating}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {seating} Seater
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3">Features</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {popularFeatures.map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={feature}
+                          checked={filters.features.includes(feature)}
+                          onCheckedChange={(checked) =>
+                            handleFilterChange(
+                              "features",
+                              feature,
+                              checked as boolean
+                            )
+                          }
+                        />
+                        <label
+                          htmlFor={feature}
+                          className="text-sm cursor-pointer"
+                        >
+                          {feature}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
