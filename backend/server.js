@@ -48,7 +48,7 @@ const TOKEN_CONFIG = {
 const CORS_CONFIG = {
   origin:
     process.env.CORS_ORIGIN ||
-    (IS_DEVELOPMENT ? "http://localhost:8081" : false),
+    (IS_DEVELOPMENT ? "http://localhost:8080" : false),
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
