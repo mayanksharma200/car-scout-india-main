@@ -20,6 +20,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import autoscopeLogo from "@/assets/autoscope-logo.png";
+
 
 const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -263,9 +265,11 @@ const Header = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <a href="/" className="flex items-center">
-            <div className="w-20 h-20 md:w-20 md:h-20 flex items-center justify-center bg-blue-600 text-white font-bold text-lg rounded-lg hover:scale-105 transition-transform">
-              AutoScope
-            </div>
+            <img
+              src={`${autoscopeLogo}?v=${Date.now()}`}
+              alt="AutoScope"
+              className="w-20 h-20 md:w-20 md:h-20 object-contain hover:scale-105 transition-transform"
+            />
           </a>
 
           {/* Desktop Search Bar */}
