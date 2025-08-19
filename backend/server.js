@@ -1982,6 +1982,227 @@ app.get("/api/wishlist/test", validateToken, async (req, res) => {
   }
 });
 
+// Debug endpoint to identify the exact issue
+app.get("/api/wishlist/debug", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`🐛 Debug: Checking wishlist for user: ${userId}`);
+
+    const debugInfo = {};
+
+    // Step 1: Check if user_wishlist table exists and get data
+    try {
+      const { data: wishlistItems, error: wishlistError } = await supabase
+        .from("user_wishlist")
+        .select("*")
+        .eq("user_id", userId);
+
+      debugInfo.wishlist = {
+        success: !wishlistError,
+        error: wishlistError?.message,
+        count: wishlistItems?.length || 0,
+        items: wishlistItems?.slice(0, 2) || [] // Show first 2 items
+      };
+    } catch (err) {
+      debugInfo.wishlist = {
+        success: false,
+        error: err.message,
+        count: 0
+      };
+    }
+
+    // Step 2: Check if cars table exists and its structure
+    try {
+      const { data: carsData, error: carsError } = await supabase
+        .from("cars")
+        .select("*")
+        .limit(1);
+
+      debugInfo.cars = {
+        success: !carsError,
+        error: carsError?.message,
+        count: carsData?.length || 0,
+        sampleRecord: carsData?.[0] || null,
+        columns: carsData?.[0] ? Object.keys(carsData[0]) : []
+      };
+    } catch (err) {
+      debugInfo.cars = {
+        success: false,
+        error: err.message
+      };
+    }
+
+    // Step 3: Check if price_alerts table exists
+    try {
+      const { data: alertsData, error: alertsError } = await supabase
+        .from("price_alerts")
+        .select("*")
+        .eq("user_id", userId)
+        .limit(1);
+
+      debugInfo.priceAlerts = {
+        success: !alertsError,
+        error: alertsError?.message,
+        count: alertsData?.length || 0
+      };
+    } catch (err) {
+      debugInfo.priceAlerts = {
+        success: false,
+        error: err.message
+      };
+    }
+
+    // Step 4: If we have wishlist items, try to fetch specific cars
+    if (debugInfo.wishlist.success && debugInfo.wishlist.items.length > 0) {
+      const carIds = debugInfo.wishlist.items.map(item => item.car_id);
+      
+      try {
+        const { data: specificCars, error: specificCarsError } = await supabase
+          .from("cars")
+          .select("*")
+          .in("id", carIds);
+
+        debugInfo.specificCars = {
+          success: !specificCarsError,
+          error: specificCarsError?.message,
+          requestedIds: carIds,
+          foundCount: specificCars?.length || 0,
+          foundCars: specificCars || []
+        };
+      } catch (err) {
+        debugInfo.specificCars = {
+          success: false,
+          error: err.message,
+          requestedIds: carIds
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      userId: userId,
+      debugInfo: debugInfo
+    });
+
+  } catch (error) {
+    console.error("Debug endpoint error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Simplified GET wishlist endpoint that works with any cars table structure
+app.get("/api/wishlist", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`📋 Fetching wishlist for user: ${userId}`);
+
+    // Get wishlist items
+    const { data: wishlistItems, error: wishlistError } = await supabase
+      .from("user_wishlist")
+      .select("id, car_id, added_at")
+      .eq("user_id", userId)
+      .order("added_at", { ascending: false });
+
+    if (wishlistError) {
+      console.error("Wishlist fetch error:", wishlistError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch wishlist items",
+        code: "WISHLIST_FETCH_FAILED"
+      });
+    }
+
+    if (!wishlistItems || wishlistItems.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0
+      });
+    }
+
+    // Get car details - first let's see what columns exist
+    const carIds = wishlistItems.map(item => item.car_id);
+    let { data: cars, error: carsError } = await supabase
+      .from("cars")
+      .select("*") // Select all columns first
+      .in("id", carIds);
+
+    if (carsError) {
+      console.error("Cars fetch error:", carsError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch car details",
+        code: "CAR_FETCH_FAILED",
+        details: carsError.message
+      });
+    }
+
+    // Transform data with whatever columns we have
+    const transformedWishlist = wishlistItems.map(item => {
+      const car = cars?.find(c => c.id === item.car_id);
+      
+      if (!car) {
+        return null; // Skip if car not found
+      }
+
+      // Map car data flexibly based on available columns
+      const transformedCar = {
+        id: car.id,
+        brand: car.brand || car.make || "Unknown",
+        model: car.model || "Unknown", 
+        variant: car.variant || car.trim || "",
+        price: car.price_min || car.price || car.starting_price || 0,
+        onRoadPrice: car.price_max || car.on_road_price || car.price_min || car.price || 0,
+        fuelType: car.fuel_type || car.fuel || "Petrol",
+        transmission: car.transmission || car.gearbox || "Manual",
+        mileage: parseFloat(
+          (car.mileage || car.fuel_efficiency || "0").toString().replace(/[^\d.]/g, "")
+        ),
+        seating: car.seating_capacity || car.seats || 5,
+        rating: car.rating || car.user_rating || 4.2,
+        image: (() => {
+          if (Array.isArray(car.images) && car.images.length > 0) {
+            return car.images[0];
+          } else if (typeof car.images === 'string') {
+            return car.images;
+          } else if (car.image_url || car.main_image) {
+            return car.image_url || car.main_image;
+          }
+          return "/placeholder.svg";
+        })()
+      };
+
+      return {
+        id: item.id,
+        savedDate: item.added_at,
+        priceAlert: false, // We'll add this functionality later
+        car: transformedCar
+      };
+    }).filter(item => item !== null);
+
+    console.log(`✅ Found ${transformedWishlist.length} cars in wishlist`);
+
+    res.json({
+      success: true,
+      data: transformedWishlist,
+      count: transformedWishlist.length
+    });
+
+  } catch (error) {
+    console.error("Wishlist error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch wishlist",
+      code: "WISHLIST_ERROR",
+      details: error.message
+    });
+  }
+});
+
+
 // Add car to wishlist
 app.post("/api/wishlist", validateToken, async (req, res) => {
   try {
