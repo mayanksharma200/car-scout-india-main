@@ -1262,13 +1262,15 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         email: email,
         emailVerified: userData?.emailVerified || true,
         role: profile?.role || "user",
-        firstName: profile?.first_name || userData?.firstName,
-        lastName: profile?.last_name || userData?.lastName
+        firstName:
+          profile?.first_name || userData?.firstName || email.split("@")[0],
+        lastName: profile?.last_name || userData?.lastName || "",
+        // Add any other fields your UserAuthContext expects
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
-      tokenType: tokens.tokenType || "Bearer"
+      tokenType: tokens.tokenType || "Bearer",
     };
 
     // In production, set HttpOnly cookie for refresh token

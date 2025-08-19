@@ -16,6 +16,12 @@ interface User {
   emailVerified: boolean;
 }
 
+interface UserAuthContextType {
+  // ... existing properties ...
+  googleLogin: () => Promise<{ success: boolean; error?: string }>;
+}
+
+
 interface TokenData {
   accessToken: string;
   expiresIn: number;
@@ -93,30 +99,61 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
   // Secure storage for access token (in-memory only)
-  const saveTokens = useCallback((tokenData: TokenData, userData: User) => {
+  // In your UserAuthContext, update the saveTokens function
+  const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
-      // Calculate actual expiry time
-      const expiryTime = Date.now() + tokenData.expiresIn * 1000;
-      const tokensWithExpiry = {
-        ...tokenData,
-        expiresAt: expiryTime,
+      // Normalize Google user data structure
+      const normalizedUser = {
+        id: userData.id || userData.sub,
+        email: userData.email,
+        firstName:
+          userData.firstName ||
+          userData.given_name ||
+          userData.name?.split(" ")[0],
+        lastName:
+          userData.lastName ||
+          userData.family_name ||
+          userData.name?.split(" ")[1],
+        role: userData.role || "user",
+        emailVerified:
+          userData.emailVerified || userData.email_verified || false,
+        // Add provider info for Google users
+        provider: userData.provider || "email",
       };
 
-      // Store user data in localStorage (contains no sensitive info)
-      safeLocalStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
-
-      setTokens(tokensWithExpiry);
-      setUser(userData);
+      // Store normalized user data
+      safeLocalStorage.setItem(
+        USER_STORAGE_KEY,
+        JSON.stringify(normalizedUser)
+      );
+      setTokens(tokenData);
+      setUser(normalizedUser);
     } catch (error) {
       console.error("Failed to save tokens:", error);
-      // Fallback to memory-only storage
-      setTokens({
-        ...tokenData,
-        expiresAt: Date.now() + tokenData.expiresIn * 1000,
-      });
-      setUser(userData);
     }
   }, []);
+
+  // Add this method to your UserAuthProvider
+  const googleLogin = async (): Promise<{
+    success: boolean;
+    error?: string;
+  }> => {
+    try {
+      setLoading(true);
+
+      // Redirect to your Google OAuth endpoint
+      window.location.href = `${backendUrl}/auth/google`;
+      return { success: true };
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        error: error.message || "Google login failed",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const clearTokens = useCallback(() => {
     try {
@@ -367,6 +404,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: !!user && !!tokens,
     loading,
     login,
+    googleLogin,
     logout,
     refreshTokens,
     getAuthHeaders,
