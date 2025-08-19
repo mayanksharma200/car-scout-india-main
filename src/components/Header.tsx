@@ -235,12 +235,9 @@ const Header = () => {
   const handleSignOut = async () => {
     try {
       await logout();
-      // Force page reload to ensure clean state
-      window.location.href = "/";
+      window.location.href = "/"; // Redirect to home after logout
     } catch (error) {
       console.error("Logout error:", error);
-      // Even if logout fails, redirect to ensure clean state
-      window.location.href = "/";
     }
   };
 
