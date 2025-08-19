@@ -40,6 +40,11 @@ const Header = () => {
   const mobileSearchRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
+  // Debug: Log user data
+  useEffect(() => {
+    console.log("Header - User data:", user);
+    console.log("Header - Loading state:", loading);
+  }, [user, loading]);
   // Popular search suggestions
   const popularSearches = [
     "BMW",

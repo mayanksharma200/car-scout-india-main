@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useUserAuth } from "@/contexts/UserAuthContext";
-import { User, LogOut, Settings, Heart, Car } from "lucide-react";
+import { User, LogOut, Settings, Heart, Car, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const ProfileModal = () => {
@@ -26,14 +26,24 @@ const ProfileModal = () => {
   const { user, logout } = useUserAuth();
   const { toast } = useToast();
 
+  // Debug: Log user data to see what's coming from Google
+  useEffect(() => {
+    console.log("ProfileModal - User data:", user);
+  }, [user]);
+
   useEffect(() => {
     if (user && open) {
-      // Load user profile data
+      // Handle Google users who might have different data structure
+      const googleFirstName =
+        user.firstName || user.given_name || user.name?.split(" ")[0] || "";
+      const googleLastName =
+        user.lastName || user.family_name || user.name?.split(" ")[1] || "";
+
       setProfile({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        phone: "", // These would come from a separate API call
-        city: "",
+        firstName: googleFirstName,
+        lastName: googleLastName,
+        phone: user.phone || "",
+        city: user.city || "",
       });
     }
   }, [user, open]);
@@ -43,9 +53,19 @@ const ProfileModal = () => {
     setLoading(true);
 
     try {
-      // Here you would make an API call to update the user profile
-      // For now, we'll simulate it
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // API call to update profile
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify(profile),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
 
       toast({
         title: "Profile Updated",
@@ -81,7 +101,30 @@ const ProfileModal = () => {
     }
   };
 
+  // Add this check to handle Google users properly
   if (!user) return null;
+
+  // Get display name for Google users
+  const getDisplayName = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    if (user.name) {
+      return user.name;
+    }
+    if (user.given_name && user.family_name) {
+      return `${user.given_name} ${user.family_name}`;
+    }
+    return user.email?.split("@")[0] || "User";
+  };
+
+  const getFirstName = () => {
+    return user.firstName || user.given_name || user.name?.split(" ")[0] || "";
+  };
+
+  const getLastName = () => {
+    return user.lastName || user.family_name || user.name?.split(" ")[1] || "";
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -91,9 +134,7 @@ const ProfileModal = () => {
             <User className="w-4 h-4 text-primary" />
           </div>
           <div className="hidden md:block text-left">
-            <div className="text-sm font-medium">
-              {user.firstName || user.email?.split("@")[0] || "User"}
-            </div>
+            <div className="text-sm font-medium">{getDisplayName()}</div>
             <div className="text-xs text-muted-foreground">{user.email}</div>
           </div>
         </Button>
@@ -113,15 +154,21 @@ const ProfileModal = () => {
               <User className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <div className="font-medium">
-                {user.firstName && user.lastName
-                  ? `${user.firstName} ${user.lastName}`
-                  : user.email?.split("@")[0] || "User"}
+              <div className="font-medium">{getDisplayName()}</div>
+              <div className="text-sm text-muted-foreground flex items-center gap-1">
+                <Mail className="w-3 h-3" />
+                {user.email}
               </div>
-              <div className="text-sm text-muted-foreground">{user.email}</div>
-              <div className="text-xs text-primary">
-                {user.emailVerified ? "✓ Verified" : "⚠ Email not verified"}
+              <div className="text-xs text-primary mt-1">
+                {user.emailVerified
+                  ? "✓ Email Verified"
+                  : "⚠ Email not verified"}
               </div>
+              {user.role && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Role: {user.role}
+                </div>
+              )}
             </div>
           </div>
 
@@ -160,6 +207,9 @@ const ProfileModal = () => {
                 disabled
                 className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Email cannot be changed
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -240,7 +290,7 @@ const ProfileModal = () => {
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant="outline"
                 onClick={handleSignOut}
                 size="sm"
               >
@@ -249,6 +299,16 @@ const ProfileModal = () => {
               </Button>
             </div>
           </form>
+
+          {/* Google User Notice */}
+          {user.provider === "google" && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
+                <strong>Google Account:</strong> Some profile information is
+                managed through your Google account.
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
