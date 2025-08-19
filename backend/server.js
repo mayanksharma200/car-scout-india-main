@@ -1754,6 +1754,462 @@ app.post("/api/auth/create-admin", async (req, res) => {
   }
 });
 
+// Backend wishlist endpoints (add to your main server file)
+
+// ===== WISHLIST ROUTES =====
+
+// Get user's wishlist
+app.get("/api/wishlist", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    console.log(`📋 Fetching wishlist for user: ${userId}`);
+
+    const { data: wishlistData, error } = await supabase
+      .from("user_wishlist")
+      .select(`
+        id,
+        user_id,
+        car_id,
+        added_at,
+        cars (
+          id,
+          brand,
+          model,
+          variant,
+          price_min,
+          price_max,
+          images,
+          fuel_type,
+          transmission,
+          mileage,
+          seating_capacity,
+          rating,
+          status
+        )
+      `)
+      .eq("user_id", userId)
+      .order("added_at", { ascending: false });
+
+    if (error) {
+      console.error("Wishlist fetch error:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch wishlist",
+        code: "WISHLIST_FETCH_FAILED"
+      });
+    }
+
+    // Transform data to include price alerts (from separate table if needed)
+    const transformedWishlist = await Promise.all(
+      wishlistData.map(async (item) => {
+        // Check if user has price alerts enabled for this car
+        const { data: alertData } = await supabase
+          .from("price_alerts")
+          .select("id, is_active")
+          .eq("user_id", userId)
+          .eq("car_id", item.car_id)
+          .eq("is_active", true)
+          .single();
+
+        return {
+          id: item.id,
+          savedDate: item.added_at,
+          priceAlert: !!alertData,
+          car: {
+            id: item.cars.id,
+            brand: item.cars.brand,
+            model: item.cars.model,
+            variant: item.cars.variant,
+            price: item.cars.price_min,
+            onRoadPrice: item.cars.price_max || item.cars.price_min,
+            fuelType: item.cars.fuel_type,
+            transmission: item.cars.transmission,
+            mileage: parseFloat(item.cars.mileage?.toString().replace(/[^\d.]/g, "") || "0"),
+            seating: item.cars.seating_capacity,
+            rating: item.cars.rating || 4.2,
+            image: Array.isArray(item.cars.images) && item.cars.images.length > 0 
+              ? item.cars.images[0] 
+              : "/placeholder.svg"
+          }
+        };
+      })
+    );
+
+    console.log(`✅ Found ${transformedWishlist.length} cars in wishlist`);
+
+    res.json({
+      success: true,
+      data: transformedWishlist,
+      count: transformedWishlist.length
+    });
+
+  } catch (error) {
+    console.error("Wishlist error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch wishlist",
+      code: "WISHLIST_ERROR"
+    });
+  }
+});
+
+// Add car to wishlist
+app.post("/api/wishlist", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { carId } = req.body;
+
+    if (!carId) {
+      return res.status(400).json({
+        success: false,
+        error: "Car ID is required",
+        code: "MISSING_CAR_ID"
+      });
+    }
+
+    console.log(`❤️ Adding car ${carId} to wishlist for user: ${userId}`);
+
+    // Check if car exists
+    const { data: carExists, error: carError } = await supabase
+      .from("cars")
+      .select("id")
+      .eq("id", carId)
+      .single();
+
+    if (carError || !carExists) {
+      return res.status(404).json({
+        success: false,
+        error: "Car not found",
+        code: "CAR_NOT_FOUND"
+      });
+    }
+
+    // Check if already in wishlist
+    const { data: existingItem, error: checkError } = await supabase
+      .from("user_wishlist")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("car_id", carId)
+      .single();
+
+    if (existingItem) {
+      return res.status(409).json({
+        success: false,
+        error: "Car already in wishlist",
+        code: "ALREADY_IN_WISHLIST"
+      });
+    }
+
+    // Add to wishlist
+    const { data: newItem, error: insertError } = await supabase
+      .from("user_wishlist")
+      .insert({
+        user_id: userId,
+        car_id: carId,
+        added_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Wishlist insert error:", insertError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to add to wishlist",
+        code: "WISHLIST_INSERT_FAILED"
+      });
+    }
+
+    console.log(`✅ Car added to wishlist successfully`);
+
+    res.status(201).json({
+      success: true,
+      data: newItem,
+      message: "Car added to wishlist successfully"
+    });
+
+  } catch (error) {
+    console.error("Add to wishlist error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add to wishlist",
+      code: "WISHLIST_ADD_ERROR"
+    });
+  }
+});
+
+// Remove car from wishlist
+app.delete("/api/wishlist/:carId", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { carId } = req.params;
+
+    console.log(`🗑️ Removing car ${carId} from wishlist for user: ${userId}`);
+
+    const { data: deletedItem, error } = await supabase
+      .from("user_wishlist")
+      .delete()
+      .eq("user_id", userId)
+      .eq("car_id", carId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Wishlist delete error:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to remove from wishlist",
+        code: "WISHLIST_DELETE_FAILED"
+      });
+    }
+
+    if (!deletedItem) {
+      return res.status(404).json({
+        success: false,
+        error: "Car not found in wishlist",
+        code: "NOT_IN_WISHLIST"
+      });
+    }
+
+    console.log(`✅ Car removed from wishlist successfully`);
+
+    res.json({
+      success: true,
+      message: "Car removed from wishlist successfully"
+    });
+
+  } catch (error) {
+    console.error("Remove from wishlist error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to remove from wishlist",
+      code: "WISHLIST_REMOVE_ERROR"
+    });
+  }
+});
+
+// Remove multiple cars from wishlist
+app.delete("/api/wishlist", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { carIds } = req.body;
+
+    if (!carIds || !Array.isArray(carIds) || carIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Car IDs array is required",
+        code: "MISSING_CAR_IDS"
+      });
+    }
+
+    console.log(`🗑️ Removing ${carIds.length} cars from wishlist for user: ${userId}`);
+
+    const { data: deletedItems, error } = await supabase
+      .from("user_wishlist")
+      .delete()
+      .eq("user_id", userId)
+      .in("car_id", carIds)
+      .select();
+
+    if (error) {
+      console.error("Bulk wishlist delete error:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to remove cars from wishlist",
+        code: "BULK_DELETE_FAILED"
+      });
+    }
+
+    console.log(`✅ ${deletedItems.length} cars removed from wishlist successfully`);
+
+    res.json({
+      success: true,
+      data: {
+        removedCount: deletedItems.length,
+        removedItems: deletedItems
+      },
+      message: `${deletedItems.length} cars removed from wishlist successfully`
+    });
+
+  } catch (error) {
+    console.error("Bulk remove from wishlist error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to remove cars from wishlist",
+      code: "BULK_REMOVE_ERROR"
+    });
+  }
+});
+
+// Toggle price alert for a car in wishlist
+app.post("/api/wishlist/:carId/price-alert", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { carId } = req.params;
+    const { enabled } = req.body;
+
+    console.log(`🔔 ${enabled ? 'Enabling' : 'Disabling'} price alert for car ${carId} for user: ${userId}`);
+
+    // Check if car is in wishlist
+    const { data: wishlistItem, error: wishlistError } = await supabase
+      .from("user_wishlist")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("car_id", carId)
+      .single();
+
+    if (wishlistError || !wishlistItem) {
+      return res.status(404).json({
+        success: false,
+        error: "Car not found in wishlist",
+        code: "NOT_IN_WISHLIST"
+      });
+    }
+
+    if (enabled) {
+      // Create or activate price alert
+      const { data: existingAlert, error: checkError } = await supabase
+        .from("price_alerts")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("car_id", carId)
+        .single();
+
+      if (existingAlert) {
+        // Update existing alert
+        const { error: updateError } = await supabase
+          .from("price_alerts")
+          .update({ is_active: true })
+          .eq("id", existingAlert.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // Create new alert
+        const { error: insertError } = await supabase
+          .from("price_alerts")
+          .insert({
+            user_id: userId,
+            car_id: carId,
+            is_active: true,
+            created_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+    } else {
+      // Disable price alert
+      const { error: disableError } = await supabase
+        .from("price_alerts")
+        .update({ is_active: false })
+        .eq("user_id", userId)
+        .eq("car_id", carId);
+
+      if (disableError) {
+        throw disableError;
+      }
+    }
+
+    console.log(`✅ Price alert ${enabled ? 'enabled' : 'disabled'} successfully`);
+
+    res.json({
+      success: true,
+      message: `Price alert ${enabled ? 'enabled' : 'disabled'} successfully`
+    });
+
+  } catch (error) {
+    console.error("Price alert toggle error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to toggle price alert",
+      code: "PRICE_ALERT_ERROR"
+    });
+  }
+});
+
+// Check if car is in user's wishlist
+app.get("/api/wishlist/check/:carId", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { carId } = req.params;
+
+    const { data: wishlistItem, error } = await supabase
+      .from("user_wishlist")
+      .select("id, added_at")
+      .eq("user_id", userId)
+      .eq("car_id", carId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        inWishlist: !!wishlistItem,
+        addedAt: wishlistItem?.added_at || null
+      }
+    });
+
+  } catch (error) {
+    console.error("Wishlist check error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to check wishlist status",
+      code: "WISHLIST_CHECK_ERROR"
+    });
+  }
+});
+
+// Get wishlist statistics
+app.get("/api/wishlist/stats", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get total count
+    const { count: totalCount, error: countError } = await supabase
+      .from("user_wishlist")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (countError) {
+      throw countError;
+    }
+
+    // Get price alerts count
+    const { count: alertsCount, error: alertsError } = await supabase
+      .from("price_alerts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true);
+
+    if (alertsError) {
+      throw alertsError;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalCars: totalCount || 0,
+        priceAlertsActive: alertsCount || 0
+      }
+    });
+
+  } catch (error) {
+    console.error("Wishlist stats error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get wishlist statistics",
+      code: "WISHLIST_STATS_ERROR"
+    });
+  }
+});
+
 
 // ===== ADMIN API SETTINGS ENDPOINTS =====
 

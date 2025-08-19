@@ -1,11 +1,14 @@
 // src/components/FeaturedCars.tsx
-// Updated version with improved layout matching the reference design
+// Updated version with wishlist integration
+
 import { useState, useEffect } from "react";
 import { carAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
+import WishlistButton from "@/components/WishlistButton";
+import { Share2 } from "lucide-react";
 
 const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
@@ -96,17 +99,20 @@ const FeaturedCars = () => {
             carsData = response.data;
           }
         } catch (apiError) {
-          console.warn("⚠️ API not available, trying Supabase directly:", apiError.message);
+          console.warn(
+            "⚠️ API not available, trying Supabase directly:",
+            apiError.message
+          );
         }
 
         // If API failed, try Supabase directly
         if (!carsData) {
           console.log("🔄 Falling back to Supabase direct access...");
           const { data: supabaseData, error: supabaseError } = await supabase
-            .from('cars')
-            .select('*')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
+            .from("cars")
+            .select("*")
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
             .limit(8);
 
           if (supabaseError) {
@@ -125,7 +131,8 @@ const FeaturedCars = () => {
           setCars(carsData);
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
         console.error("❌ Error fetching cars:", errorMessage);
         setCars(mockCars);
         setError(null); // Don't show error, just use mock data
@@ -147,6 +154,22 @@ const FeaturedCars = () => {
   const handleViewDetails = (car) => {
     const slug = getCarSlugFromCar(car);
     navigate(`/cars/${slug}`);
+  };
+
+  const handleShare = (car) => {
+    const slug = getCarSlugFromCar(car);
+    const url = `${window.location.origin}/cars/${slug}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: `${car.brand} ${car.model} - AutoScope India`,
+        text: `Check out this ${car.brand} ${car.model} on AutoScope India`,
+        url: url,
+      });
+    } else {
+      navigator.clipboard.writeText(url);
+      // You could show a toast here
+    }
   };
 
   return (
@@ -215,7 +238,7 @@ const FeaturedCars = () => {
                   bodyType: car.body_type || "Hatchback",
                   color: "Pearl White",
                   year: 2024,
-                  features: car.features || []
+                  features: car.features || [],
                 };
 
                 return (
@@ -252,37 +275,21 @@ const FeaturedCars = () => {
                           )}
                       </div>
 
-                      {/* Heart and Share icons */}
+                      {/* Action icons */}
                       <div className="absolute top-3 right-3 flex gap-2">
-                        <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-                          <svg
-                            className="w-4 h-4 text-gray-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
-                          </svg>
-                        </button>
-                        <button className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow">
-                          <svg
-                            className="w-4 h-4 text-gray-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
-                            />
-                          </svg>
+                        <WishlistButton
+                          carId={car.id}
+                          variant="icon"
+                          className="shadow-sm hover:shadow-md"
+                        />
+                        <button
+                          className="w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all border"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShare(transformedCar);
+                          }}
+                        >
+                          <Share2 className="w-4 h-4 text-gray-600" />
                         </button>
                       </div>
                     </div>
