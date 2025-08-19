@@ -347,6 +347,21 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // In your UserAuthContext.tsx - Update the logout function
   const logout = async (): Promise<void> => {
     try {
+    console.log("🔍 Logout - Current tokens:", tokens);
+    console.log("🔍 Logout - User provider:", user?.provider);
+
+    if (tokens?.accessToken) {
+      console.log("🔍 Logout - Token length:", tokens.accessToken.length);
+      console.log(
+        "🔍 Logout - Token starts with:",
+        tokens.accessToken.substring(0, 10)
+      );
+      console.log(
+        "🔍 Logout - Contains dots:",
+        tokens.accessToken.includes(".")
+      );
+    }
+
       // Check if this is a Supabase user (Google login)
       const isSupabaseUser =
         user?.provider === "google" ||
