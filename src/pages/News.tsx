@@ -4,6 +4,8 @@ import ShareModal from "@/components/ShareModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Footer from "@/components/Footer";
+
 
 const News = () => {
   const newsArticles = [
@@ -313,6 +315,7 @@ const News = () => {
           </div>
         </div>
       </div>
+      <Footer/>
     </div>
   );
 };
