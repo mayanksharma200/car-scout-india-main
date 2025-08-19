@@ -10,6 +10,7 @@ import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
 import AuthStatus from "@/components/AuthStatus";
 import { TokenAuthProvider } from "@/contexts/TokenAuthContext";
+import { UserAuthProvider } from "@/contexts/UserAuthContext";
 
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import Index from "./pages/Index";
@@ -73,90 +74,93 @@ const App = () => {
         <SystemStatus />
         <EnvironmentBanner />
         <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/cars" element={<CarListing />} />
-            <Route path="/cars/:slug" element={<CarDetail />} />
-            <Route path="/cars/:slug/reviews" element={<ReviewsPage />} />
-            <Route path="/cars/:slug/gallery" element={<GalleryPage />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/emi-calculator" element={<EMICalculatorPage />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/loan-application" element={<LoanApplication />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/wishlist" element={<Wishlist />} />
+          {/* Wrap the entire app with UserAuthProvider for regular user authentication */}
+          <UserAuthProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/cars" element={<CarListing />} />
+              <Route path="/cars/:slug" element={<CarDetail />} />
+              <Route path="/cars/:slug/reviews" element={<ReviewsPage />} />
+              <Route path="/cars/:slug/gallery" element={<GalleryPage />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/emi-calculator" element={<EMICalculatorPage />} />
+              <Route path="/news" element={<News />} />
+              <Route path="/loan-application" element={<LoanApplication />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/wishlist" element={<Wishlist />} />
 
-            {/* Legal Pages */}
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/terms-conditions" element={<TermsConditions />} />
-            <Route path="/refund-policy" element={<RefundPolicy />} />
-            <Route path="/disclaimer" element={<Disclaimer />} />
-            <Route path="/contact" element={<Contact />} />
+              {/* Legal Pages */}
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-conditions" element={<TermsConditions />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/disclaimer" element={<Disclaimer />} />
+              <Route path="/contact" element={<Contact />} />
 
-            {/* Admin Routes - Wrapped with AdminAuthProvider */}
-            <Route
-              path="/admin/*"
-              element={
-                <TokenAuthProvider>
-                  <Routes>
-                    {/* Admin Login - No guard needed */}
-                    <Route path="login" element={<AdminLogin />} />
+              {/* Admin Routes - Wrapped with separate TokenAuthProvider for admin authentication */}
+              <Route
+                path="/admin/*"
+                element={
+                  <TokenAuthProvider>
+                    <Routes>
+                      {/* Admin Login - No guard needed */}
+                      <Route path="login" element={<AdminLogin />} />
 
-                    {/* Protected Admin Routes */}
-                    <Route
-                      path=""
-                      element={
-                        <AdminRouteGuard>
-                          <AdminDashboard />
-                        </AdminRouteGuard>
-                      }
-                    />
+                      {/* Protected Admin Routes */}
+                      <Route
+                        path=""
+                        element={
+                          <AdminRouteGuard>
+                            <AdminDashboard />
+                          </AdminRouteGuard>
+                        }
+                      />
 
-                    <Route
-                      path="cars"
-                      element={
-                        <AdminRouteGuard>
-                          <CarManagement />
-                        </AdminRouteGuard>
-                      }
-                    />
+                      <Route
+                        path="cars"
+                        element={
+                          <AdminRouteGuard>
+                            <CarManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
 
-                    <Route
-                      path="leads"
-                      element={
-                        <AdminRouteGuard>
-                          <LeadManagement />
-                        </AdminRouteGuard>
-                      }
-                    />
+                      <Route
+                        path="leads"
+                        element={
+                          <AdminRouteGuard>
+                            <LeadManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
 
-                    <Route
-                      path="content"
-                      element={
-                        <AdminRouteGuard>
-                          <ContentManagement />
-                        </AdminRouteGuard>
-                      }
-                    />
+                      <Route
+                        path="content"
+                        element={
+                          <AdminRouteGuard>
+                            <ContentManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
 
-                    <Route
-                      path="api-settings"
-                      element={
-                        <AdminRouteGuard>
-                          <APISettings />
-                        </AdminRouteGuard>
-                      }
-                    />
-                  </Routes>
-                </TokenAuthProvider>
-              }
-            />
+                      <Route
+                        path="api-settings"
+                        element={
+                          <AdminRouteGuard>
+                            <APISettings />
+                          </AdminRouteGuard>
+                        }
+                      />
+                    </Routes>
+                  </TokenAuthProvider>
+                }
+              />
 
-            {/* Catch-all route - must be last */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* Catch-all route - must be last */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </UserAuthProvider>
         </BrowserRouter>
 
         {/* Development Tools */}
