@@ -12,6 +12,7 @@ import {
   Car as CarIcon,
   Zap,
   Upload,
+  Heart, // Add Heart icon
 } from "lucide-react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
@@ -33,6 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { useUserAuth } from "@/contexts/UserAuthContext"; // Add user auth context
 
 const CarListing = () => {
   const location = useLocation();
@@ -45,9 +47,16 @@ const CarListing = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState("popularity");
+  const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>(
+    {}
+  ); // Track wishlist status for each car
+  const [wishlistLoading, setWishlistLoading] = useState<
+    Record<string, boolean>
+  >({}); // Track loading state for each car
 
   const api = useAuthenticatedApi();
   const { toast } = useToast();
+  const { isAuthenticated } = useUserAuth(); // Get authentication status
 
   const [filters, setFilters] = useState({
     priceRange: [0, 5000000],
@@ -113,6 +122,99 @@ const CarListing = () => {
     // Load cars from database
     loadCarsFromDB();
   }, [searchParams.toString()]); // Watch for URL parameter changes
+
+  // Check wishlist status for all cars when authenticated
+  useEffect(() => {
+    if (isAuthenticated && cars.length > 0) {
+      checkWishlistStatusForAllCars();
+    }
+  }, [isAuthenticated, cars]);
+
+  // Add these functions after your existing functions
+  const checkWishlistStatusForAllCars = async () => {
+    try {
+      // Check each car individually since checkMultiple doesn't exist
+      const statusMap: Record<string, boolean> = {};
+
+      for (const car of cars) {
+        try {
+          const response = await api.wishlist.check(car.id);
+          if (response.success) {
+            statusMap[car.id] = response.data.inWishlist;
+          }
+        } catch (error) {
+          console.error(
+            `Error checking wishlist status for car ${car.id}:`,
+            error
+          );
+          statusMap[car.id] = false;
+        }
+      }
+
+      setWishlistStatus(statusMap);
+    } catch (error) {
+      console.error("Error checking wishlist status for cars:", error);
+    }
+  };
+
+  const checkWishlistStatus = async (carId: string) => {
+    if (!isAuthenticated) return false;
+
+    try {
+      const response = await api.wishlist.check(carId);
+      if (response.success) {
+        return response.data.inWishlist;
+      }
+    } catch (error) {
+      console.error("Error checking wishlist status:", error);
+    }
+    return false;
+  };
+
+const toggleWishlist = async (carId: string) => {
+  if (!isAuthenticated) {
+    toast({
+      title: "Sign in required",
+      description: "Please sign in to save cars to your wishlist.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    setWishlistLoading((prev) => ({ ...prev, [carId]: true }));
+
+    if (wishlistStatus[carId]) {
+      const response = await api.wishlist.remove(carId);
+      if (response.success) {
+        setWishlistStatus((prev) => ({ ...prev, [carId]: false }));
+        toast({
+          title: "Removed from wishlist",
+          description: "Car has been removed from your wishlist.",
+        });
+      }
+    } else {
+      const response = await api.wishlist.add(carId);
+      if (response.success) {
+        setWishlistStatus((prev) => ({ ...prev, [carId]: true }));
+        toast({
+          title: "Added to wishlist",
+          description: "Car has been saved to your wishlist.",
+        });
+      }
+    }
+  } catch (error: any) {
+    console.error("Error toggling wishlist:", error);
+    toast({
+      title: "Error",
+      description:
+        error.message || "Failed to update wishlist. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setWishlistLoading((prev) => ({ ...prev, [carId]: false }));
+  }
+};
 
   const handleSearchResults = (navigationState: any) => {
     // Transform search results to match interface
@@ -977,7 +1079,6 @@ const CarListing = () => {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Results */}
             {filteredAndSortedCars.length === 0 ? (
               <div className="text-center py-12">
@@ -1006,22 +1107,27 @@ const CarListing = () => {
                 }
               >
                 {filteredAndSortedCars.map((car) => (
-                  <CarCard key={car.id} car={car} />
+                  <CarCard
+                    key={car.id}
+                    car={car}
+                    isWishlisted={wishlistStatus[car.id] || false}
+                    onToggleWishlist={() => toggleWishlist(car.id)}
+                    wishlistLoading={wishlistLoading[car.id] || false}
+                  />
                 ))}
               </div>
             )}
-
             {/* Load More */}
-            {filteredAndSortedCars.length > 0 && (
-              <div className="text-center mt-8">
-                <Button
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                >
-                  Load More Cars
-                </Button>
-              </div>
-            )}
+            {/* // Update the CarCard rendering to include wishlist props */}
+            {filteredAndSortedCars.map((car) => (
+              <CarCard
+                key={car.id}
+                car={car}
+                isWishlisted={wishlistStatus[car.id] || false}
+                onToggleWishlist={() => toggleWishlist(car.id)}
+                wishlistLoading={wishlistLoading[car.id] || false}
+              />
+            ))}
           </div>
         </div>
       </div>
