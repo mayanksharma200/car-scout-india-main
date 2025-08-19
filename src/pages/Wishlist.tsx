@@ -41,6 +41,41 @@ interface WishlistCar {
   };
 }
 
+// Add this to your Wishlist component temporarily for debugging
+const DebugAuthInfo = () => {
+  const { user, tokens, isAuthenticated, getAuthHeaders } = useUserAuth();
+  
+  const debugInfo = {
+    isAuthenticated,
+    user: user ? {
+      id: user.id,
+      email: user.email,
+      provider: user.provider
+    } : null,
+    tokens: tokens ? {
+      hasAccessToken: !!tokens.accessToken,
+      tokenType: tokens.tokenType,
+      expiresAt: tokens.expiresAt,
+      isExpired: tokens.expiresAt ? Date.now() >= tokens.expiresAt : 'unknown',
+      timeUntilExpiry: tokens.expiresAt ? Math.floor((tokens.expiresAt - Date.now()) / 1000) : 'unknown'
+    } : null,
+    authHeaders: getAuthHeaders(),
+    cookies: document.cookie
+  };
+
+  return (
+    <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+      <h3 className="font-bold text-yellow-800 mb-2">🐛 Auth Debug Info</h3>
+      <pre className="text-xs text-yellow-700 overflow-auto">
+        {JSON.stringify(debugInfo, null, 2)}
+      </pre>
+    </div>
+  );
+};
+
+// Add this inside your Wishlist component's return statement (temporarily)
+// {process.env.NODE_ENV === 'development' && <DebugAuthInfo />}
+
 const Wishlist = () => {
   const [savedCars, setSavedCars] = useState<WishlistCar[]>([]);
   const [selectedCars, setSelectedCars] = useState<string[]>([]);
