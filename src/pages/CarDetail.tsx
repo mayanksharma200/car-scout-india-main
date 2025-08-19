@@ -11,7 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { carAPI } from "@/services/api";
+import { useAuthenticatedApi } from "@/hooks/useAuthenticatedApi";
+import { useUserAuth } from "@/contexts/UserAuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { addMissingMGHectorCars } from "@/utils/addMissingCars";
@@ -21,11 +23,78 @@ const CarDetail = () => {
   const [car, setCar] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   
+  const { isAuthenticated } = useUserAuth();
+  const api = useAuthenticatedApi();
+  const { toast } = useToast();
 
   useEffect(() => {
     loadCarBySlug();
   }, [slug]);
+
+  useEffect(() => {
+    if (car && isAuthenticated) {
+      checkWishlistStatus();
+    }
+  }, [car, isAuthenticated]);
+
+  const checkWishlistStatus = async () => {
+    if (!car || !isAuthenticated) return;
+    
+    try {
+      const response = await api.wishlist.check(car.id);
+      if (response.success) {
+        setIsWishlisted(response.data.inWishlist);
+      }
+    } catch (error) {
+      console.error('Error checking wishlist status:', error);
+    }
+  };
+
+  const toggleWishlist = async () => {
+    if (!car || !isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save cars to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setWishlistLoading(true);
+      
+      if (isWishlisted) {
+        const response = await api.wishlist.remove(car.id);
+        if (response.success) {
+          setIsWishlisted(false);
+          toast({
+            title: "Removed from wishlist",
+            description: "Car has been removed from your wishlist.",
+          });
+        }
+      } else {
+        const response = await api.wishlist.add(car.id);
+        if (response.success) {
+          setIsWishlisted(true);
+          toast({
+            title: "Added to wishlist",
+            description: "Car has been saved to your wishlist.",
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error toggling wishlist:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update wishlist. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   const loadCarBySlug = async () => {
     try {
@@ -36,7 +105,7 @@ const CarDetail = () => {
 
       // Try to get all cars from API first
       try {
-        const response = await carAPI.getAll({ status: 'active' });
+        const response = await api.cars.getAll({ status: 'active' });
         if (response.success && response.data) {
           carsData = response.data;
           console.log('✅ Data loaded from backend API');
@@ -180,12 +249,15 @@ const CarDetail = () => {
     } catch (error) {
       console.error('🔥 Error loading car by slug:', error.message || error);
       setCar(null);
+      toast({
+        title: "Error loading car",
+        description: "Failed to load car details. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
-
-  // No more mock data - always use API data
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
@@ -281,9 +353,14 @@ const CarDetail = () => {
             </div>
             
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm">
-                <Heart className="w-4 h-4 mr-2" />
-                Save
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={toggleWishlist}
+                disabled={wishlistLoading}
+              >
+                <Heart className={`w-4 h-4 mr-2 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
+                {wishlistLoading ? 'Loading...' : (isWishlisted ? 'Saved' : 'Save')}
               </Button>
               <ShareModal 
                 title={`${car.brand} ${car.model} ${car.variant}`}
@@ -304,6 +381,7 @@ const CarDetail = () => {
               carName={`${car.brand} ${car.model}`}
             />
 
+            {/* Rest of the component remains the same... */}
             {/* Car Details Tabs */}
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
@@ -395,6 +473,7 @@ const CarDetail = () => {
                 </Card>
               </TabsContent>
               
+              {/* Other tabs content remains the same... */}
               <TabsContent value="specifications" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -612,7 +691,6 @@ const CarDetail = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };
