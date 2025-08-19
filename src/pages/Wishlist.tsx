@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
+
 
 const Wishlist = () => {
   const [savedCars, setSavedCars] = useState([
@@ -305,6 +307,7 @@ const Wishlist = () => {
           </div>
         )}
       </div>
+      <Footer/>
     </div>
   );
 };
