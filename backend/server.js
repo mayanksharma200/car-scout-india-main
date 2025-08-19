@@ -1306,47 +1306,47 @@ app.post("/api/auth/google-oauth", async (req, res) => {
 });
 
 // In your backend (API route)
+// In your backend API route (/api/auth/supabase-token)
 app.post('/api/auth/supabase-token', async (req, res) => {
   try {
     const { supabaseUserId, email, userData } = req.body;
 
-    // Verify this is a valid Supabase user
-    // (You might want to add additional verification here)
-
-    // Generate tokens in your system's format
-    const tokenData = {
-      accessToken: generateAccessToken(supabaseUserId),
-      expiresIn: 3600, // 1 hour
+    // Simple token generation (replace with your actual JWT logic)
+    const accessToken = generateSimpleToken(supabaseUserId);
+    
+    const responseData = {
+      user: {
+        id: supabaseUserId,
+        email: email,
+        firstName: userData?.first_name || userData?.given_name || email.split('@')[0],
+        lastName: userData?.last_name || userData?.family_name || '',
+        role: 'user',
+        emailVerified: true,
+        provider: userData?.provider || 'email'
+      },
+      accessToken: accessToken,
+      expiresIn: 3600,
       tokenType: 'Bearer'
-    };
-
-    const user = {
-      id: supabaseUserId,
-      email: email,
-      firstName: userData?.first_name || userData?.given_name || email.split('@')[0],
-      lastName: userData?.last_name || userData?.family_name || '',
-      role: 'user',
-      emailVerified: true,
-      provider: userData?.provider || 'email'
     };
 
     res.json({
       success: true,
-      data: {
-        user,
-        accessToken: tokenData.accessToken,
-        expiresIn: tokenData.expiresIn,
-        tokenType: tokenData.tokenType
-      }
+      data: responseData
     });
 
   } catch (error) {
+    console.error('Token generation error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to generate tokens'
     });
   }
 });
+
+// Simple token generator (replace with your actual JWT implementation)
+function generateSimpleToken(userId) {
+  return `supabase-${userId}-${Date.now()}`;
+}
 
 // Logout endpoint (environment-aware)
 app.post("/api/auth/logout", validateToken, async (req, res) => {
