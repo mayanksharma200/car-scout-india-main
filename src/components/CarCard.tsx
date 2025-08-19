@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Heart, Star, Share2, Fuel, Users, Gauge, Zap, Eye, ArrowRight } from "lucide-react";
+import {
+  Heart,
+  Star,
+  Share2,
+  Fuel,
+  Users,
+  Gauge,
+  Zap,
+  Eye,
+  ArrowRight,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,11 +40,17 @@ interface Car {
 
 interface CarCardProps {
   car: Car;
+  isWishlisted?: boolean;
+  onToggleWishlist?: () => void;
+  wishlistLoading?: boolean;
 }
 
-const CarCard = ({ car }: CarCardProps) => {
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  
+const CarCard = ({
+  car,
+  isWishlisted = false,
+  onToggleWishlist,
+  wishlistLoading = false,
+}: CarCardProps) => {
   const navigate = useNavigate();
 
   const handleCardClick = () => {
@@ -44,9 +60,10 @@ const CarCard = ({ car }: CarCardProps) => {
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
+    if (onToggleWishlist) {
+      onToggleWishlist();
+    }
   };
-
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
@@ -60,14 +77,14 @@ const CarCard = ({ car }: CarCardProps) => {
 
   return (
     <>
-      <Card 
+      <Card
         className="group relative overflow-hidden bg-card hover:shadow-xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border-0 shadow-lg animate-fade-in hover:shadow-primary/10"
         onClick={handleCardClick}
       >
         {/* Gradient border effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute inset-[1px] bg-card rounded-lg" />
-        
+
         {/* Badges */}
         <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
           {car.isPopular && (
@@ -91,12 +108,25 @@ const CarCard = ({ car }: CarCardProps) => {
             size="sm"
             className="w-8 h-8 p-0 bg-background/80 backdrop-blur-sm hover:bg-background/90 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"
             onClick={handleWishlistClick}
+            disabled={wishlistLoading}
           >
-            <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground'} transition-colors`} />
+            {wishlistLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            ) : (
+              <Heart
+                className={`w-4 h-4 ${
+                  isWishlisted
+                    ? "fill-red-500 text-red-500"
+                    : "text-muted-foreground"
+                } transition-colors`}
+              />
+            )}
           </Button>
-          <ShareModal 
+          <ShareModal
             title={`${car.brand} ${car.model} ${car.variant}`}
-            description={`Check out this ${car.brand} ${car.model} starting from ${formatPrice(car.price)}`}
+            description={`Check out this ${car.brand} ${
+              car.model
+            } starting from ${formatPrice(car.price)}`}
             url={`/cars/${getCarSlugFromCar(car)}`}
             image={car.image}
           >
@@ -123,16 +153,22 @@ const CarCard = ({ car }: CarCardProps) => {
           />
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          
+
           {/* Quick specs overlay */}
           <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
             <div className="flex gap-1">
-              <Badge variant="secondary" className="text-xs bg-background/80 backdrop-blur-sm">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-background/80 backdrop-blur-sm"
+              >
                 <Eye className="w-3 h-3 mr-1" />
                 {car.year}
               </Badge>
             </div>
-            <Badge variant="secondary" className="text-xs bg-background/80 backdrop-blur-sm">
+            <Badge
+              variant="secondary"
+              className="text-xs bg-background/80 backdrop-blur-sm"
+            >
               {car.color}
             </Badge>
           </div>
@@ -144,7 +180,9 @@ const CarCard = ({ car }: CarCardProps) => {
             <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">
               {car.brand} {car.model}
             </h3>
-            <p className="text-sm text-muted-foreground font-medium">{car.variant}</p>
+            <p className="text-sm text-muted-foreground font-medium">
+              {car.variant}
+            </p>
           </div>
 
           {/* Rating and Reviews */}
@@ -200,11 +238,11 @@ const CarCard = ({ car }: CarCardProps) => {
           {/* Price */}
           <div className="mb-4">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-primary">{formatPrice(car.price)}</span>
+              <span className="text-2xl font-bold text-primary">
+                {formatPrice(car.price)}
+              </span>
               {car.onRoadPrice && (
-                <span className="text-sm text-muted-foreground">
-                  onwards
-                </span>
+                <span className="text-sm text-muted-foreground">onwards</span>
               )}
             </div>
             {car.onRoadPrice && (
@@ -227,7 +265,6 @@ const CarCard = ({ car }: CarCardProps) => {
         {/* Hover glow effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       </Card>
-
     </>
   );
 };
