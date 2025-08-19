@@ -53,7 +53,7 @@ export const useSupabaseAuthSync = () => {
       };
 
       // For Google users, we need to get an access token from your backend
-      const response = await fetch('/api/auth/supabase-token', {
+      const response = await fetch('https://car-scout-india-main-production.up.railway.app/api/auth/supabase-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
