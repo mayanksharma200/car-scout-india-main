@@ -1981,117 +1981,127 @@ app.get("/api/wishlist/test", validateToken, async (req, res) => {
     });
   }
 });
-
-// Debug endpoint to identify the exact issue
-app.get("/api/wishlist/debug", validateToken, async (req, res) => {
+// Enhanced validateToken middleware with better debugging
+const validateTokenWithDebug = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    console.log(`🐛 Debug: Checking wishlist for user: ${userId}`);
+    const authHeader = req.headers.authorization;
+    
+    console.log('🔐 Token validation:', {
+      hasAuthHeader: !!authHeader,
+      headerFormat: authHeader ? authHeader.substring(0, 20) + '...' : null,
+      cookies: Object.keys(req.cookies)
+    });
 
-    const debugInfo = {};
-
-    // Step 1: Check if user_wishlist table exists and get data
-    try {
-      const { data: wishlistItems, error: wishlistError } = await supabase
-        .from("user_wishlist")
-        .select("*")
-        .eq("user_id", userId);
-
-      debugInfo.wishlist = {
-        success: !wishlistError,
-        error: wishlistError?.message,
-        count: wishlistItems?.length || 0,
-        items: wishlistItems?.slice(0, 2) || [] // Show first 2 items
-      };
-    } catch (err) {
-      debugInfo.wishlist = {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No valid authorization header');
+      return res.status(401).json({
         success: false,
-        error: err.message,
-        count: 0
-      };
+        error: "No valid authorization token provided",
+        code: "MISSING_TOKEN"
+      });
     }
 
-    // Step 2: Check if cars table exists and its structure
-    try {
-      const { data: carsData, error: carsError } = await supabase
-        .from("cars")
-        .select("*")
-        .limit(1);
-
-      debugInfo.cars = {
-        success: !carsError,
-        error: carsError?.message,
-        count: carsData?.length || 0,
-        sampleRecord: carsData?.[0] || null,
-        columns: carsData?.[0] ? Object.keys(carsData[0]) : []
-      };
-    } catch (err) {
-      debugInfo.cars = {
+    const token = authHeader.substring(7);
+    
+    // First decode to check expiration
+    const decoded = jwt.decode(token);
+    if (decoded?.exp && Date.now() / 1000 > decoded.exp) {
+      console.log('❌ Token expired:', {
+        exp: decoded.exp,
+        now: Date.now() / 1000,
+        expiredBy: Date.now() / 1000 - decoded.exp
+      });
+      return res.status(401).json({
         success: false,
-        error: err.message
-      };
+        error: "Token expired",
+        code: "TOKEN_EXPIRED"
+      });
     }
 
-    // Step 3: Check if price_alerts table exists
-    try {
-      const { data: alertsData, error: alertsError } = await supabase
-        .from("price_alerts")
-        .select("*")
-        .eq("user_id", userId)
-        .limit(1);
+    // Then verify signature
+    const verified = jwt.verify(token, TOKEN_CONFIG.accessSecret);
+    console.log('✅ Token valid for user:', verified.userId || verified.sub);
+    
+    req.user = verified;
+    next();
+  } catch (error) {
+    console.error('❌ Token validation error:', error.message);
+    return res.status(401).json({
+      success: false,
+      error: "Invalid or expired token",
+      code: "INVALID_TOKEN",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 
-      debugInfo.priceAlerts = {
-        success: !alertsError,
-        error: alertsError?.message,
-        count: alertsData?.length || 0
-      };
-    } catch (err) {
-      debugInfo.priceAlerts = {
-        success: false,
-        error: err.message
-      };
-    }
 
-    // Step 4: If we have wishlist items, try to fetch specific cars
-    if (debugInfo.wishlist.success && debugInfo.wishlist.items.length > 0) {
-      const carIds = debugInfo.wishlist.items.map(item => item.car_id);
-      
+// Add this debug endpoint to check authentication
+app.get("/api/auth/debug", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const cookies = req.cookies;
+
+    const debugInfo = {
+      authHeader: {
+        present: !!authHeader,
+        format: authHeader ? authHeader.substring(0, 20) + "..." : null,
+        startsWithBearer: authHeader ? authHeader.startsWith('Bearer ') : false
+      },
+      cookies: {
+        refreshToken: !!cookies.refreshToken,
+        userRefreshToken: !!cookies.userRefreshToken,
+        hasRefreshToken: !!cookies.hasRefreshToken,
+        allCookies: Object.keys(cookies)
+      },
+      environment: {
+        isProduction: IS_PRODUCTION,
+        nodeEnv: process.env.NODE_ENV
+      }
+    };
+
+    // Try to decode token without verification to see what's inside
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
       try {
-        const { data: specificCars, error: specificCarsError } = await supabase
-          .from("cars")
-          .select("*")
-          .in("id", carIds);
+        // Decode without verification to see the payload
+        const decoded = jwt.decode(token);
+        debugInfo.tokenPayload = {
+          valid: false, // We haven't verified yet
+          exp: decoded?.exp,
+          iat: decoded?.iat,
+          userId: decoded?.userId || decoded?.sub,
+          email: decoded?.email,
+          expired: decoded?.exp ? Date.now() / 1000 > decoded.exp : 'unknown'
+        };
 
-        debugInfo.specificCars = {
-          success: !specificCarsError,
-          error: specificCarsError?.message,
-          requestedIds: carIds,
-          foundCount: specificCars?.length || 0,
-          foundCars: specificCars || []
-        };
-      } catch (err) {
-        debugInfo.specificCars = {
-          success: false,
-          error: err.message,
-          requestedIds: carIds
-        };
+        // Now try to verify
+        try {
+          const verified = jwt.verify(token, TOKEN_CONFIG.accessSecret);
+          debugInfo.tokenPayload.valid = true;
+          debugInfo.tokenPayload.verificationError = null;
+        } catch (verifyError) {
+          debugInfo.tokenPayload.verificationError = verifyError.message;
+        }
+      } catch (decodeError) {
+        debugInfo.tokenDecodeError = decodeError.message;
       }
     }
 
     res.json({
       success: true,
-      userId: userId,
-      debugInfo: debugInfo
+      debugInfo
     });
 
   } catch (error) {
-    console.error("Debug endpoint error:", error);
     res.status(500).json({
       success: false,
       error: error.message
     });
   }
 });
+
+
 
 // Simplified GET wishlist endpoint that works with any cars table structure
 app.get("/api/wishlist", validateToken, async (req, res) => {
