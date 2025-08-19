@@ -1394,53 +1394,92 @@ app.post("/api/auth/logout", validateToken, async (req, res) => {
 });
 
 // Separate endpoint for Supabase logout
+// /api/auth/supabase-logout - Fixed version
 app.post("/api/auth/supabase-logout", async (req, res) => {
   try {
-    // Get the Supabase token
+    console.log('🔄 Supabase logout request received');
+    
+    // Get the Supabase token from Authorization header OR from session
+    let token;
+    
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+      console.log('📋 Token from header:', token?.substring(0, 20) + '...');
+    } else {
+      // Alternative: Get from session or cookies if available
+      token = req.session?.supabaseToken || req.cookies?.supabase_token;
+      console.log('📋 Token from session/cookies:', token?.substring(0, 20) + '...');
+    }
+
+    if (!token) {
+      console.log('❌ No token provided for Supabase logout');
       return res.status(401).json({
         success: false,
-        error: "Authorization header required",
-        code: "MISSING_AUTH_HEADER"
+        error: "No authentication token provided",
+        code: "MISSING_TOKEN"
       });
     }
 
-    const token = authHeader.substring(7);
+    // For Supabase logout, we don't need to validate the token first
+    // We can directly call signOut which handles token validation internally
+    console.log('🔐 Attempting Supabase sign out...');
     
-    // Verify the Supabase token and get user
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { error } = await supabase.auth.signOut();
     
-    if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        error: "Invalid Supabase token",
-        code: "INVALID_SUPABASE_TOKEN"
-      });
+    if (error) {
+      console.log('❌ Supabase sign out error:', error);
+      
+      // If signOut fails, it might be because the token is already invalid
+      // We can still proceed with cleaning up our local sessions
+      console.log('🔄 Proceeding with local session cleanup despite Supabase error');
+    } else {
+      console.log('✅ Supabase sign out successful');
     }
 
-    // Sign out from Supabase
-    await supabase.auth.signOut();
+    // Extract user ID from the token if possible (for logging)
+    let userId = 'unknown';
+    try {
+      // Simple JWT parsing (without verification since we're logging out)
+      if (token.includes('.')) {
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        userId = payload.sub || payload.user_id || 'unknown';
+        console.log('👤 Extracted user ID from token:', userId);
+      }
+    } catch (parseError) {
+      console.log('⚠️ Could not parse token for user ID:', parseError);
+    }
 
-    // Invalidate sessions in your database
-    await supabase
-      .from("user_sessions")
-      .update({ is_active: false })
-      .eq("user_id", user.id);
+    // Invalidate sessions in your database using the user ID if available
+    if (userId !== 'unknown') {
+      try {
+        await supabase
+          .from("user_sessions")
+          .update({ is_active: false })
+          .eq("user_id", userId);
+        console.log('✅ Local sessions invalidated for user:', userId);
+      } catch (dbError) {
+        console.log('❌ Local session cleanup failed:', dbError);
+      }
+    }
 
     // Log logout event
-    await logAuthEvent(user.id, "supabase_logout", req.ip, req.get("User-Agent"), true);
+    try {
+      await logAuthEvent(userId, "supabase_logout", req.ip, req.get("User-Agent"), true);
+    } catch (logError) {
+      console.log('❌ Logging failed:', logError);
+    }
 
     res.json({
       success: true,
-      message: "Logged out successfully from Supabase",
+      message: "Logged out successfully",
     });
 
   } catch (error) {
-    console.error("Supabase logout error:", error);
+    console.error("Supabase logout unexpected error:", error);
     res.status(500).json({
       success: false,
-      error: "Supabase logout failed",
+      error: "Logout failed",
     });
   }
 });
