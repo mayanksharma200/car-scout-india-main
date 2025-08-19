@@ -70,7 +70,7 @@ const safeLocalStorage = {
   },
   setItem: (key: string, value: string): void => {
     try {
-      localStorage.setItem(key, value);
+    //   localStorage.setItem(key, value);
     } catch (error) {
       console.warn("localStorage access denied, using memory storage");
     }
@@ -120,10 +120,10 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       // Store normalized user data
-      safeLocalStorage.setItem(
-        USER_STORAGE_KEY,
-        JSON.stringify(normalizedUser)
-      );
+    //   safeLocalStorage.setItem(
+    //     USER_STORAGE_KEY,
+    //     JSON.stringify(normalizedUser)
+    //   );
       setTokens(tokenData);
       setUser(normalizedUser);
     } catch (error) {
