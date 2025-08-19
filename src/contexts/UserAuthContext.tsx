@@ -14,13 +14,8 @@ interface User {
   lastName?: string;
   role: string;
   emailVerified: boolean;
+  provider?: string; // Added provider field
 }
-
-interface UserAuthContextType {
-  // ... existing properties ...
-  googleLogin: () => Promise<{ success: boolean; error?: string }>;
-}
-
 
 interface TokenData {
   accessToken: string;
@@ -39,10 +34,13 @@ interface UserAuthContextType {
     password: string,
     rememberMe?: boolean
   ) => Promise<{ success: boolean; error?: string }>;
+  googleLogin: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<boolean>;
   getAuthHeaders: () => Record<string, string>;
   isTokenExpired: () => boolean;
+  saveTokens: (tokenData: TokenData, userData: any) => void;
+  clearTokens: () => void;
 }
 
 const UserAuthContext = createContext<UserAuthContextType | undefined>(
@@ -99,25 +97,25 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
   // Secure storage for access token (in-memory only)
-  // In your UserAuthContext, update the saveTokens function
   const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
       // Normalize Google user data structure
-      const normalizedUser = {
-        id: userData.id || userData.sub,
-        email: userData.email,
+      const normalizedUser: User = {
+        id: userData.id || userData.sub || "",
+        email: userData.email || "",
         firstName:
           userData.firstName ||
           userData.given_name ||
-          userData.name?.split(" ")[0],
+          userData.name?.split(" ")[0] ||
+          userData.email?.split("@")[0],
         lastName:
           userData.lastName ||
           userData.family_name ||
-          userData.name?.split(" ")[1],
+          userData.name?.split(" ")[1] ||
+          "",
         role: userData.role || "user",
         emailVerified:
           userData.emailVerified || userData.email_verified || false,
-        // Add provider info for Google users
         provider: userData.provider || "email",
       };
 
@@ -130,6 +128,27 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(normalizedUser);
     } catch (error) {
       console.error("Failed to save tokens:", error);
+    }
+  }, []);
+
+  const clearTokens = useCallback(() => {
+    try {
+      safeLocalStorage.removeItem(USER_STORAGE_KEY);
+      setTokens(null);
+      setUser(null);
+
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = null;
+      }
+
+      // Clear the refresh token cookie by setting an expired cookie
+      document.cookie = `userRefreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict`;
+    } catch (error) {
+      console.error("Failed to clear tokens:", error);
+      // Fallback to memory-only clearing
+      setTokens(null);
+      setUser(null);
     }
   }, []);
 
@@ -154,27 +173,6 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
-
-  const clearTokens = useCallback(() => {
-    try {
-      safeLocalStorage.removeItem(USER_STORAGE_KEY);
-      setTokens(null);
-      setUser(null);
-
-      if (refreshTimer.current) {
-        clearTimeout(refreshTimer.current);
-        refreshTimer.current = null;
-      }
-
-      // Clear the refresh token cookie by setting an expired cookie
-      document.cookie = `userRefreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Strict`;
-    } catch (error) {
-      console.error("Failed to clear tokens:", error);
-      // Fallback to memory-only clearing
-      setTokens(null);
-      setUser(null);
-    }
-  }, []);
 
   const getStoredUser = useCallback((): User | null => {
     try {
@@ -409,6 +407,8 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshTokens,
     getAuthHeaders,
     isTokenExpired,
+    saveTokens,
+    clearTokens,
   };
 
   return (
