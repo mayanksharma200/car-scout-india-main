@@ -1146,6 +1146,163 @@ app.post("/api/auth/refresh", async (req, res) => {
   }
 });
 
+// Google OAuth conversion endpoint
+app.post("/api/auth/google-oauth", async (req, res) => {
+  const ipAddress = req.ip;
+  const userAgent = req.get("User-Agent");
+
+  try {
+    const { supabaseUserId, email, userData } = req.body;
+
+    if (!supabaseUserId || !email) {
+      return res.status(400).json({
+        success: false,
+        error: "Supabase user ID and email are required",
+        code: "MISSING_OAUTH_DATA"
+      });
+    }
+
+    console.log(`🔐 Google OAuth conversion for ${email} from ${ipAddress}`);
+
+    // Get or create user profile
+    let { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role, first_name, last_name, is_active")
+      .eq("id", supabaseUserId)
+      .single();
+
+    if (profileError && profileError.code === "PGRST116") {
+      // Profile doesn't exist, create it
+      const { data: newProfile, error: createError } = await supabase
+        .from("profiles")
+        .insert({
+          id: supabaseUserId,
+          role: "user",
+          first_name: userData?.firstName,
+          last_name: userData?.lastName,
+          is_active: true,
+          email_verified: userData?.emailVerified || true,
+          login_count: 0,
+          failed_login_attempts: 0,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Failed to create profile:", createError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to create user profile",
+          code: "PROFILE_CREATION_FAILED"
+        });
+      }
+
+      profile = newProfile;
+    } else if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch user profile",
+        code: "PROFILE_FETCH_FAILED"
+      });
+    }
+
+    // Check account status
+    if (profile && !profile.is_active) {
+      await logAuthEvent(
+        supabaseUserId,
+        "google_oauth_blocked",
+        ipAddress,
+        userAgent,
+        false,
+        "Account deactivated"
+      );
+      return res.status(403).json({
+        success: false,
+        error: "Account is deactivated",
+        code: "ACCOUNT_DEACTIVATED"
+      });
+    }
+
+    // Create a mock user object for token generation
+    const mockUser = {
+      id: supabaseUserId,
+      email: email,
+      email_confirmed_at: userData?.emailVerified ? new Date().toISOString() : null,
+    };
+
+    // Generate tokens
+    let tokens;
+    try {
+      tokens = await generateTokens(mockUser);
+    } catch (tokenError) {
+      console.error("Token generation failed:", tokenError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to generate authentication tokens",
+        code: "TOKEN_GENERATION_FAILED"
+      });
+    }
+
+    // Update login tracking
+    try {
+      await supabase.rpc("increment_login_count", { user_id: supabaseUserId });
+      await supabase
+        .from("profiles")
+        .update({ last_login_at: new Date().toISOString() })
+        .eq("id", supabaseUserId);
+    } catch (updateError) {
+      console.warn("Failed to update login tracking:", updateError);
+    }
+
+    // Prepare response
+    const responseData = {
+      user: {
+        id: supabaseUserId,
+        email: email,
+        emailVerified: userData?.emailVerified || true,
+        role: profile?.role || "user",
+        firstName: profile?.first_name || userData?.firstName,
+        lastName: profile?.last_name || userData?.lastName
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      tokenType: tokens.tokenType || "Bearer"
+    };
+
+    // In production, set HttpOnly cookie for refresh token
+    if (IS_PRODUCTION) {
+      res.cookie("userRefreshToken", tokens.refreshToken, {
+        ...COOKIE_CONFIG,
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for Google OAuth
+      });
+      delete responseData.refreshToken;
+    }
+
+    // Log successful conversion
+    await logAuthEvent(supabaseUserId, "google_oauth_success", ipAddress, userAgent, true);
+
+    console.log(`✅ Google OAuth conversion successful for user: ${supabaseUserId}`);
+    
+    return res.json({
+      success: true,
+      data: responseData,
+      message: "Google OAuth conversion successful"
+    });
+
+  } catch (error) {
+    console.error("Google OAuth conversion error:", error);
+    
+    return res.status(500).json({
+      success: false,
+      error: "Google OAuth conversion failed",
+      code: "OAUTH_CONVERSION_FAILED",
+      details: IS_DEVELOPMENT ? error.message : undefined
+    });
+  }
+});
+
 // Logout endpoint (environment-aware)
 app.post("/api/auth/logout", validateToken, async (req, res) => {
   try {

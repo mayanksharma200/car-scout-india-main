@@ -7,6 +7,15 @@ import React, {
   useRef,
 } from "react";
 
+// Try to import Supabase - fallback gracefully if not available
+let supabase = null;
+try {
+  const supabaseModule = require("@/integrations/supabase/client");
+  supabase = supabaseModule.supabase;
+} catch (error) {
+  console.warn("Supabase client not available");
+}
+
 interface User {
   id: string;
   email: string;
@@ -91,6 +100,63 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
+  // Handle Google OAuth success by converting Supabase session to our tokens
+  const handleGoogleAuthSuccess = useCallback(
+    async (supabaseUser) => {
+      try {
+        console.log("🔄 Converting Google OAuth to custom tokens...");
+
+        // Call our backend to exchange Supabase session for our custom tokens
+        const response = await fetch(`${backendUrl}/auth/google-oauth`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            supabaseUserId: supabaseUser.id,
+            email: supabaseUser.email,
+            userData: {
+              firstName:
+                supabaseUser.user_metadata?.first_name ||
+                supabaseUser.user_metadata?.full_name?.split(" ")[0],
+              lastName:
+                supabaseUser.user_metadata?.last_name ||
+                supabaseUser.user_metadata?.full_name
+                  ?.split(" ")
+                  .slice(1)
+                  .join(" "),
+              emailVerified: supabaseUser.email_confirmed_at ? true : false,
+            },
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const tokenData = {
+            accessToken: result.data.accessToken,
+            expiresIn: result.data.expiresIn,
+            tokenType: result.data.tokenType || "Bearer",
+          };
+
+          saveTokens(tokenData, result.data.user);
+          scheduleTokenRefresh(result.data.expiresIn);
+
+          console.log("✅ Google OAuth conversion successful");
+          return true;
+        } else {
+          console.error("Failed to convert Google OAuth:", result.error);
+          return false;
+        }
+      } catch (error) {
+        console.error("Google OAuth conversion error:", error);
+        return false;
+      }
+    },
+    [backendUrl, saveTokens, scheduleTokenRefresh]
+  );
 
   // Secure storage for access token (in-memory only)
   const saveTokens = useCallback((tokenData: TokenData, userData: User) => {
@@ -317,6 +383,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         credentials: "include", // Important for cookies
         headers: getAuthHeaders(),
       }).catch((error) => console.warn("Logout API call failed:", error));
+
+      // Also sign out from Supabase if available
+      if (supabase) {
+        await supabase.auth
+          .signOut()
+          .catch((error) => console.warn("Supabase logout failed:", error));
+      }
     } finally {
       clearTokens();
       console.log("✅ User logged out successfully");
@@ -327,6 +400,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // First check for existing stored session
         const userData = getStoredUser();
         const refreshToken = getRefreshToken();
 
@@ -341,6 +415,62 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
             clearTokens();
           }
         }
+
+        // Set up Supabase auth listener for Google OAuth
+        if (supabase) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          // If there's a Supabase session but no custom tokens, convert it
+          if (session?.user && !userData) {
+            console.log(
+              "Found Supabase session, converting to custom tokens..."
+            );
+            const success = await handleGoogleAuthSuccess(session.user);
+            if (!success) {
+              console.log("Failed to convert Supabase session, signing out...");
+              await supabase.auth.signOut();
+            }
+          }
+
+          // Listen for auth state changes (for Google OAuth redirects)
+          const {
+            data: { subscription },
+          } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log("Supabase auth state change:", event);
+
+            if (event === "SIGNED_IN" && session?.user) {
+              // User signed in with Google OAuth
+              if (!user) {
+                // Only if we don't already have a user session
+                console.log("Google OAuth sign-in detected, converting...");
+                const success = await handleGoogleAuthSuccess(session.user);
+                if (success) {
+                  // Show success message
+                  if (typeof window !== "undefined" && window.dispatchEvent) {
+                    window.dispatchEvent(
+                      new CustomEvent("google-auth-success")
+                    );
+                  }
+                }
+              }
+            } else if (event === "SIGNED_OUT") {
+              // Clear our custom tokens when Supabase session ends
+              if (user) {
+                console.log(
+                  "Supabase session ended, clearing custom tokens..."
+                );
+                clearTokens();
+              }
+            }
+          });
+
+          // Cleanup subscription on unmount
+          return () => {
+            subscription.unsubscribe();
+          };
+        }
       } catch (error) {
         console.error("User auth initialization error:", error);
         clearTokens();
@@ -350,7 +480,14 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     initializeAuth();
-  }, [clearTokens, getRefreshToken, getStoredUser, refreshTokens]);
+  }, [
+    clearTokens,
+    getRefreshToken,
+    getStoredUser,
+    refreshTokens,
+    handleGoogleAuthSuccess,
+    user,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {

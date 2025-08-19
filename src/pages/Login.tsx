@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Mail,
@@ -67,7 +67,7 @@ const Login = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin + (from || "/"),
+          redirectTo: window.location.origin + (from === "/" ? "" : from),
           queryParams: {
             access_type: "offline",
             prompt: "consent",
