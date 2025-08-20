@@ -1119,7 +1119,7 @@ const toggleWishlist = async (carId: string) => {
             )}
             {/* Load More */}
             {/* // Update the CarCard rendering to include wishlist props */}
-            {filteredAndSortedCars.map((car) => (
+            {/* {filteredAndSortedCars.map((car) => (
               <CarCard
                 key={car.id}
                 car={car}
@@ -1127,7 +1127,7 @@ const toggleWishlist = async (carId: string) => {
                 onToggleWishlist={() => toggleWishlist(car.id)}
                 wishlistLoading={wishlistLoading[car.id] || false}
               />
-            ))}
+            ))} */}
           </div>
         </div>
       </div>
