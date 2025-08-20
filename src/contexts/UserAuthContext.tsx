@@ -27,7 +27,7 @@ interface TokenData {
 interface UserAuthContextType {
   user: User | null;
   tokens: TokenData | null;
-  isAuthenticated: boolean;
+  isAuthenticated: boolean | null; // Allow null during loading
   loading: boolean;
   login: (
     email: string,
@@ -101,7 +101,7 @@ const cookieUtils = {
       cookieString += `; Path=${path}`;
 
       document.cookie = cookieString;
-      console.log(`🍪 Cookie set: ${name}`);
+      console.log(`Cookie set: ${name}`);
     } catch (error) {
       console.warn("Failed to set cookie:", error);
     }
@@ -126,7 +126,7 @@ const cookieUtils = {
       document.cookie = `${encodeURIComponent(
         name
       )}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      console.log(`🍪 Cookie removed: ${name}`);
+      console.log(`Cookie removed: ${name}`);
     } catch (error) {
       console.warn("Failed to remove cookie:", error);
     }
@@ -138,14 +138,14 @@ const cookieStorage = {
   getItem: (key: string): string | null => {
     const value = cookieUtils.get(key);
     console.log(
-      `🍪 Retrieved from cookie [${key}]:`,
+      `Retrieved from cookie [${key}]:`,
       value ? "Found" : "Not found"
     );
     return value;
   },
 
   setItem: (key: string, value: string): void => {
-    console.log(`🍪 Storing in cookie [${key}]`);
+    console.log(`Storing in cookie [${key}]`);
     cookieUtils.set(key, value, {
       maxAge: 7 * 24 * 60 * 60, // 7 days
       secure: window.location.protocol === "https:",
@@ -154,7 +154,7 @@ const cookieStorage = {
   },
 
   removeItem: (key: string): void => {
-    console.log(`🍪 Removing cookie [${key}]`);
+    console.log(`Removing cookie [${key}]`);
     cookieUtils.remove(key);
   },
 };
@@ -175,7 +175,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Save tokens and user data to cookies
   const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
-      console.log("💾 Saving tokens and user data to cookies...");
+      console.log("Saving tokens and user data to cookies...");
 
       // Calculate expiration time
       const expiresAt = Date.now() + tokenData.expiresIn * 1000;
@@ -211,9 +211,9 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setTokens(enhancedTokenData);
       setUser(normalizedUser);
 
-      console.log("✅ User session saved to cookies");
-      console.log("📋 Saved user:", normalizedUser);
-      console.log("🔑 Token expires at:", new Date(expiresAt).toISOString());
+      console.log("User session saved to cookies");
+      console.log("Saved user:", normalizedUser);
+      console.log("Token expires at:", new Date(expiresAt).toISOString());
     } catch (error) {
       console.error("Failed to save tokens:", error);
     }
@@ -221,7 +221,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const clearTokens = useCallback(() => {
     try {
-      console.log("🧹 Clearing user session from cookies...");
+      console.log("Clearing user session from cookies...");
 
       // Clear all auth-related cookies
       cookieStorage.removeItem(USER_STORAGE_KEY);
@@ -238,7 +238,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         refreshTimer.current = null;
       }
 
-      console.log("✅ User session cleared from cookies");
+      console.log("User session cleared from cookies");
     } catch (error) {
       console.error("Failed to clear tokens:", error);
       // Fallback to memory-only clearing
@@ -252,10 +252,10 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const storedUser = cookieStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        console.log("📋 Retrieved stored user from cookie:", parsed);
+        console.log("Retrieved stored user from cookie:", parsed);
         return parsed;
       }
-      console.log("📋 No stored user found in cookies");
+      console.log("No stored user found in cookies");
       return null;
     } catch (error) {
       console.error("Failed to retrieve stored user from cookies:", error);
@@ -268,10 +268,10 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const storedTokens = cookieStorage.getItem(ACCESS_TOKEN_KEY);
       if (storedTokens) {
         const parsed = JSON.parse(storedTokens);
-        console.log("🔑 Retrieved stored tokens from cookie");
+        console.log("Retrieved stored tokens from cookie");
         return parsed;
       }
-      console.log("🔑 No stored tokens found in cookies");
+      console.log("No stored tokens found in cookies");
       return null;
     } catch (error) {
       console.error("Failed to retrieve stored tokens from cookies:", error);
@@ -291,7 +291,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const hasHttpOnlyToken = document.cookie.includes("refreshToken=");
 
     const hasToken = hasIndicator || hasDevToken || hasHttpOnlyToken;
-    console.log("🍪 Refresh token available:", hasToken ? "Yes" : "No", {
+    console.log("Refresh token available:", hasToken ? "Yes" : "No", {
       hasIndicator,
       hasDevToken,
       hasHttpOnlyToken,
@@ -302,13 +302,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Check if access token is expired or will expire soon
   const isTokenExpired = useCallback((): boolean => {
     if (!tokens?.expiresAt) {
-      console.log("⏰ No token expiration time found");
+      console.log("No token expiration time found");
       return true;
     }
 
     const isExpired = Date.now() >= tokens.expiresAt - REFRESH_THRESHOLD;
     if (isExpired) {
-      console.log("⏰ Token is expired or will expire soon");
+      console.log("Token is expired or will expire soon");
     }
     return isExpired;
   }, [tokens]);
@@ -316,13 +316,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Refresh access token
   const refreshTokens = useCallback(async (): Promise<boolean> => {
     if (refreshPromise.current) {
-      console.log("🔄 Token refresh already in progress, waiting...");
+      console.log("Token refresh already in progress, waiting...");
       return refreshPromise.current;
     }
 
     const refreshOperation = async (): Promise<boolean> => {
       try {
-        console.log("🔄 Refreshing user access token...");
+        console.log("Refreshing user access token...");
 
         const response = await fetch(`${backendUrl}/auth/refresh`, {
           method: "POST",
@@ -342,7 +342,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
           // If refresh fails, clear session
           if (response.status === 401) {
-            console.log("🧹 Clearing session due to refresh failure");
+            console.log("Clearing session due to refresh failure");
             clearTokens();
           }
 
@@ -350,17 +350,17 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         const result = await response.json();
-        console.log("🔄 Refresh response:", result);
+        console.log("Refresh response:", result);
 
         if (result.success && result.data) {
-          console.log("✅ User tokens refreshed successfully");
+          console.log("User tokens refreshed successfully");
           const userData = getStoredUser();
           if (userData) {
             saveTokens(result.data, userData);
             scheduleTokenRefresh(result.data.expiresIn);
             return true;
           } else {
-            console.error("❌ No stored user data found for token refresh");
+            console.error("No stored user data found for token refresh");
           }
         }
         return false;
@@ -386,12 +386,12 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const refreshTime = Math.max(0, expiresIn * 1000 - REFRESH_THRESHOLD);
 
       refreshTimer.current = setTimeout(() => {
-        console.log("⏰ Automatic user token refresh triggered");
+        console.log("Automatic user token refresh triggered");
         refreshTokens();
       }, refreshTime);
 
       console.log(
-        `🕐 User token refresh scheduled in ${Math.round(
+        `User token refresh scheduled in ${Math.round(
           refreshTime / 1000
         )} seconds`
       );
@@ -439,7 +439,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     rememberMe = false
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log("🔐 Attempting user login...");
+      console.log("Attempting user login...");
       setLoading(true);
 
       const response = await fetch(`${backendUrl}/auth/login`, {
@@ -452,7 +452,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const result = await response.json();
-      console.log("🔐 Login response:", result);
+      console.log("Login response:", result);
 
       if (!response.ok || !result.success) {
         return {
@@ -471,7 +471,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       saveTokens(tokenData, result.data.user);
       scheduleTokenRefresh(result.data.expiresIn);
 
-      console.log("✅ User login successful");
+      console.log("User login successful");
       return { success: true };
     } catch (error: any) {
       console.error("User login error:", error);
@@ -487,7 +487,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Logout function
   const logout = async (): Promise<void> => {
     try {
-      console.log("🔐 Logging out user...");
+      console.log("Logging out user...");
 
       // Determine logout endpoint based on user provider
       const isSupabaseUser =
@@ -519,7 +519,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } finally {
       clearTokens();
-      console.log("✅ User logged out successfully");
+      console.log("User logged out successfully");
     }
   };
 
@@ -531,13 +531,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const initializeAuth = async () => {
       try {
-        console.log("🔄 Initializing user authentication from cookies...");
+        console.log("Initializing user authentication from cookies...");
 
         const userData = getStoredUser();
         const tokenData = getStoredTokens();
 
-        console.log("📋 Found stored user:", userData ? "Yes" : "No");
-        console.log("🔑 Found stored tokens:", tokenData ? "Yes" : "No");
+        console.log("Found stored user:", userData ? "Yes" : "No");
+        console.log("Found stored tokens:", tokenData ? "Yes" : "No");
 
         if (userData && tokenData) {
           setUser(userData);
@@ -553,33 +553,33 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
               : true;
 
             if (isExpired) {
-              console.log("🔄 Token expired, attempting to refresh...");
+              console.log("Token expired, attempting to refresh...");
               const refreshed = await refreshTokens();
               if (!refreshed) {
-                console.log("❌ Token refresh failed, clearing user session");
+                console.log("Token refresh failed, clearing user session");
                 clearTokens();
               } else {
-                console.log("✅ Session restored successfully after refresh");
+                console.log("Session restored successfully after refresh");
               }
             } else {
-              console.log("✅ Valid session restored from cookies");
+              console.log("Valid session restored from cookies");
               // Schedule next refresh
               const timeToExpiry = tokenData.expiresAt - Date.now();
               scheduleTokenRefresh(Math.floor(timeToExpiry / 1000));
             }
           } else {
-            console.log("❌ No refresh token found, clearing user session");
+            console.log("No refresh token found, clearing user session");
             clearTokens();
           }
         } else {
-          console.log("📋 No valid session found in cookies");
+          console.log("No valid session found in cookies");
         }
       } catch (error) {
         console.error("User auth initialization error:", error);
         clearTokens();
       } finally {
         setLoading(false);
-        console.log("✅ User authentication initialization complete");
+        console.log("User authentication initialization complete");
       }
     };
 
@@ -605,7 +605,8 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const value: UserAuthContextType = {
     user,
     tokens,
-    isAuthenticated: !!user && !!tokens,
+    // CRITICAL FIX: Return null while loading, not false
+    isAuthenticated: loading ? null : !!(user && tokens),
     loading,
     login,
     googleLogin,
