@@ -314,7 +314,6 @@ const CarDetail = () => {
             </div>
           </div>
         </div>
-              <Footer />
         
       </div>
     );
@@ -323,11 +322,11 @@ const CarDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6 text-sm">
-          <button 
+          <button
             onClick={() => window.history.back()}
             className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
           >
@@ -337,7 +336,9 @@ const CarDetail = () => {
           <span className="text-muted-foreground">/</span>
           <span className="text-muted-foreground">Cars</span>
           <span className="text-muted-foreground">/</span>
-          <span className="font-medium">{car.brand} {car.model}</span>
+          <span className="font-medium">
+            {car.brand} {car.model}
+          </span>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -349,25 +350,37 @@ const CarDetail = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-accent text-accent" />
                   <span className="font-medium">{car.rating.toFixed(2)}</span>
-                  <span className="text-muted-foreground">({car.reviews} Reviews)</span>
+                  <span className="text-muted-foreground">
+                    ({car.reviews} Reviews)
+                  </span>
                 </div>
                 <Badge variant="secondary">Most Popular</Badge>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={toggleWishlist}
                 disabled={wishlistLoading}
               >
-                <Heart className={`w-4 h-4 mr-2 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
-                {wishlistLoading ? 'Loading...' : (isWishlisted ? 'Saved' : 'Save')}
+                <Heart
+                  className={`w-4 h-4 mr-2 ${
+                    isWishlisted ? "fill-red-500 text-red-500" : ""
+                  }`}
+                />
+                {wishlistLoading
+                  ? "Loading..."
+                  : isWishlisted
+                  ? "Saved"
+                  : "Save"}
               </Button>
-              <ShareModal 
+              <ShareModal
                 title={`${car.brand} ${car.model} ${car.variant}`}
-                description={`Check out this ${car.brand} ${car.model} starting from ${formatPrice(car.price)}`}
+                description={`Check out this ${car.brand} ${
+                  car.model
+                } starting from ${formatPrice(car.price)}`}
                 url={window.location.pathname}
                 image={Array.isArray(car.images) ? car.images[0] : car.image}
               >
@@ -379,7 +392,7 @@ const CarDetail = () => {
             </div>
 
             {/* Image Gallery */}
-            <CarImageGallery 
+            <CarImageGallery
               images={Array.isArray(car.images) ? car.images : [car.image]}
               carName={`${car.brand} ${car.model}`}
             />
@@ -393,15 +406,24 @@ const CarDetail = () => {
                 <TabsTrigger value="features">Features</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="overview" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>About {car.brand} {car.model}</CardTitle>
+                    <CardTitle>
+                      About {car.brand} {car.model}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground leading-relaxed">
-                      {car.description || `The ${car.brand} ${car.model} ${car.variant} is a premium ${car.bodyType?.toLowerCase()} that combines style, performance, and comfort. With its ${car.fuelType} engine and ${car.transmission} transmission, it delivers an excellent driving experience for urban and highway conditions.`}
+                      {car.description ||
+                        `The ${car.brand} ${car.model} ${
+                          car.variant
+                        } is a premium ${car.bodyType?.toLowerCase()} that combines style, performance, and comfort. With its ${
+                          car.fuelType
+                        } engine and ${
+                          car.transmission
+                        } transmission, it delivers an excellent driving experience for urban and highway conditions.`}
                     </p>
                   </CardContent>
                 </Card>
@@ -420,7 +442,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Fuel Type</p>
-                            <p className="text-sm text-muted-foreground">{car.fuelType}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.fuelType}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -429,7 +453,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Transmission</p>
-                            <p className="text-sm text-muted-foreground">{car.transmission}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.transmission}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -438,7 +464,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Mileage</p>
-                            <p className="text-sm text-muted-foreground">{car.mileage} km/l</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.mileage} km/l
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -449,7 +477,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Seating Capacity</p>
-                            <p className="text-sm text-muted-foreground">{car.seating} Seater</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.seating} Seater
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -458,7 +488,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Body Type</p>
-                            <p className="text-sm text-muted-foreground">{car.bodyType}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.bodyType}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -467,7 +499,9 @@ const CarDetail = () => {
                           </div>
                           <div>
                             <p className="font-medium">Model Year</p>
-                            <p className="text-sm text-muted-foreground">{car.year}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {car.year}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -475,7 +509,7 @@ const CarDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               {/* Other tabs content remains the same... */}
               <TabsContent value="specifications" className="space-y-6">
                 <Card>
@@ -485,38 +519,62 @@ const CarDetail = () => {
                   <CardContent>
                     <div className="space-y-6">
                       <div>
-                        <h4 className="font-semibold mb-3">Engine & Performance</h4>
+                        <h4 className="font-semibold mb-3">
+                          Engine & Performance
+                        </h4>
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Engine Capacity</span>
-                            <span className="font-medium">{car.engine_capacity || "1.2L"}</span>
+                            <span className="text-muted-foreground">
+                              Engine Capacity
+                            </span>
+                            <span className="font-medium">
+                              {car.engine_capacity || "1.2L"}
+                            </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Fuel Type</span>
+                            <span className="text-muted-foreground">
+                              Fuel Type
+                            </span>
                             <span className="font-medium">{car.fuelType}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Transmission</span>
-                            <span className="font-medium">{car.transmission}</span>
+                            <span className="text-muted-foreground">
+                              Transmission
+                            </span>
+                            <span className="font-medium">
+                              {car.transmission}
+                            </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Mileage</span>
-                            <span className="font-medium">{car.mileage} km/l</span>
+                            <span className="text-muted-foreground">
+                              Mileage
+                            </span>
+                            <span className="font-medium">
+                              {car.mileage} km/l
+                            </span>
                           </div>
                         </div>
                       </div>
-                      
+
                       <Separator />
-                      
+
                       <div>
-                        <h4 className="font-semibold mb-3">Dimensions & Capacity</h4>
+                        <h4 className="font-semibold mb-3">
+                          Dimensions & Capacity
+                        </h4>
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Seating Capacity</span>
-                            <span className="font-medium">{car.seating} Seater</span>
+                            <span className="text-muted-foreground">
+                              Seating Capacity
+                            </span>
+                            <span className="font-medium">
+                              {car.seating} Seater
+                            </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Body Type</span>
+                            <span className="text-muted-foreground">
+                              Body Type
+                            </span>
                             <span className="font-medium">{car.bodyType}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
@@ -524,7 +582,9 @@ const CarDetail = () => {
                             <span className="font-medium">{car.color}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-muted-foreground">Model Year</span>
+                            <span className="text-muted-foreground">
+                              Model Year
+                            </span>
                             <span className="font-medium">{car.year}</span>
                           </div>
                         </div>
@@ -533,7 +593,7 @@ const CarDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="features" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -543,28 +603,41 @@ const CarDetail = () => {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {car.features && car.features.length > 0 ? (
                         car.features.map((feature: string, index: number) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg"
+                          >
                             <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm font-medium">{feature}</span>
+                            <span className="text-sm font-medium">
+                              {feature}
+                            </span>
                           </div>
                         ))
                       ) : (
                         <>
                           <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm font-medium">Power Steering</span>
+                            <span className="text-sm font-medium">
+                              Power Steering
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm font-medium">Air Conditioning</span>
+                            <span className="text-sm font-medium">
+                              Air Conditioning
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm font-medium">Power Windows</span>
+                            <span className="text-sm font-medium">
+                              Power Windows
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm font-medium">Central Locking</span>
+                            <span className="text-sm font-medium">
+                              Central Locking
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <div className="w-2 h-2 bg-primary rounded-full" />
@@ -580,7 +653,7 @@ const CarDetail = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               <TabsContent value="reviews" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -592,30 +665,42 @@ const CarDetail = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="w-4 h-4 fill-accent text-accent" />
+                              <Star
+                                key={i}
+                                className="w-4 h-4 fill-accent text-accent"
+                              />
                             ))}
                           </div>
                           <span className="font-medium">Excellent Car!</span>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">
-                          "Amazing fuel efficiency and smooth driving experience. Perfect for city commuting."
+                          "Amazing fuel efficiency and smooth driving
+                          experience. Perfect for city commuting."
                         </p>
-                        <p className="text-xs text-muted-foreground">- Verified Buyer</p>
+                        <p className="text-xs text-muted-foreground">
+                          - Verified Buyer
+                        </p>
                       </div>
                       <div className="p-4 bg-muted/30 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex">
                             {[...Array(4)].map((_, i) => (
-                              <Star key={i} className="w-4 h-4 fill-accent text-accent" />
+                              <Star
+                                key={i}
+                                className="w-4 h-4 fill-accent text-accent"
+                              />
                             ))}
                             <Star className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <span className="font-medium">Great Value</span>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">
-                          "Good build quality and features for the price point. Recommended!"
+                          "Good build quality and features for the price point.
+                          Recommended!"
                         </p>
-                        <p className="text-xs text-muted-foreground">- Verified Buyer</p>
+                        <p className="text-xs text-muted-foreground">
+                          - Verified Buyer
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -630,7 +715,9 @@ const CarDetail = () => {
             <Card className="sticky top-4">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>{car.brand} {car.model}</span>
+                  <span>
+                    {car.brand} {car.model}
+                  </span>
                   <Badge variant="outline">{car.variant}</Badge>
                 </CardTitle>
               </CardHeader>
@@ -645,14 +732,20 @@ const CarDetail = () => {
                     </p>
                   )}
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="space-y-3">
-                  <GetBestPriceModal carName={`${car.brand} ${car.model}`} carId={car.id} />
-                  <RequestQuoteModal carName={`${car.brand} ${car.model}`} carId={car.id} />
+                  <GetBestPriceModal
+                    carName={`${car.brand} ${car.model}`}
+                    carId={car.id}
+                  />
+                  <RequestQuoteModal
+                    carName={`${car.brand} ${car.model}`}
+                    carId={car.id}
+                  />
                 </div>
-                
+
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">
                     Get on-road price & offers in your city
@@ -670,7 +763,9 @@ const CarDetail = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-sm">Loan Amount</span>
-                    <span className="font-medium">{formatPrice(car.price * 0.9)}</span>
+                    <span className="font-medium">
+                      {formatPrice(car.price * 0.9)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Interest Rate</span>
@@ -683,9 +778,16 @@ const CarDetail = () => {
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Monthly EMI</span>
-                    <span className="text-primary">₹{Math.round(car.price * 0.9 / 60).toLocaleString()}</span>
+                    <span className="text-primary">
+                      ₹{Math.round((car.price * 0.9) / 60).toLocaleString()}
+                    </span>
                   </div>
-                  <Button variant="outline" className="w-full" size="sm" asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                    asChild
+                  >
                     <Link to="/emi-calculator">Calculate Detailed EMI</Link>
                   </Button>
                 </div>
@@ -694,6 +796,7 @@ const CarDetail = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
