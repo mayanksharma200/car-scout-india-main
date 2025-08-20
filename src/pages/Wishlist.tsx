@@ -41,26 +41,35 @@ interface WishlistCar {
   };
 }
 
-// Add this to your Wishlist component temporarily for debugging
+// Debug component for development
 const DebugAuthInfo = () => {
   const { user, tokens, isAuthenticated, getAuthHeaders } = useUserAuth();
-  
+
   const debugInfo = {
     isAuthenticated,
-    user: user ? {
-      id: user.id,
-      email: user.email,
-      provider: user.provider
-    } : null,
-    tokens: tokens ? {
-      hasAccessToken: !!tokens.accessToken,
-      tokenType: tokens.tokenType,
-      expiresAt: tokens.expiresAt,
-      isExpired: tokens.expiresAt ? Date.now() >= tokens.expiresAt : 'unknown',
-      timeUntilExpiry: tokens.expiresAt ? Math.floor((tokens.expiresAt - Date.now()) / 1000) : 'unknown'
-    } : null,
+    isAuthenticatedType: typeof isAuthenticated,
+    user: user
+      ? {
+          id: user.id,
+          email: user.email,
+          provider: user.provider,
+        }
+      : null,
+    tokens: tokens
+      ? {
+          hasAccessToken: !!tokens.accessToken,
+          tokenType: tokens.tokenType,
+          expiresAt: tokens.expiresAt,
+          isExpired: tokens.expiresAt
+            ? Date.now() >= tokens.expiresAt
+            : "unknown",
+          timeUntilExpiry: tokens.expiresAt
+            ? Math.floor((tokens.expiresAt - Date.now()) / 1000)
+            : "unknown",
+        }
+      : null,
     authHeaders: getAuthHeaders(),
-    cookies: document.cookie
+    cookies: document.cookie,
   };
 
   return (
@@ -72,9 +81,6 @@ const DebugAuthInfo = () => {
     </div>
   );
 };
-
-// Add this inside your Wishlist component's return statement (temporarily)
-// {process.env.NODE_ENV === 'development' && <DebugAuthInfo />}
 
 const Wishlist = () => {
   const [savedCars, setSavedCars] = useState<WishlistCar[]>([]);
@@ -88,19 +94,33 @@ const Wishlist = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Redirect to login if not authenticated
+  // Enhanced authentication redirect - check immediately when isAuthenticated changes
   useEffect(() => {
-    if (!isAuthenticated && !loading) {
+    console.log("Auth check:", {
+      isAuthenticated,
+      type: typeof isAuthenticated,
+      timestamp: new Date().toISOString(),
+    });
+
+    // If explicitly not authenticated, redirect immediately
+    if (isAuthenticated === false) {
+      console.log("User not authenticated, redirecting to login...");
       navigate("/login", {
         state: { from: { pathname: "/wishlist" } },
+        replace: true, // Prevents back button issues
       });
+      return;
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, navigate]);
 
-  // Fetch wishlist data
+  // Fetch wishlist data only when authenticated
   useEffect(() => {
     const fetchWishlist = async () => {
-      if (!isAuthenticated) return;
+      // Don't fetch if not authenticated or still determining auth state
+      if (isAuthenticated !== true) {
+        setLoading(false);
+        return;
+      }
 
       try {
         console.log("📋 Fetching user wishlist...");
@@ -290,8 +310,8 @@ const Wishlist = () => {
     });
   };
 
-  // Loading state
-  if (loading) {
+  // Show loading while determining authentication state
+  if (isAuthenticated === null || isAuthenticated === undefined) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -299,7 +319,9 @@ const Wishlist = () => {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-muted-foreground">Loading your wishlist...</p>
+              <p className="text-muted-foreground">
+                Checking authentication...
+              </p>
             </div>
           </div>
         </div>
@@ -308,8 +330,8 @@ const Wishlist = () => {
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated) {
+  // Don't render anything if not authenticated (redirect will handle it)
+  if (isAuthenticated === false) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -336,11 +358,32 @@ const Wishlist = () => {
     );
   }
 
+  // Show loading while fetching wishlist data
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">Loading your wishlist...</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <div className="container mx-auto px-4 py-8">
+        {/* Debug info for development */}
+        {process.env.NODE_ENV === "development" && <DebugAuthInfo />}
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
