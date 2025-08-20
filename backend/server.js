@@ -441,80 +441,272 @@ app.get("/api/cars/featured", async (req, res) => {
 
 // Replace your existing /api/cars/search endpoint with this improved version
 
+// Enhanced /api/cars/search endpoint with comprehensive filter support
 app.get("/api/cars/search", async (req, res) => {
   try {
-    const { q, limit = 500 } = req.query;
+    const { 
+      q, 
+      brand, 
+      city, 
+      budget, 
+      carType,
+      minPrice, 
+      maxPrice, 
+      minMileage, 
+      maxMileage,
+      fuelTypes, 
+      transmissions, 
+      bodyTypes, 
+      seatingOptions, 
+      filterBrands,
+      limit = 500, 
+      offset = 0,
+      sortBy = "brand",
+      sortOrder = "asc"
+    } = req.query;
 
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        error: "Search query is required",
-      });
-    }
-
-    console.log(`🔍 Searching for: "${q}"`);
-
-    // Clean and split the search query into individual words
-    const searchTerms = q.trim()
-      .toLowerCase()
-      .split(/\s+/) // Split by whitespace
-      .filter(term => term.length > 0); // Remove empty strings
-
-    console.log(`📝 Search terms:`, searchTerms);
+    console.log(`🔍 Enhanced search with filters:`, {
+      q, brand, city, budget, carType, minPrice, maxPrice,
+      fuelTypes, transmissions, bodyTypes, seatingOptions
+    });
 
     let query = supabase
       .from("cars")
       .select("*")
       .eq("status", "active");
 
-    if (searchTerms.length === 1) {
-      // Single word search - use the original OR logic
-      const term = searchTerms[0];
-      query = query.or(`brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`);
-    } else {
-      // Multi-word search - each term must match somewhere in brand, model, or variant
-      for (const term of searchTerms) {
+    // Apply text search if query provided
+    if (q && q.trim()) {
+      const searchTerms = q.trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(term => term.length > 0);
+
+      console.log(`📝 Search terms:`, searchTerms);
+
+      if (searchTerms.length === 1) {
+        const term = searchTerms[0];
         query = query.or(`brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`);
+      } else {
+        // For multi-word searches, we'll filter after getting results
+        // to ensure ALL terms match somewhere in brand/model/variant
+        const firstTerm = searchTerms[0];
+        query = query.or(`brand.ilike.%${firstTerm}%,model.ilike.%${firstTerm}%,variant.ilike.%${firstTerm}%`);
       }
     }
 
-    query = query
-      .order('brand', { ascending: true })
-      .order('model', { ascending: true })
-      .order('variant', { ascending: true })
-      .limit(parseInt(limit));
+    // Apply brand filter
+    if (brand) {
+      query = query.ilike("brand", `%${brand}%`);
+    }
 
-    const { data, error } = await query;
+    // Apply car type filter (this would need to be mapped to your data structure)
+    if (carType) {
+      // You might need to adjust this based on how car types are stored
+      // For now, assuming it's part of variant or a separate field
+      switch (carType) {
+        case "new":
+          // Filter for new cars - adjust based on your data structure
+          break;
+        case "certified":
+          // Filter for certified cars
+          break;
+        case "premium":
+          // Filter for premium cars
+          break;
+      }
+    }
+
+    // Apply price range filters
+    if (minPrice) {
+      query = query.gte("price_min", parseInt(minPrice));
+    }
+    if (maxPrice) {
+      query = query.lte("price_max", parseInt(maxPrice));
+    }
+
+    // Apply budget range filter (convert budget string to price range)
+    if (budget) {
+      const budgetRanges = {
+        "Under ₹5 Lakh": { min: 0, max: 500000 },
+        "₹5-10 Lakh": { min: 500000, max: 1000000 },
+        "₹10-15 Lakh": { min: 1000000, max: 1500000 },
+        "₹15-20 Lakh": { min: 1500000, max: 2000000 },
+        "₹20-30 Lakh": { min: 2000000, max: 3000000 },
+        "₹30-50 Lakh": { min: 3000000, max: 5000000 },
+        "₹50 Lakh - ₹1 Crore": { min: 5000000, max: 10000000 },
+        "Above ₹1 Crore": { min: 10000000, max: null }
+      };
+
+      const budgetRange = budgetRanges[budget];
+      if (budgetRange) {
+        // For budget filtering, ensure cars fall within the price range
+        // Use price_min for minimum check and price_max for maximum check
+        if (budgetRange.max) {
+          query = query.lte("price_min", budgetRange.max); // Car's starting price should be within budget
+        }
+        if (budgetRange.min > 0) {
+          query = query.gte("price_max", budgetRange.min); // Car's max price should be above minimum
+        }
+      }
+    }
+
+    // Apply fuel type filters
+    if (fuelTypes) {
+      const fuelArray = fuelTypes.split(',').map(f => f.trim());
+      if (fuelArray.length === 1) {
+        query = query.eq("fuel_type", fuelArray[0]);
+      } else {
+        query = query.in("fuel_type", fuelArray);
+      }
+    }
+
+    // Apply transmission filters
+    if (transmissions) {
+      const transmissionArray = transmissions.split(',').map(t => t.trim());
+      if (transmissionArray.length === 1) {
+        query = query.eq("transmission", transmissionArray[0]);
+      } else {
+        query = query.in("transmission", transmissionArray);
+      }
+    }
+
+    // Apply body type filters
+    if (bodyTypes) {
+      const bodyTypeArray = bodyTypes.split(',').map(b => b.trim());
+      if (bodyTypeArray.length === 1) {
+        query = query.eq("body_type", bodyTypeArray[0]);
+      } else {
+        query = query.in("body_type", bodyTypeArray);
+      }
+    }
+
+    // Apply seating capacity filters
+    if (seatingOptions) {
+      const seatingArray = seatingOptions.split(',').map(s => s.trim());
+      const seatingNumbers = seatingArray.map(s => {
+        if (s === "8+") return 8; // Handle 8+ as 8 or greater
+        return parseInt(s);
+      }).filter(n => !isNaN(n));
+
+      if (seatingNumbers.length > 0) {
+        if (seatingArray.includes("8+")) {
+          // If 8+ is included, get cars with 8 or more seats
+          query = query.gte("seating_capacity", 8);
+        } else {
+          query = query.in("seating_capacity", seatingNumbers);
+        }
+      }
+    }
+
+    // Apply additional brand filters from advanced filters
+    if (filterBrands) {
+      const brandArray = filterBrands.split(',').map(b => b.trim());
+      // Combine with main brand filter if both exist
+      if (brand) {
+        brandArray.push(brand);
+      }
+      
+      // Create OR conditions for brands
+      const brandConditions = brandArray.map(b => `brand.ilike.%${b}%`).join(',');
+      query = query.or(brandConditions);
+    }
+
+    // Apply mileage filters (extract numeric value from mileage string)
+    if (minMileage || maxMileage) {
+      // Note: This is tricky because mileage is stored as "24.9 kmpl"
+      // You might want to add a numeric mileage column for better filtering
+      // For now, this is a basic implementation
+      if (minMileage) {
+        // This won't work well with string mileage - consider adding numeric column
+        console.warn("Mileage filtering needs numeric mileage column for accurate results");
+      }
+    }
+
+    // Apply sorting and pagination
+    query = query
+      .order(sortBy, { ascending: sortOrder === "asc" })
+      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+    const { data, error, count } = await query;
 
     if (error) {
       console.error("❌ Database error:", error);
       throw error;
     }
 
-    // For multi-word searches, filter results to ensure ALL terms are found
-    let filteredData = data;
-    
-    if (searchTerms.length > 1) {
-      filteredData = data.filter(car => {
-        const carText = `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
-        return searchTerms.every(term => carText.includes(term));
+    let filteredData = data || [];
+
+    // Post-process for multi-word text search
+    if (q && q.trim()) {
+      const searchTerms = q.trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(term => term.length > 0);
+
+      if (searchTerms.length > 1) {
+        filteredData = filteredData.filter(car => {
+          const carText = `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
+          return searchTerms.every(term => carText.includes(term));
+        });
+      }
+    }
+
+    // Post-process for city filter (if you don't have city in cars table)
+    if (city) {
+      // Since cars table might not have city, you could:
+      // 1. Add city to cars table
+      // 2. Filter based on dealer locations
+      // 3. Skip city filtering for now
+      console.warn("City filtering not implemented - add city column to cars table");
+    }
+
+    // Post-process for mileage filtering (better implementation)
+    if (minMileage || maxMileage) {
+      filteredData = filteredData.filter(car => {
+        if (!car.mileage) return true;
+        
+        // Extract numeric value from mileage string like "24.9 kmpl"
+        const mileageMatch = car.mileage.match(/(\d+\.?\d*)/);
+        if (!mileageMatch) return true;
+        
+        const numericMileage = parseFloat(mileageMatch[1]);
+        
+        if (minMileage && numericMileage < parseFloat(minMileage)) return false;
+        if (maxMileage && numericMileage > parseFloat(maxMileage)) return false;
+        
+        return true;
       });
     }
 
-    console.log(`✅ Found ${filteredData.length} cars matching "${q}"`);
+    console.log(`✅ Found ${filteredData.length} cars after all filters`);
     
-    // Log first few results for debugging
-    filteredData.slice(0, 5).forEach(car => {
-      console.log(`🚗 ${car.brand} ${car.model} ${car.variant}`);
+    // Log sample results for debugging
+    filteredData.slice(0, 3).forEach(car => {
+      console.log(`🚗 ${car.brand} ${car.model} ${car.variant} - ₹${car.price_min}-${car.price_max}`);
     });
 
     res.json({
       success: true,
-      data: filteredData || [],
+      data: filteredData,
       query: q,
-      searchTerms: searchTerms,
-      totalFound: filteredData.length
+      appliedFilters: {
+        brand,
+        city,
+        budget,
+        carType,
+        priceRange: { min: minPrice, max: maxPrice },
+        mileageRange: { min: minMileage, max: maxMileage },
+        fuelTypes: fuelTypes ? fuelTypes.split(',') : [],
+        transmissions: transmissions ? transmissions.split(',') : [],
+        bodyTypes: bodyTypes ? bodyTypes.split(',') : [],
+        seatingOptions: seatingOptions ? seatingOptions.split(',') : [],
+        filterBrands: filterBrands ? filterBrands.split(',') : []
+      },
+      totalFound: filteredData.length,
+      searchType: q ? 'search_with_filters' : 'filter_only'
     });
+
   } catch (error) {
     console.error("💥 Search error:", error);
     res.status(500).json({
@@ -544,10 +736,10 @@ app.get("/api/cars/search-advanced", async (req, res) => {
       .from("cars")
       .select("*")
       .eq("status", "active")
-      .textSearch('brand', q, { type: 'websearch' })
+      .textSearch("brand", q, { type: "websearch" })
       .or(`model.ilike.%${q}%,variant.ilike.%${q}%`)
-      .order('brand', { ascending: true })
-      .order('model', { ascending: true })
+      .order("brand", { ascending: true })
+      .order("model", { ascending: true })
       .limit(parseInt(limit));
 
     if (error) throw error;
@@ -558,14 +750,14 @@ app.get("/api/cars/search-advanced", async (req, res) => {
       success: true,
       data: data || [],
       query: q,
-      searchType: 'advanced'
+      searchType: "advanced",
     });
   } catch (error) {
     console.error("💥 Advanced search error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to perform advanced search",
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -584,48 +776,52 @@ app.get("/api/cars/search-weighted", async (req, res) => {
 
     console.log(`🔍 Weighted searching for: "${q}"`);
 
-    const searchTerms = q.trim().toLowerCase().split(/\s+/).filter(term => term.length > 0);
-    
+    const searchTerms = q
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((term) => term.length > 0);
+
     // Build a more sophisticated query with scoring
-    const { data, error } = await supabase
-      .rpc('search_cars_weighted', {
-        search_query: q,
-        search_limit: parseInt(limit)
-      });
+    const { data, error } = await supabase.rpc("search_cars_weighted", {
+      search_query: q,
+      search_limit: parseInt(limit),
+    });
 
     if (error) {
       // Fallback to simple search if RPC function doesn't exist
       console.warn("Weighted search function not available, using fallback");
-      
-      let query = supabase
-        .from("cars")
-        .select("*")
-        .eq("status", "active");
+
+      let query = supabase.from("cars").select("*").eq("status", "active");
 
       // Build dynamic OR conditions for each search term
-      const conditions = searchTerms.map(term => 
-        `brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`
-      ).join(',');
+      const conditions = searchTerms
+        .map(
+          (term) =>
+            `brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`
+        )
+        .join(",");
 
       const { data: fallbackData, error: fallbackError } = await query
         .or(conditions)
-        .order('brand', { ascending: true })
-        .order('model', { ascending: true })
+        .order("brand", { ascending: true })
+        .order("model", { ascending: true })
         .limit(parseInt(limit));
 
       if (fallbackError) throw fallbackError;
 
       // Filter for multi-word matches
-      const filteredData = fallbackData.filter(car => {
-        const carText = `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
-        return searchTerms.every(term => carText.includes(term));
+      const filteredData = fallbackData.filter((car) => {
+        const carText =
+          `${car.brand} ${car.model} ${car.variant}`.toLowerCase();
+        return searchTerms.every((term) => carText.includes(term));
       });
 
       return res.json({
         success: true,
         data: filteredData,
         query: q,
-        searchType: 'fallback'
+        searchType: "fallback",
       });
     }
 
@@ -635,14 +831,14 @@ app.get("/api/cars/search-weighted", async (req, res) => {
       success: true,
       data: data || [],
       query: q,
-      searchType: 'weighted'
+      searchType: "weighted",
     });
   } catch (error) {
     console.error("💥 Weighted search error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to perform weighted search",
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -784,17 +980,18 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Email and password are required",
-        code: "MISSING_CREDENTIALS"
+        code: "MISSING_CREDENTIALS",
       });
     }
 
     console.log(`🔐 Login attempt for ${email} from ${ipAddress}`);
 
     // Authenticate with Supabase
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (authError) {
       await logAuthEvent(
@@ -808,7 +1005,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({
         success: false,
         error: "Invalid credentials",
-        code: "INVALID_CREDENTIALS"
+        code: "INVALID_CREDENTIALS",
       });
     }
 
@@ -834,7 +1031,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(403).json({
         success: false,
         error: "Account is deactivated",
-        code: "ACCOUNT_DEACTIVATED"
+        code: "ACCOUNT_DEACTIVATED",
       });
     }
 
@@ -842,23 +1039,23 @@ app.post("/api/auth/login", async (req, res) => {
     let tokens;
     try {
       tokens = await generateTokens(authData.user);
-      console.log("Generated tokens:", { 
+      console.log("Generated tokens:", {
         hasAccessToken: !!tokens.accessToken,
         hasRefreshToken: !!tokens.refreshToken,
         expiresIn: tokens.expiresIn,
-        tokenType: tokens.tokenType
+        tokenType: tokens.tokenType,
       });
     } catch (tokenError) {
       console.error("Token generation failed:", tokenError);
       return res.status(500).json({
         success: false,
         error: "Failed to generate authentication tokens",
-        code: "TOKEN_GENERATION_FAILED"
+        code: "TOKEN_GENERATION_FAILED",
       });
     }
 
     // Ensure expiresIn is always present with a valid value
-    if (!tokens.expiresIn || typeof tokens.expiresIn !== 'number') {
+    if (!tokens.expiresIn || typeof tokens.expiresIn !== "number") {
       console.warn("expiresIn missing or invalid, setting default");
       tokens.expiresIn = 900; // 15 minutes
     }
@@ -883,12 +1080,12 @@ app.post("/api/auth/login", async (req, res) => {
         emailVerified: !!authData.user.email_confirmed_at,
         role: profile?.role || "user",
         firstName: profile?.first_name,
-        lastName: profile?.last_name
+        lastName: profile?.last_name,
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken, // Always include for development
       expiresIn: tokens.expiresIn,
-      tokenType: tokens.tokenType || "Bearer"
+      tokenType: tokens.tokenType || "Bearer",
     };
 
     // Environment-aware cookie setting
@@ -896,9 +1093,9 @@ app.post("/api/auth/login", async (req, res) => {
       // Set the actual httpOnly refresh token (secure)
       res.cookie("refreshToken", tokens.refreshToken, {
         ...COOKIE_CONFIG,
-        maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined // 30 days if "remember me"
+        maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined, // 30 days if "remember me"
       });
-      
+
       // Set a client-readable indicator cookie (not the actual token, just a flag)
       res.cookie("hasRefreshToken", "true", {
         httpOnly: false, // Client can read this
@@ -907,7 +1104,7 @@ app.post("/api/auth/login", async (req, res) => {
         maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
         path: "/",
       });
-      
+
       // Remove refreshToken from response in production
       delete responseData.refreshToken;
     } else {
@@ -925,16 +1122,15 @@ app.post("/api/auth/login", async (req, res) => {
     await logAuthEvent(userId, "login_success", ipAddress, userAgent, true);
 
     console.log(`✅ Login successful for user: ${userId}`);
-    
+
     return res.json({
       success: true,
       data: responseData,
-      message: "Login successful"
+      message: "Login successful",
     });
-
   } catch (error) {
     console.error("Login error:", error);
-    
+
     if (userId) {
       await logAuthEvent(
         userId,
@@ -944,7 +1140,7 @@ app.post("/api/auth/login", async (req, res) => {
         false,
         error.message
       );
-      
+
       // Reset failed login attempts (handle RPC errors gracefully)
       try {
         await supabase.rpc("increment_failed_logins", { user_id: userId });
@@ -957,7 +1153,7 @@ app.post("/api/auth/login", async (req, res) => {
       success: false,
       error: "Login failed",
       code: "LOGIN_FAILED",
-      details: IS_DEVELOPMENT ? error.message : undefined
+      details: IS_DEVELOPMENT ? error.message : undefined,
     });
   }
 });
@@ -1076,7 +1272,7 @@ app.post("/api/auth/refresh", async (req, res) => {
         data: {
           accessToken: tokens.accessToken,
           expiresIn: tokens.expiresIn,
-          tokenType: tokens.tokenType || "Bearer"
+          tokenType: tokens.tokenType || "Bearer",
         },
         message: "Tokens refreshed successfully",
       });
@@ -1096,7 +1292,7 @@ app.post("/api/auth/refresh", async (req, res) => {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
-          tokenType: tokens.tokenType || "Bearer"
+          tokenType: tokens.tokenType || "Bearer",
         },
         message: "Tokens refreshed successfully",
       });
@@ -1140,7 +1336,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Supabase user ID and email are required",
-        code: "MISSING_OAUTH_DATA"
+        code: "MISSING_OAUTH_DATA",
       });
     }
 
@@ -1175,7 +1371,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         return res.status(500).json({
           success: false,
           error: "Failed to create user profile",
-          code: "PROFILE_CREATION_FAILED"
+          code: "PROFILE_CREATION_FAILED",
         });
       }
 
@@ -1185,7 +1381,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       return res.status(500).json({
         success: false,
         error: "Failed to fetch user profile",
-        code: "PROFILE_FETCH_FAILED"
+        code: "PROFILE_FETCH_FAILED",
       });
     }
 
@@ -1202,7 +1398,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       return res.status(403).json({
         success: false,
         error: "Account is deactivated",
-        code: "ACCOUNT_DEACTIVATED"
+        code: "ACCOUNT_DEACTIVATED",
       });
     }
 
@@ -1210,7 +1406,9 @@ app.post("/api/auth/google-oauth", async (req, res) => {
     const mockUser = {
       id: supabaseUserId,
       email: email,
-      email_confirmed_at: userData?.emailVerified ? new Date().toISOString() : null,
+      email_confirmed_at: userData?.emailVerified
+        ? new Date().toISOString()
+        : null,
     };
 
     // Generate tokens
@@ -1222,7 +1420,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       return res.status(500).json({
         success: false,
         error: "Failed to generate authentication tokens",
-        code: "TOKEN_GENERATION_FAILED"
+        code: "TOKEN_GENERATION_FAILED",
       });
     }
 
@@ -1244,9 +1442,10 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         email: email,
         emailVerified: userData?.emailVerified || true,
         role: profile?.role || "user",
-        firstName: profile?.first_name || userData?.firstName || email.split("@")[0],
+        firstName:
+          profile?.first_name || userData?.firstName || email.split("@")[0],
         lastName: profile?.last_name || userData?.lastName || "",
-        provider: "google"
+        provider: "google",
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -1258,7 +1457,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
     if (IS_PRODUCTION) {
       res.cookie("refreshToken", tokens.refreshToken, {
         ...COOKIE_CONFIG,
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for Google OAuth
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for Google OAuth
       });
       res.cookie("hasRefreshToken", "true", {
         httpOnly: false,
@@ -1279,24 +1478,31 @@ app.post("/api/auth/google-oauth", async (req, res) => {
     }
 
     // Log successful conversion
-    await logAuthEvent(supabaseUserId, "google_oauth_success", ipAddress, userAgent, true);
+    await logAuthEvent(
+      supabaseUserId,
+      "google_oauth_success",
+      ipAddress,
+      userAgent,
+      true
+    );
 
-    console.log(`✅ Google OAuth conversion successful for user: ${supabaseUserId}`);
-    
+    console.log(
+      `✅ Google OAuth conversion successful for user: ${supabaseUserId}`
+    );
+
     return res.json({
       success: true,
       data: responseData,
-      message: "Google OAuth conversion successful"
+      message: "Google OAuth conversion successful",
     });
-
   } catch (error) {
     console.error("Google OAuth conversion error:", error);
-    
+
     return res.status(500).json({
       success: false,
       error: "Google OAuth conversion failed",
       code: "OAUTH_CONVERSION_FAILED",
-      details: IS_DEVELOPMENT ? error.message : undefined
+      details: IS_DEVELOPMENT ? error.message : undefined,
     });
   }
 });
@@ -1360,14 +1566,14 @@ app.post("/api/auth/logout", validateToken, async (req, res) => {
 // Updated Supabase logout endpoint
 app.post("/api/auth/supabase-logout", async (req, res) => {
   try {
-    console.log('🔄 Supabase logout request received');
-    
+    console.log("🔄 Supabase logout request received");
+
     // Get the Supabase token from Authorization header
     let token;
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.substring(7);
-      console.log('📋 Token from header:', token?.substring(0, 20) + '...');
+      console.log("📋 Token from header:", token?.substring(0, 20) + "...");
     }
 
     // Clear cookies regardless of token presence
@@ -1391,52 +1597,59 @@ app.post("/api/auth/supabase-logout", async (req, res) => {
       try {
         const { error } = await supabase.auth.signOut();
         if (error) {
-          console.log('❌ Supabase sign out error:', error);
+          console.log("❌ Supabase sign out error:", error);
         } else {
-          console.log('✅ Supabase sign out successful');
+          console.log("✅ Supabase sign out successful");
         }
       } catch (supabaseError) {
-        console.log('❌ Supabase sign out failed:', supabaseError);
+        console.log("❌ Supabase sign out failed:", supabaseError);
       }
     }
 
     // Extract user ID from the token if possible (for logging)
-    let userId = 'unknown';
+    let userId = "unknown";
     try {
-      if (token && token.includes('.')) {
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-        userId = payload.sub || payload.user_id || 'unknown';
-        console.log('👤 Extracted user ID from token:', userId);
+      if (token && token.includes(".")) {
+        const payload = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64").toString()
+        );
+        userId = payload.sub || payload.user_id || "unknown";
+        console.log("👤 Extracted user ID from token:", userId);
       }
     } catch (parseError) {
-      console.log('⚠️ Could not parse token for user ID:', parseError);
+      console.log("⚠️ Could not parse token for user ID:", parseError);
     }
 
     // Invalidate sessions in database
-    if (userId !== 'unknown') {
+    if (userId !== "unknown") {
       try {
         await supabase
           .from("user_sessions")
           .update({ is_active: false })
           .eq("user_id", userId);
-        console.log('✅ Local sessions invalidated for user:', userId);
+        console.log("✅ Local sessions invalidated for user:", userId);
       } catch (dbError) {
-        console.log('❌ Local session cleanup failed:', dbError);
+        console.log("❌ Local session cleanup failed:", dbError);
       }
     }
 
     // Log logout event
     try {
-      await logAuthEvent(userId, "supabase_logout", req.ip, req.get("User-Agent"), true);
+      await logAuthEvent(
+        userId,
+        "supabase_logout",
+        req.ip,
+        req.get("User-Agent"),
+        true
+      );
     } catch (logError) {
-      console.log('❌ Logging failed:', logError);
+      console.log("❌ Logging failed:", logError);
     }
 
     res.json({
       success: true,
       message: "Logged out successfully",
     });
-
   } catch (error) {
     console.error("Supabase logout unexpected error:", error);
     res.status(500).json({
@@ -1947,7 +2160,7 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
 app.get("/api/wishlist/test", validateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // Test basic wishlist table access
     const { data: wishlistTest, error: wishlistError } = await supabase
       .from("user_wishlist")
@@ -1974,30 +2187,27 @@ app.get("/api/wishlist/test", validateToken, async (req, res) => {
         wishlist: {
           accessible: !wishlistError,
           error: wishlistError?.message,
-          count: wishlistTest?.length || 0
+          count: wishlistTest?.length || 0,
         },
         cars: {
           accessible: !carsError,
           error: carsError?.message,
-          count: carsTest?.length || 0
+          count: carsTest?.length || 0,
         },
         priceAlerts: {
           accessible: !alertsError,
           error: alertsError?.message,
-          count: alertsTest?.length || 0
-        }
-      }
+          count: alertsTest?.length || 0,
+        },
+      },
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
-
-
 
 // Add this debug endpoint to check authentication
 app.get("/api/auth/debug", async (req, res) => {
@@ -2009,22 +2219,22 @@ app.get("/api/auth/debug", async (req, res) => {
       authHeader: {
         present: !!authHeader,
         format: authHeader ? authHeader.substring(0, 20) + "..." : null,
-        startsWithBearer: authHeader ? authHeader.startsWith('Bearer ') : false
+        startsWithBearer: authHeader ? authHeader.startsWith("Bearer ") : false,
       },
       cookies: {
         refreshToken: !!cookies.refreshToken,
         userRefreshToken: !!cookies.userRefreshToken,
         hasRefreshToken: !!cookies.hasRefreshToken,
-        allCookies: Object.keys(cookies)
+        allCookies: Object.keys(cookies),
       },
       environment: {
         isProduction: IS_PRODUCTION,
-        nodeEnv: process.env.NODE_ENV
-      }
+        nodeEnv: process.env.NODE_ENV,
+      },
     };
 
     // Try to decode token without verification to see what's inside
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
       try {
         // Decode without verification to see the payload
@@ -2035,7 +2245,7 @@ app.get("/api/auth/debug", async (req, res) => {
           iat: decoded?.iat,
           userId: decoded?.userId || decoded?.sub,
           email: decoded?.email,
-          expired: decoded?.exp ? Date.now() / 1000 > decoded.exp : 'unknown'
+          expired: decoded?.exp ? Date.now() / 1000 > decoded.exp : "unknown",
         };
 
         // Now try to verify
@@ -2053,20 +2263,15 @@ app.get("/api/auth/debug", async (req, res) => {
 
     res.json({
       success: true,
-      debugInfo
+      debugInfo,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
-
-
-
-
 
 // Add car to wishlist
 app.post("/api/wishlist", validateToken, async (req, res) => {
@@ -2078,7 +2283,7 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Car ID is required",
-        code: "MISSING_CAR_ID"
+        code: "MISSING_CAR_ID",
       });
     }
 
@@ -2095,7 +2300,7 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
       return res.status(404).json({
         success: false,
         error: "Car not found",
-        code: "CAR_NOT_FOUND"
+        code: "CAR_NOT_FOUND",
       });
     }
 
@@ -2111,7 +2316,7 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
       return res.status(409).json({
         success: false,
         error: "Car already in wishlist",
-        code: "ALREADY_IN_WISHLIST"
+        code: "ALREADY_IN_WISHLIST",
       });
     }
 
@@ -2121,7 +2326,7 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
       .insert({
         user_id: userId,
         car_id: carId,
-        added_at: new Date().toISOString()
+        added_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -2131,7 +2336,7 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
       return res.status(500).json({
         success: false,
         error: "Failed to add to wishlist",
-        code: "WISHLIST_INSERT_FAILED"
+        code: "WISHLIST_INSERT_FAILED",
       });
     }
 
@@ -2140,15 +2345,14 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
     res.status(201).json({
       success: true,
       data: newItem,
-      message: "Car added to wishlist successfully"
+      message: "Car added to wishlist successfully",
     });
-
   } catch (error) {
     console.error("Add to wishlist error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to add to wishlist",
-      code: "WISHLIST_ADD_ERROR"
+      code: "WISHLIST_ADD_ERROR",
     });
   }
 });
@@ -2174,7 +2378,7 @@ app.delete("/api/wishlist/:carId", validateToken, async (req, res) => {
       return res.status(500).json({
         success: false,
         error: "Failed to remove from wishlist",
-        code: "WISHLIST_DELETE_FAILED"
+        code: "WISHLIST_DELETE_FAILED",
       });
     }
 
@@ -2182,7 +2386,7 @@ app.delete("/api/wishlist/:carId", validateToken, async (req, res) => {
       return res.status(404).json({
         success: false,
         error: "Car not found in wishlist",
-        code: "NOT_IN_WISHLIST"
+        code: "NOT_IN_WISHLIST",
       });
     }
 
@@ -2190,15 +2394,14 @@ app.delete("/api/wishlist/:carId", validateToken, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Car removed from wishlist successfully"
+      message: "Car removed from wishlist successfully",
     });
-
   } catch (error) {
     console.error("Remove from wishlist error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to remove from wishlist",
-      code: "WISHLIST_REMOVE_ERROR"
+      code: "WISHLIST_REMOVE_ERROR",
     });
   }
 });
@@ -2213,11 +2416,13 @@ app.delete("/api/wishlist", validateToken, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Car IDs array is required",
-        code: "MISSING_CAR_IDS"
+        code: "MISSING_CAR_IDS",
       });
     }
 
-    console.log(`🗑️ Removing ${carIds.length} cars from wishlist for user: ${userId}`);
+    console.log(
+      `🗑️ Removing ${carIds.length} cars from wishlist for user: ${userId}`
+    );
 
     const { data: deletedItems, error } = await supabase
       .from("user_wishlist")
@@ -2231,119 +2436,129 @@ app.delete("/api/wishlist", validateToken, async (req, res) => {
       return res.status(500).json({
         success: false,
         error: "Failed to remove cars from wishlist",
-        code: "BULK_DELETE_FAILED"
+        code: "BULK_DELETE_FAILED",
       });
     }
 
-    console.log(`✅ ${deletedItems.length} cars removed from wishlist successfully`);
+    console.log(
+      `✅ ${deletedItems.length} cars removed from wishlist successfully`
+    );
 
     res.json({
       success: true,
       data: {
         removedCount: deletedItems.length,
-        removedItems: deletedItems
+        removedItems: deletedItems,
       },
-      message: `${deletedItems.length} cars removed from wishlist successfully`
+      message: `${deletedItems.length} cars removed from wishlist successfully`,
     });
-
   } catch (error) {
     console.error("Bulk remove from wishlist error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to remove cars from wishlist",
-      code: "BULK_REMOVE_ERROR"
+      code: "BULK_REMOVE_ERROR",
     });
   }
 });
 
 // Toggle price alert for a car in wishlist
-app.post("/api/wishlist/:carId/price-alert", validateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { carId } = req.params;
-    const { enabled } = req.body;
+app.post(
+  "/api/wishlist/:carId/price-alert",
+  validateToken,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { carId } = req.params;
+      const { enabled } = req.body;
 
-    console.log(`🔔 ${enabled ? 'Enabling' : 'Disabling'} price alert for car ${carId} for user: ${userId}`);
+      console.log(
+        `🔔 ${
+          enabled ? "Enabling" : "Disabling"
+        } price alert for car ${carId} for user: ${userId}`
+      );
 
-    // Check if car is in wishlist
-    const { data: wishlistItem, error: wishlistError } = await supabase
-      .from("user_wishlist")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("car_id", carId)
-      .single();
-
-    if (wishlistError || !wishlistItem) {
-      return res.status(404).json({
-        success: false,
-        error: "Car not found in wishlist",
-        code: "NOT_IN_WISHLIST"
-      });
-    }
-
-    if (enabled) {
-      // Create or activate price alert
-      const { data: existingAlert, error: checkError } = await supabase
-        .from("price_alerts")
+      // Check if car is in wishlist
+      const { data: wishlistItem, error: wishlistError } = await supabase
+        .from("user_wishlist")
         .select("id")
         .eq("user_id", userId)
         .eq("car_id", carId)
         .single();
 
-      if (existingAlert) {
-        // Update existing alert
-        const { error: updateError } = await supabase
-          .from("price_alerts")
-          .update({ is_active: true })
-          .eq("id", existingAlert.id);
+      if (wishlistError || !wishlistItem) {
+        return res.status(404).json({
+          success: false,
+          error: "Car not found in wishlist",
+          code: "NOT_IN_WISHLIST",
+        });
+      }
 
-        if (updateError) {
-          throw updateError;
+      if (enabled) {
+        // Create or activate price alert
+        const { data: existingAlert, error: checkError } = await supabase
+          .from("price_alerts")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("car_id", carId)
+          .single();
+
+        if (existingAlert) {
+          // Update existing alert
+          const { error: updateError } = await supabase
+            .from("price_alerts")
+            .update({ is_active: true })
+            .eq("id", existingAlert.id);
+
+          if (updateError) {
+            throw updateError;
+          }
+        } else {
+          // Create new alert
+          const { error: insertError } = await supabase
+            .from("price_alerts")
+            .insert({
+              user_id: userId,
+              car_id: carId,
+              is_active: true,
+              created_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            throw insertError;
+          }
         }
       } else {
-        // Create new alert
-        const { error: insertError } = await supabase
+        // Disable price alert
+        const { error: disableError } = await supabase
           .from("price_alerts")
-          .insert({
-            user_id: userId,
-            car_id: carId,
-            is_active: true,
-            created_at: new Date().toISOString()
-          });
+          .update({ is_active: false })
+          .eq("user_id", userId)
+          .eq("car_id", carId);
 
-        if (insertError) {
-          throw insertError;
+        if (disableError) {
+          throw disableError;
         }
       }
-    } else {
-      // Disable price alert
-      const { error: disableError } = await supabase
-        .from("price_alerts")
-        .update({ is_active: false })
-        .eq("user_id", userId)
-        .eq("car_id", carId);
 
-      if (disableError) {
-        throw disableError;
-      }
+      console.log(
+        `✅ Price alert ${enabled ? "enabled" : "disabled"} successfully`
+      );
+
+      res.json({
+        success: true,
+        message: `Price alert ${enabled ? "enabled" : "disabled"} successfully`,
+      });
+    } catch (error) {
+      console.error("Price alert toggle error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to toggle price alert",
+        code: "PRICE_ALERT_ERROR",
+      });
     }
-
-    console.log(`✅ Price alert ${enabled ? 'enabled' : 'disabled'} successfully`);
-
-    res.json({
-      success: true,
-      message: `Price alert ${enabled ? 'enabled' : 'disabled'} successfully`
-    });
-
-  } catch (error) {
-    console.error("Price alert toggle error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to toggle price alert",
-      code: "PRICE_ALERT_ERROR"
-    });
   }
-});
+);
 
 // Check if car is in user's wishlist
 app.get("/api/wishlist/check/:carId", validateToken, async (req, res) => {
@@ -2366,16 +2581,15 @@ app.get("/api/wishlist/check/:carId", validateToken, async (req, res) => {
       success: true,
       data: {
         inWishlist: !!wishlistItem,
-        addedAt: wishlistItem?.added_at || null
-      }
+        addedAt: wishlistItem?.added_at || null,
+      },
     });
-
   } catch (error) {
     console.error("Wishlist check error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to check wishlist status",
-      code: "WISHLIST_CHECK_ERROR"
+      code: "WISHLIST_CHECK_ERROR",
     });
   }
 });
@@ -2410,16 +2624,15 @@ app.get("/api/wishlist/stats", validateToken, async (req, res) => {
       success: true,
       data: {
         totalCars: totalCount || 0,
-        priceAlertsActive: alertsCount || 0
-      }
+        priceAlertsActive: alertsCount || 0,
+      },
     });
-
   } catch (error) {
     console.error("Wishlist stats error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to get wishlist statistics",
-      code: "WISHLIST_STATS_ERROR"
+      code: "WISHLIST_STATS_ERROR",
     });
   }
 });
@@ -2447,7 +2660,9 @@ app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
       });
     }
 
-    console.log(`Checking wishlist for user ${userId} with ${carIds.length} car IDs`);
+    console.log(
+      `Checking wishlist for user ${userId} with ${carIds.length} car IDs`
+    );
 
     // Query Supabase for wishlist items
     const { data: wishlistItems, error } = await supabase
@@ -2496,244 +2711,267 @@ app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
   }
 });
 
-
 // ===== ADMIN API SETTINGS ENDPOINTS =====
 
 // GET API settings
-app.get('/api/admin/api-settings', validateToken, requireAdmin, async (req, res) => {
-  try {
-    // Try to get settings from Supabase first
-    const { data: settings, error } = await supabase
-      .from('api_settings')
-      .select('*');
+app.get(
+  "/api/admin/api-settings",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      // Try to get settings from Supabase first
+      const { data: settings, error } = await supabase
+        .from("api_settings")
+        .select("*");
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Format the response
-    const response = {
-      success: true,
-      data: settings,
-      syncStats: {}
-    };
-
-    // Get sync statistics if carwale_api exists
-    const carwaleConfig = settings.find(s => s.setting_key === 'carwale_api');
-    if (carwaleConfig) {
-      // Get last sync time from cars table
-      const { data: carsData } = await supabase
-        .from('cars')
-        .select('last_synced')
-        .order('last_synced', { ascending: false })
-        .limit(1);
-
-      // Get total cars count
-      const { count } = await supabase
-        .from('cars')
-        .select('*', { count: 'exact', head: true });
-
-      response.syncStats = {
-        lastSync: carsData?.[0]?.last_synced || null,
-        totalCars: count || 0
+      // Format the response
+      const response = {
+        success: true,
+        data: settings,
+        syncStats: {},
       };
-    }
 
-    res.json(response);
-  } catch (error) {
-    console.error('Error fetching API settings:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load API settings',
-      details: error.message
-    });
+      // Get sync statistics if carwale_api exists
+      const carwaleConfig = settings.find(
+        (s) => s.setting_key === "carwale_api"
+      );
+      if (carwaleConfig) {
+        // Get last sync time from cars table
+        const { data: carsData } = await supabase
+          .from("cars")
+          .select("last_synced")
+          .order("last_synced", { ascending: false })
+          .limit(1);
+
+        // Get total cars count
+        const { count } = await supabase
+          .from("cars")
+          .select("*", { count: "exact", head: true });
+
+        response.syncStats = {
+          lastSync: carsData?.[0]?.last_synced || null,
+          totalCars: count || 0,
+        };
+      }
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching API settings:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load API settings",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
 // POST (update) API settings
-app.post('/api/admin/api-settings', validateToken, requireAdmin, async (req, res) => {
-  try {
-    const { carwaleConfig, brandAPIs, generalSettings, syncStats } = req.body;
+app.post(
+  "/api/admin/api-settings",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { carwaleConfig, brandAPIs, generalSettings, syncStats } = req.body;
 
-    // Prepare operations array
-    const operations = [];
+      // Prepare operations array
+      const operations = [];
 
-    // Upsert CarWale API settings
-    if (carwaleConfig) {
-      operations.push(
-        supabase
-          .from('api_settings')
-          .upsert({
-            setting_key: 'carwale_api',
+      // Upsert CarWale API settings
+      if (carwaleConfig) {
+        operations.push(
+          supabase.from("api_settings").upsert({
+            setting_key: "carwale_api",
             setting_value: carwaleConfig,
-            enabled: syncStats?.enabled || false
+            enabled: syncStats?.enabled || false,
           })
-      );
-    }
+        );
+      }
 
-    // Upsert Brand APIs
-    if (brandAPIs) {
-      operations.push(
-        supabase
-          .from('api_settings')
-          .upsert({
-            setting_key: 'brand_apis',
+      // Upsert Brand APIs
+      if (brandAPIs) {
+        operations.push(
+          supabase.from("api_settings").upsert({
+            setting_key: "brand_apis",
             setting_value: { apis: brandAPIs },
-            enabled: brandAPIs.some(api => api.enabled)
+            enabled: brandAPIs.some((api) => api.enabled),
           })
-      );
-    }
+        );
+      }
 
-    // Upsert General Settings
-    if (generalSettings) {
-      operations.push(
-        supabase
-          .from('api_settings')
-          .upsert({
-            setting_key: 'general_settings',
+      // Upsert General Settings
+      if (generalSettings) {
+        operations.push(
+          supabase.from("api_settings").upsert({
+            setting_key: "general_settings",
             setting_value: generalSettings,
-            enabled: true
+            enabled: true,
           })
-      );
+        );
+      }
+
+      // Execute all operations
+      const results = await Promise.all(operations);
+
+      // Check for errors
+      const hasError = results.some((result) => result.error);
+      if (hasError) {
+        throw new Error("One or more operations failed");
+      }
+
+      res.json({
+        success: true,
+        message: "API settings updated successfully",
+      });
+    } catch (error) {
+      console.error("Error saving API settings:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to save API settings",
+        details: error.message,
+      });
     }
-
-    // Execute all operations
-    const results = await Promise.all(operations);
-
-    // Check for errors
-    const hasError = results.some(result => result.error);
-    if (hasError) {
-      throw new Error('One or more operations failed');
-    }
-
-    res.json({
-      success: true,
-      message: 'API settings updated successfully'
-    });
-  } catch (error) {
-    console.error('Error saving API settings:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to save API settings',
-      details: error.message
-    });
   }
-});
+);
 
 // Test API-Ninjas connection
-app.post('/api/admin/test-api-ninjas', validateToken, requireAdmin, async (req, res) => {
-  try {
-    // This would be where you'd test connection to API-Ninjas
-    // For now we'll just simulate a successful test
-    res.json({
-      success: true,
-      message: 'API-Ninjas connection test successful',
-      data: {
-        connected: true,
-        latency: 142,
-        status: 'active'
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'API test failed',
-      details: error.message
-    });
+app.post(
+  "/api/admin/test-api-ninjas",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      // This would be where you'd test connection to API-Ninjas
+      // For now we'll just simulate a successful test
+      res.json({
+        success: true,
+        message: "API-Ninjas connection test successful",
+        data: {
+          connected: true,
+          latency: 142,
+          status: "active",
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "API test failed",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
 // Sync API-Ninjas data
-app.post('/api/admin/sync-api-ninjas', validateToken, requireAdmin, async (req, res) => {
-  try {
-    // This would sync data from API-Ninjas
-    // Simulate a sync operation
-    const newCars = Math.floor(Math.random() * 5) + 1;
-    const updatedCars = Math.floor(Math.random() * 3);
-    
-    res.json({
-      success: true,
-      message: 'Sync completed successfully',
-      data: {
-        newCars,
-        updatedCars,
-        totalCars: 42 + newCars // Example total
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Sync failed',
-      details: error.message
-    });
+app.post(
+  "/api/admin/sync-api-ninjas",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      // This would sync data from API-Ninjas
+      // Simulate a sync operation
+      const newCars = Math.floor(Math.random() * 5) + 1;
+      const updatedCars = Math.floor(Math.random() * 3);
+
+      res.json({
+        success: true,
+        message: "Sync completed successfully",
+        data: {
+          newCars,
+          updatedCars,
+          totalCars: 42 + newCars, // Example total
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Sync failed",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
 // Test CarWale connection
-app.post('/api/admin/test-carwale', validateToken, requireAdmin, async (req, res) => {
-  try {
-    const { apiKey, baseUrl } = req.body;
-    
-    if (!apiKey) {
-      return res.status(400).json({
+app.post(
+  "/api/admin/test-carwale",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { apiKey, baseUrl } = req.body;
+
+      if (!apiKey) {
+        return res.status(400).json({
+          success: false,
+          error: "API key is required",
+        });
+      }
+
+      // Simulate testing CarWale API
+      res.json({
+        success: true,
+        message: "CarWale API connection successful",
+        data: {
+          connected: true,
+          endpoints: ["/cars", "/brands", "/models"].map(
+            (endpoint) => `${baseUrl}${endpoint}`
+          ),
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
         success: false,
-        error: 'API key is required'
+        error: "CarWale API test failed",
+        details: error.message,
       });
     }
-
-    // Simulate testing CarWale API
-    res.json({
-      success: true,
-      message: 'CarWale API connection successful',
-      data: {
-        connected: true,
-        endpoints: [
-          '/cars',
-          '/brands',
-          '/models'
-        ].map(endpoint => `${baseUrl}${endpoint}`)
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'CarWale API test failed',
-      details: error.message
-    });
   }
-});
+);
 
 // Sync CarWale data
-app.post('/api/admin/sync-carwale', validateToken, requireAdmin, async (req, res) => {
-  try {
-    const { apiKey, baseUrl, endpoints } = req.body;
-    
-    if (!apiKey || !baseUrl) {
-      return res.status(400).json({
+app.post(
+  "/api/admin/sync-carwale",
+  validateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { apiKey, baseUrl, endpoints } = req.body;
+
+      if (!apiKey || !baseUrl) {
+        return res.status(400).json({
+          success: false,
+          error: "API configuration is required",
+        });
+      }
+
+      // Simulate sync operation
+      const newCars = Math.floor(Math.random() * 10) + 1;
+      const updatedCars = Math.floor(Math.random() * 5);
+
+      res.json({
+        success: true,
+        message: "CarWale data sync completed",
+        data: {
+          newCars,
+          updatedCars,
+          totalCars: 100 + newCars, // Example total
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
         success: false,
-        error: 'API configuration is required'
+        error: "CarWale sync failed",
+        details: error.message,
       });
     }
-
-    // Simulate sync operation
-    const newCars = Math.floor(Math.random() * 10) + 1;
-    const updatedCars = Math.floor(Math.random() * 5);
-    
-    res.json({
-      success: true,
-      message: 'CarWale data sync completed',
-      data: {
-        newCars,
-        updatedCars,
-        totalCars: 100 + newCars // Example total
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'CarWale sync failed',
-      details: error.message
-    });
   }
-});
+);
 // ===== TOKEN CLEANUP =====
 
 const cleanupExpiredTokens = async () => {
