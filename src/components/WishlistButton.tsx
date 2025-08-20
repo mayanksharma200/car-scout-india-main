@@ -15,6 +15,10 @@ interface WishlistButtonProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   showText?: boolean;
+  initialStatus?: {
+    inWishlist: boolean;
+    addedAt: string | null;
+  } | null;
 }
 
 export const WishlistButton: React.FC<WishlistButtonProps> = ({
@@ -23,12 +27,16 @@ export const WishlistButton: React.FC<WishlistButtonProps> = ({
   size = "md",
   className,
   showText = false,
+  initialStatus = null,
 }) => {
   const { isAuthenticated } = useUserAuth();
   const { isInWishlist, toggleWishlist, actionLoading } = useWishlist();
   const navigate = useNavigate();
 
-  const inWishlist = isInWishlist(carId);
+  // Use initialStatus if provided, otherwise fall back to useWishlist hook
+  const inWishlist = initialStatus
+    ? initialStatus.inWishlist
+    : isInWishlist(carId);
   const loading =
     actionLoading === `add-${carId}` || actionLoading === `remove-${carId}`;
 
