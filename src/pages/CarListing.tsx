@@ -12,7 +12,7 @@ import {
   Car as CarIcon,
   Zap,
   Upload,
-  Heart, // Add Heart icon
+  Heart,
 } from "lucide-react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
@@ -34,7 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { useUserAuth } from "@/contexts/UserAuthContext"; // Add user auth context
+import { useUserAuth } from "@/contexts/UserAuthContext";
 
 const CarListing = () => {
   const location = useLocation();
@@ -49,14 +49,15 @@ const CarListing = () => {
   const [sortBy, setSortBy] = useState("popularity");
   const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>(
     {}
-  ); // Track wishlist status for each car
+  );
   const [wishlistLoading, setWishlistLoading] = useState<
     Record<string, boolean>
-  >({}); // Track loading state for each car
+  >({});
+  const [wishlistBatchLoading, setWishlistBatchLoading] = useState(false);
 
   const api = useAuthenticatedApi();
   const { toast } = useToast();
-  const { isAuthenticated } = useUserAuth(); // Get authentication status
+  const { isAuthenticated } = useUserAuth();
 
   const [filters, setFilters] = useState({
     priceRange: [0, 5000000],
@@ -77,7 +78,6 @@ const CarListing = () => {
       searchParams.toString()
     );
 
-    // Check for brand parameter from URL
     const brandParam = searchParams.get("brand");
     const modelParam = searchParams.get("model");
     const fuelParam = searchParams.get("fuelType");
@@ -89,14 +89,12 @@ const CarListing = () => {
         fuelParam,
       });
 
-      // Set filters from URL parameters
       setFilters((prev) => ({
         ...prev,
         brands: brandParam ? [brandParam] : [],
         fuelTypes: fuelParam ? [fuelParam] : [],
       }));
 
-      // Set search state for UI
       setHasSearchResults(true);
       setSearchInfo({
         query: brandParam ? `Brand: ${brandParam}` : "Filtered Results",
@@ -109,115 +107,129 @@ const CarListing = () => {
       });
     }
 
-    // Check for search results from navigation state
     if (location.state?.searchResults) {
       console.log(
         "Using search results from navigation:",
         location.state.searchResults
       );
       handleSearchResults(location.state);
-      return; // Don't load from DB if we have search results
+      return;
     }
 
-    // Load cars from database
     loadCarsFromDB();
-  }, [searchParams.toString()]); // Watch for URL parameter changes
+  }, [searchParams.toString()]);
 
-  // Check wishlist status for all cars when authenticated
+  // UPDATED: Batch check wishlist status when authenticated and cars change
   useEffect(() => {
     if (isAuthenticated && cars.length > 0) {
-      checkWishlistStatusForAllCars();
+      checkWishlistStatusBatch();
     }
   }, [isAuthenticated, cars]);
 
-  // Add these functions after your existing functions
-  const checkWishlistStatusForAllCars = async () => {
-    try {
-      // Check each car individually since checkMultiple doesn't exist
-      const statusMap: Record<string, boolean> = {};
+  // NEW: Batch wishlist status check function
+  const checkWishlistStatusBatch = async () => {
+    if (!isAuthenticated || cars.length === 0) return;
 
-      for (const car of cars) {
-        try {
-          const response = await api.wishlist.check(car.id);
-          if (response.success) {
-            statusMap[car.id] = response.data.inWishlist;
-          }
-        } catch (error) {
-          console.error(
-            `Error checking wishlist status for car ${car.id}:`,
-            error
-          );
-          statusMap[car.id] = false;
+    try {
+      setWishlistBatchLoading(true);
+      console.log(`Batch checking wishlist status for ${cars.length} cars...`);
+
+      // Extract car IDs
+      const carIds = cars.map((car) => car.id).filter(Boolean);
+
+      if (carIds.length === 0) {
+        console.log("No valid car IDs found");
+        return;
+      }
+
+      // Make batch API call
+      const response = await api.wishlist.checkMultiple(carIds);
+
+      if (response.success && response.data) {
+        // Transform response data to boolean values
+        const statusMap: Record<string, boolean> = {};
+        Object.keys(response.data).forEach((carId) => {
+          statusMap[carId] = response.data[carId].inWishlist;
+        });
+
+        // Update wishlist status from batch response
+        setWishlistStatus(statusMap);
+        console.log(`Batch wishlist check complete for ${carIds.length} cars`);
+      } else {
+        console.error("Batch wishlist check failed:", response.error);
+        // Fallback: set all to false
+        const fallbackStatus: Record<string, boolean> = {};
+        carIds.forEach((id) => {
+          fallbackStatus[id] = false;
+        });
+        setWishlistStatus(fallbackStatus);
+      }
+    } catch (error) {
+      console.error("Error in batch wishlist check:", error);
+      // Fallback: set all to false
+      const fallbackStatus: Record<string, boolean> = {};
+      cars.forEach((car) => {
+        if (car.id) fallbackStatus[car.id] = false;
+      });
+      setWishlistStatus(fallbackStatus);
+    } finally {
+      setWishlistBatchLoading(false);
+    }
+  };
+
+  // UPDATED: Individual wishlist toggle function
+  const toggleWishlist = async (carId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save cars to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setWishlistLoading((prev) => ({ ...prev, [carId]: true }));
+
+      const isCurrentlyWishlisted = wishlistStatus[carId] || false;
+
+      if (isCurrentlyWishlisted) {
+        const response = await api.wishlist.remove(carId);
+        if (response.success) {
+          setWishlistStatus((prev) => ({ ...prev, [carId]: false }));
+          toast({
+            title: "Removed from wishlist",
+            description: "Car has been removed from your wishlist.",
+          });
+        } else {
+          throw new Error(response.error || "Failed to remove from wishlist");
+        }
+      } else {
+        const response = await api.wishlist.add(carId);
+        if (response.success) {
+          setWishlistStatus((prev) => ({ ...prev, [carId]: true }));
+          toast({
+            title: "Added to wishlist",
+            description: "Car has been saved to your wishlist.",
+          });
+        } else {
+          throw new Error(response.error || "Failed to add to wishlist");
         }
       }
-
-      setWishlistStatus(statusMap);
-    } catch (error) {
-      console.error("Error checking wishlist status for cars:", error);
+    } catch (error: any) {
+      console.error("Error toggling wishlist:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to update wishlist. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setWishlistLoading((prev) => ({ ...prev, [carId]: false }));
     }
   };
-
-  const checkWishlistStatus = async (carId: string) => {
-    if (!isAuthenticated) return false;
-
-    try {
-      const response = await api.wishlist.check(carId);
-      if (response.success) {
-        return response.data.inWishlist;
-      }
-    } catch (error) {
-      console.error("Error checking wishlist status:", error);
-    }
-    return false;
-  };
-
-const toggleWishlist = async (carId: string) => {
-  if (!isAuthenticated) {
-    toast({
-      title: "Sign in required",
-      description: "Please sign in to save cars to your wishlist.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  try {
-    setWishlistLoading((prev) => ({ ...prev, [carId]: true }));
-
-    if (wishlistStatus[carId]) {
-      const response = await api.wishlist.remove(carId);
-      if (response.success) {
-        setWishlistStatus((prev) => ({ ...prev, [carId]: false }));
-        toast({
-          title: "Removed from wishlist",
-          description: "Car has been removed from your wishlist.",
-        });
-      }
-    } else {
-      const response = await api.wishlist.add(carId);
-      if (response.success) {
-        setWishlistStatus((prev) => ({ ...prev, [carId]: true }));
-        toast({
-          title: "Added to wishlist",
-          description: "Car has been saved to your wishlist.",
-        });
-      }
-    }
-  } catch (error: any) {
-    console.error("Error toggling wishlist:", error);
-    toast({
-      title: "Error",
-      description:
-        error.message || "Failed to update wishlist. Please try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setWishlistLoading((prev) => ({ ...prev, [carId]: false }));
-  }
-};
 
   const handleSearchResults = (navigationState: any) => {
-    // Transform search results to match interface
     const transformedCars = navigationState.searchResults.map((car: any) => {
       let carImage = "/placeholder.svg";
       if (
@@ -257,7 +269,6 @@ const toggleWishlist = async (carId: string) => {
     });
     setLoading(false);
 
-    // Clear navigation state
     window.history.replaceState({}, document.title);
   };
 
@@ -265,11 +276,9 @@ const toggleWishlist = async (carId: string) => {
     try {
       console.log("Loading cars from database...");
       setLoading(true);
-      // DON'T clear hasSearchResults here - preserve URL-based search state
 
       let carsData = null;
 
-      // Try API first using the authenticated API client
       try {
         const response = await api.cars.getAll({
           status: "active",
@@ -277,19 +286,18 @@ const toggleWishlist = async (carId: string) => {
         });
 
         if (response.success && response.data) {
-          console.log("✅ Cars loaded from API:", response.data.length, "cars");
+          console.log("Cars loaded from API:", response.data.length, "cars");
           carsData = response.data;
         }
       } catch (apiError) {
         console.warn(
-          "⚠️ API not available, trying Supabase directly:",
+          "API not available, trying Supabase directly:",
           apiError.message
         );
       }
 
-      // If API failed, try Supabase directly
       if (!carsData) {
-        console.log("🔄 Falling back to Supabase direct access...");
+        console.log("Falling back to Supabase direct access...");
         const { data: supabaseData, error: supabaseError } = await supabase
           .from("cars")
           .select("*")
@@ -297,16 +305,15 @@ const toggleWishlist = async (carId: string) => {
           .order("brand", { ascending: true });
 
         if (supabaseError) {
-          console.error("❌ Supabase error:", supabaseError);
+          console.error("Supabase error:", supabaseError);
           throw supabaseError;
         }
 
         carsData = supabaseData;
-        console.log("✅ Cars loaded from Supabase:", carsData?.length, "cars");
+        console.log("Cars loaded from Supabase:", carsData?.length, "cars");
       }
 
       if (carsData && carsData.length > 0) {
-        // Transform cars to match interface
         const transformedCars = carsData.map((car) => {
           let carImage = "/placeholder.svg";
           if (
@@ -339,7 +346,6 @@ const toggleWishlist = async (carId: string) => {
 
         console.log("Transformed cars:", transformedCars.length);
 
-        // Debug: Log brand distribution
         const brandCounts = {};
         transformedCars.forEach((car) => {
           brandCounts[car.brand] = (brandCounts[car.brand] || 0) + 1;
@@ -364,7 +370,6 @@ const toggleWishlist = async (carId: string) => {
     }
   };
 
-  // Function to clear search and show all cars
   const clearSearch = () => {
     console.log("Clearing search, showing all cars");
     setHasSearchResults(false);
@@ -380,7 +385,6 @@ const toggleWishlist = async (carId: string) => {
       seating: [],
       features: [],
     });
-    // Update URL to remove parameters
     window.history.pushState({}, "", "/cars");
   };
 
@@ -425,72 +429,51 @@ const toggleWishlist = async (carId: string) => {
     );
   };
 
-  // Filter and sort cars
   const getFilteredAndSortedCars = () => {
     console.log("Applying filters:", filters);
     console.log("Total cars before filtering:", cars.length);
 
     let filteredCars = cars.filter((car) => {
-      // Search query filter
       const searchMatch =
         searchQuery === "" ||
         car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
         car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
         car.variant.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Price range filter
       const priceMatch =
         car.price >= filters.priceRange[0] &&
         car.price <= filters.priceRange[1];
 
-      // Brand filter
       const brandMatch =
         filters.brands.length === 0 || filters.brands.includes(car.brand);
 
-      // Debug brand filtering
-      if (filters.brands.length > 0) {
-        console.log(
-          `Checking car brand "${car.brand}" against filters:`,
-          filters.brands,
-          "Match:",
-          brandMatch
-        );
-      }
-
-      // Fuel type filter
       const fuelMatch =
         filters.fuelTypes.length === 0 ||
         filters.fuelTypes.includes(car.fuelType);
 
-      // Transmission filter
       const transmissionMatch =
         filters.transmissions.length === 0 ||
         filters.transmissions.includes(car.transmission);
 
-      // Body type filter
       const bodyTypeMatch =
         filters.bodyTypes.length === 0 ||
         filters.bodyTypes.includes(car.bodyType);
 
-      // Color filter
       const colorMatch =
         filters.colors.length === 0 || filters.colors.includes(car.color);
 
-      // Year filter
       const yearMatch =
         car.year >= filters.yearRange[0] && car.year <= filters.yearRange[1];
 
-      // Seating filter
       const seatingMatch =
         filters.seating.length === 0 ||
         filters.seating.includes(car.seating.toString());
 
-      // Features filter
       const featuresMatch =
         filters.features.length === 0 ||
         filters.features.every((feature) => car.features.includes(feature));
 
-      const overallMatch =
+      return (
         searchMatch &&
         priceMatch &&
         brandMatch &&
@@ -500,14 +483,12 @@ const toggleWishlist = async (carId: string) => {
         colorMatch &&
         yearMatch &&
         seatingMatch &&
-        featuresMatch;
-
-      return overallMatch;
+        featuresMatch
+      );
     });
 
     console.log("Cars after filtering:", filteredCars.length);
 
-    // Sort cars based on sort option
     switch (sortBy) {
       case "price-low":
         filteredCars.sort((a, b) => a.price - b.price);
@@ -540,7 +521,6 @@ const toggleWishlist = async (carId: string) => {
 
   const filteredAndSortedCars = getFilteredAndSortedCars();
 
-  // Extract filter options from available cars
   const brands = [...new Set(cars.map((car) => car.brand))].sort();
   const bodyTypes = [
     ...new Set(cars.map((car) => car.bodyType).filter(Boolean)),
@@ -618,7 +598,6 @@ const toggleWishlist = async (carId: string) => {
               </Button>
             </div>
 
-            {/* Display active filters */}
             {searchInfo?.filters && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {searchInfo.filters.selectedBrand && (
@@ -655,7 +634,6 @@ const toggleWishlist = async (carId: string) => {
       <div className="bg-muted/30 py-4 sm:py-6">
         <div className="container mx-auto px-4">
           <div className="space-y-4">
-            {/* Search row */}
             <div className="flex gap-2 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -679,7 +657,6 @@ const toggleWishlist = async (carId: string) => {
               </Select>
             </div>
 
-            {/* Filters and view controls */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button
@@ -743,7 +720,6 @@ const toggleWishlist = async (carId: string) => {
             </div>
           </div>
 
-          {/* Active Filters Display */}
           {getActiveFiltersCount() > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">Active filters:</span>
@@ -1064,6 +1040,12 @@ const toggleWishlist = async (carId: string) => {
                   {hasSearchResults ? "Search Results" : "New Cars"} (
                   {filteredAndSortedCars.length} Results)
                 </h1>
+                {wishlistBatchLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Checking wishlist...
+                  </div>
+                )}
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-48">
@@ -1079,6 +1061,7 @@ const toggleWishlist = async (carId: string) => {
                 </SelectContent>
               </Select>
             </div>
+
             {/* Results */}
             {filteredAndSortedCars.length === 0 ? (
               <div className="text-center py-12">
@@ -1117,17 +1100,6 @@ const toggleWishlist = async (carId: string) => {
                 ))}
               </div>
             )}
-            {/* Load More */}
-            {/* // Update the CarCard rendering to include wishlist props */}
-            {/* {filteredAndSortedCars.map((car) => (
-              <CarCard
-                key={car.id}
-                car={car}
-                isWishlisted={wishlistStatus[car.id] || false}
-                onToggleWishlist={() => toggleWishlist(car.id)}
-                wishlistLoading={wishlistLoading[car.id] || false}
-              />
-            ))} */}
           </div>
         </div>
       </div>

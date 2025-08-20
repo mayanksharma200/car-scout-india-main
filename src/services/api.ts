@@ -238,6 +238,7 @@ export interface ApiClient {
     remove: (carId: string) => Promise<any>;
     removeMultiple: (carIds: string[]) => Promise<any>;
     togglePriceAlert: (carId: string, enabled: boolean) => Promise<any>;
+    checkMultiple: (carIds: string[]) => Promise<any>; // ADD THIS LINE
     check: (carId: string) => Promise<any>;
     getStats: () => Promise<any>;
   };
@@ -337,6 +338,37 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
         });
         return response.json();
       },
+
+            // NEW: Batch check multiple cars
+checkMultiple: async (carIds) => {
+  try {
+    console.log(`Checking wishlist status for ${carIds.length} cars...`);
+    
+    const response = await makeAuthenticatedRequest('/wishlist/check-multiple', { // CHANGE makeRequest to makeAuthenticatedRequest
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ carIds }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to check wishlist status');
+    }
+
+    console.log(`Wishlist check complete for ${carIds.length} cars`);
+    return result;
+  } catch (error) {
+    console.error('Error checking multiple wishlist items:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to check wishlist status'
+    };
+  }
+},
+
       check: async (carId: string) => {
         const response = await makeAuthenticatedRequest(`/wishlist/check/${carId}`);
         return response.json();
