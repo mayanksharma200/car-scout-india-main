@@ -127,6 +127,7 @@ const CarListing = () => {
   }, [isAuthenticated, cars]);
 
   // NEW: Batch wishlist status check function
+  // NEW: Batch wishlist status check function with chunking
   const checkWishlistStatusBatch = async () => {
     if (!isAuthenticated || cars.length === 0) return;
 
@@ -142,28 +143,48 @@ const CarListing = () => {
         return;
       }
 
-      // Make batch API call
-      const response = await api.wishlist.checkMultiple(carIds);
-
-      if (response.success && response.data) {
-        // Transform response data to boolean values
-        const statusMap: Record<string, boolean> = {};
-        Object.keys(response.data).forEach((carId) => {
-          statusMap[carId] = response.data[carId].inWishlist;
-        });
-
-        // Update wishlist status from batch response
-        setWishlistStatus(statusMap);
-        console.log(`Batch wishlist check complete for ${carIds.length} cars`);
-      } else {
-        console.error("Batch wishlist check failed:", response.error);
-        // Fallback: set all to false
-        const fallbackStatus: Record<string, boolean> = {};
-        carIds.forEach((id) => {
-          fallbackStatus[id] = false;
-        });
-        setWishlistStatus(fallbackStatus);
+      // Chunk car IDs into batches of 100
+      const BATCH_SIZE = 100;
+      const chunks = [];
+      for (let i = 0; i < carIds.length; i += BATCH_SIZE) {
+        chunks.push(carIds.slice(i, i + BATCH_SIZE));
       }
+
+      console.log(
+        `Processing ${chunks.length} chunks of up to ${BATCH_SIZE} cars each`
+      );
+
+      // Process all chunks in parallel
+      const chunkPromises = chunks.map(async (chunk, index) => {
+        console.log(
+          `Processing chunk ${index + 1}/${chunks.length} with ${
+            chunk.length
+          } cars`
+        );
+        return api.wishlist.checkMultiple(chunk);
+      });
+
+      const results = await Promise.all(chunkPromises);
+
+      // Combine results from all chunks
+      const combinedStatusMap: Record<string, boolean> = {};
+
+      results.forEach((response, index) => {
+        if (response.success && response.data) {
+          Object.keys(response.data).forEach((carId) => {
+            combinedStatusMap[carId] = response.data[carId].inWishlist;
+          });
+        } else {
+          console.error(`Chunk ${index + 1} failed:`, response.error);
+          // Set failed chunk cars to false
+          chunks[index].forEach((carId) => {
+            combinedStatusMap[carId] = false;
+          });
+        }
+      });
+
+      setWishlistStatus(combinedStatusMap);
+      console.log(`Batch wishlist check complete for ${carIds.length} cars`);
     } catch (error) {
       console.error("Error in batch wishlist check:", error);
       // Fallback: set all to false
