@@ -7,7 +7,7 @@ import { getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import WishlistButton from "@/components/WishlistButton";
 import { Share2 } from "lucide-react";
-import { useMultipleWishlistStatus } from "@/services/wishlistService";
+import { useMultipleWishlistStatus } from "@/hooks/useWishlistBatch";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 
 const FeaturedCars = () => {
