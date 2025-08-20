@@ -126,6 +126,10 @@ const HeroSection = () => {
     setBrands([]);
     setPriceRange([5, 50]);
     setMileageRange([10, 30]);
+    setCarType("");
+    setSelectedCity("");
+    setSelectedBudget("");
+    setSelectedBrand("");
   };
 
   const getActiveFiltersCount = () => {
@@ -134,7 +138,13 @@ const HeroSection = () => {
       transmissions.length +
       bodyTypes.length +
       seatingOptions.length +
-      brands.length
+      brands.length +
+      (carType ? 1 : 0) +
+      (selectedCity ? 1 : 0) +
+      (selectedBudget ? 1 : 0) +
+      (selectedBrand ? 1 : 0) +
+      (priceRange[0] !== 5 || priceRange[1] !== 50 ? 1 : 0) +
+      (mileageRange[0] !== 10 || mileageRange[1] !== 30 ? 1 : 0)
     );
   };
 
@@ -244,14 +254,16 @@ const HeroSection = () => {
     ],
   };
 
-  // Build search query based on selected filters
+  // Enhanced build search query to include all filters
   const buildSearchQuery = () => {
     const searchTerms = [];
 
+    // Add main brand selection
     if (selectedBrand) {
       searchTerms.push(selectedBrand);
     }
 
+    // Add car type filters
     if (carType === "new") {
       searchTerms.push("new");
     } else if (carType === "certified") {
@@ -260,9 +272,13 @@ const HeroSection = () => {
       searchTerms.push("premium");
     }
 
-    // Add advanced filter brands
+    // Add advanced filter brands (avoid duplicates with main brand)
     if (brands.length > 0) {
-      searchTerms.push(...brands);
+      brands.forEach((brand) => {
+        if (!searchTerms.includes(brand)) {
+          searchTerms.push(brand);
+        }
+      });
     }
 
     // Add fuel types
@@ -270,30 +286,90 @@ const HeroSection = () => {
       searchTerms.push(...fuelTypes);
     }
 
+    // Add transmission types
+    if (transmissions.length > 0) {
+      searchTerms.push(...transmissions);
+    }
+
     // Add body types
     if (bodyTypes.length > 0) {
       searchTerms.push(...bodyTypes);
     }
 
+    // Add seating capacity (convert to searchable terms)
+    if (seatingOptions.length > 0) {
+      seatingOptions.forEach((seating) => {
+        if (seating === "8+") {
+          searchTerms.push("8 seater", "9 seater");
+        } else {
+          searchTerms.push(`${seating} seater`);
+        }
+      });
+    }
+
     return searchTerms.join(" ");
   };
 
-  // Build filter parameters for API call
+  // Enhanced build filter parameters for comprehensive API call
   const buildFilterParams = () => {
     const params = new URLSearchParams();
 
-    // Add basic filters
+    // Basic filters
     if (selectedBrand) {
       params.append("brand", selectedBrand);
     }
 
-    // Add price range (convert from lakh to actual price)
+    if (selectedCity) {
+      params.append("city", selectedCity);
+    }
+
+    if (carType) {
+      params.append("carType", carType);
+    }
+
+    // Budget range filter
+    if (selectedBudget) {
+      params.append("budget", selectedBudget);
+    }
+
+    // Price range (convert from lakh to actual price)
     if (priceRange[0] > 5 || priceRange[1] < 50) {
       params.append("minPrice", (priceRange[0] * 100000).toString());
       params.append("maxPrice", (priceRange[1] * 100000).toString());
     }
 
-    // Add advanced filters as query terms
+    // Mileage range
+    if (mileageRange[0] > 10 || mileageRange[1] < 30) {
+      params.append("minMileage", mileageRange[0].toString());
+      params.append("maxMileage", mileageRange[1].toString());
+    }
+
+    // Fuel types
+    if (fuelTypes.length > 0) {
+      params.append("fuelTypes", fuelTypes.join(","));
+    }
+
+    // Transmission types
+    if (transmissions.length > 0) {
+      params.append("transmissions", transmissions.join(","));
+    }
+
+    // Body types
+    if (bodyTypes.length > 0) {
+      params.append("bodyTypes", bodyTypes.join(","));
+    }
+
+    // Seating options
+    if (seatingOptions.length > 0) {
+      params.append("seatingOptions", seatingOptions.join(","));
+    }
+
+    // Advanced filter brands
+    if (brands.length > 0) {
+      params.append("filterBrands", brands.join(","));
+    }
+
+    // Add search query if there are any search terms
     const query = buildSearchQuery();
     if (query.trim()) {
       params.append("q", query.trim());
@@ -302,17 +378,17 @@ const HeroSection = () => {
     return params;
   };
 
-  // API call to search cars
+  // Enhanced API call to search cars with all filters
   const searchCars = async () => {
     setIsSearching(true);
     try {
-      const query = buildSearchQuery();
       const filterParams = buildFilterParams();
+      const query = buildSearchQuery();
 
+      // Choose the appropriate endpoint based on whether we have search terms
       let apiUrl = "";
-
       if (query.trim()) {
-        // Use search endpoint if there's a search query
+        // Use search endpoint for text-based searches
         apiUrl = `/api/cars/search?${filterParams.toString()}`;
       } else {
         // Use general cars endpoint with filters
@@ -320,6 +396,20 @@ const HeroSection = () => {
       }
 
       console.log("Searching with URL:", apiUrl);
+      console.log("Applied filters:", {
+        carType,
+        selectedCity,
+        selectedBudget,
+        selectedBrand,
+        priceRange,
+        mileageRange,
+        fuelTypes,
+        transmissions,
+        bodyTypes,
+        seatingOptions,
+        brands,
+        searchQuery: query,
+      });
 
       const response = await fetch(apiUrl);
       const result = await response.json();
@@ -327,29 +417,43 @@ const HeroSection = () => {
       if (result.success) {
         setSearchResults(result.data);
 
-        // Navigate to cars page with results
+        // Navigate to cars page with comprehensive filter data
         navigate("/cars", {
           state: {
             searchResults: result.data,
             searchQuery: query,
             filters: {
+              // Main filters
               carType,
               selectedCity,
               selectedBudget,
               selectedBrand,
+
+              // Price and mileage ranges
+              priceRange,
+              mileageRange,
+
+              // Advanced filters
               fuelTypes,
               transmissions,
               bodyTypes,
               seatingOptions,
               brands,
-              priceRange,
-              mileageRange,
+
+              // Additional metadata
+              totalFiltersApplied: getActiveFiltersCount(),
+              hasAdvancedFilters: showAdvanced,
+            },
+            searchMetadata: {
+              timestamp: new Date().toISOString(),
+              resultsCount: result.data.length,
+              searchType: query.trim() ? "search" : "filter",
             },
           },
         });
       } else {
         console.error("Search failed:", result.error);
-        // Still navigate but with empty results
+        // Still navigate but with empty results and error info
         navigate("/cars", {
           state: {
             searchResults: [],
@@ -360,13 +464,15 @@ const HeroSection = () => {
               selectedCity,
               selectedBudget,
               selectedBrand,
+              priceRange,
+              mileageRange,
               fuelTypes,
               transmissions,
               bodyTypes,
               seatingOptions,
               brands,
-              priceRange,
-              mileageRange,
+              totalFiltersApplied: getActiveFiltersCount(),
+              hasAdvancedFilters: showAdvanced,
             },
           },
         });
@@ -383,13 +489,15 @@ const HeroSection = () => {
             selectedCity,
             selectedBudget,
             selectedBrand,
+            priceRange,
+            mileageRange,
             fuelTypes,
             transmissions,
             bodyTypes,
             seatingOptions,
             brands,
-            priceRange,
-            mileageRange,
+            totalFiltersApplied: getActiveFiltersCount(),
+            hasAdvancedFilters: showAdvanced,
           },
         },
       });
