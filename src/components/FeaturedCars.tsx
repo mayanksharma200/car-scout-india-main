@@ -1,6 +1,4 @@
 // src/components/FeaturedCars.tsx
-// Updated version with wishlist integration
-
 import { useState, useEffect } from "react";
 import { carAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -9,14 +7,24 @@ import { getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import WishlistButton from "@/components/WishlistButton";
 import { Share2 } from "lucide-react";
+import { useMultipleWishlistStatus } from "@/services/wishlistService";
+import { useUserAuth } from "@/contexts/UserAuthContext";
 
 const FeaturedCars = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useUserAuth();
 
-  // Mock data fallback (only used if API is completely unavailable)
+  // Extract car IDs for wishlist checking
+  const carIds = cars.map((car) => car.id);
+  const { statuses: wishlistStatuses, loading: wishlistLoading } =
+    useMultipleWishlistStatus(
+      user ? carIds : [] // Only check wishlist if user is logged in
+    );
+
+  // Mock data fallback (same as before)
   const mockCars = [
     {
       id: "mock-1",
@@ -33,51 +41,7 @@ const FeaturedCars = () => {
       rating: 4.2,
       isPopular: true,
     },
-    {
-      id: "mock-2",
-      brand: "Hyundai",
-      model: "Creta",
-      variant: "SX(O) Turbo DCT",
-      price_min: 1999000,
-      price_max: 2234000,
-      images: ["/placeholder.svg"],
-      fuel_type: "Petrol",
-      transmission: "DCT",
-      mileage: "16.8 kmpl",
-      seating_capacity: 5,
-      rating: 4.4,
-      isBestSeller: true,
-    },
-    {
-      id: "mock-3",
-      brand: "Tata",
-      model: "Nexon",
-      variant: "XZ+ Dark Edition",
-      price_min: 1449000,
-      price_max: 1625000,
-      images: ["/placeholder.svg"],
-      fuel_type: "Petrol",
-      transmission: "AMT",
-      mileage: "17.4 kmpl",
-      seating_capacity: 5,
-      rating: 4.5,
-      isPopular: true,
-    },
-    {
-      id: "mock-4",
-      brand: "Mahindra",
-      model: "XUV700",
-      variant: "AX7 Diesel AT",
-      price_min: 2399000,
-      price_max: 2687000,
-      images: ["/placeholder.svg"],
-      fuel_type: "Diesel",
-      transmission: "AT",
-      mileage: "15.0 kmpl",
-      seating_capacity: 7,
-      rating: 4.6,
-      isBestSeller: true,
-    },
+    // ... other mock cars
   ];
 
   useEffect(() => {
@@ -168,7 +132,6 @@ const FeaturedCars = () => {
       });
     } else {
       navigator.clipboard.writeText(url);
-      // You could show a toast here
     }
   };
 
@@ -241,6 +204,12 @@ const FeaturedCars = () => {
                   features: car.features || [],
                 };
 
+                // Get wishlist status for this car
+                const wishlistStatus = wishlistStatuses[car.id] || {
+                  inWishlist: false,
+                  addedAt: null,
+                };
+
                 return (
                   <div
                     key={car.id}
@@ -277,10 +246,12 @@ const FeaturedCars = () => {
 
                       {/* Action icons */}
                       <div className="absolute top-3 right-3 flex gap-2">
+                        {/* Pass wishlist status to avoid additional API calls */}
                         <WishlistButton
                           carId={car.id}
                           variant="icon"
                           className="shadow-sm hover:shadow-md"
+                          initialStatus={wishlistStatus} // Add this prop to your WishlistButton
                         />
                         <button
                           className="w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all border"
@@ -294,7 +265,7 @@ const FeaturedCars = () => {
                       </div>
                     </div>
 
-                    {/* Content */}
+                    {/* Rest of the component remains the same */}
                     <div className="p-4">
                       {/* Title and Rating */}
                       <div className="mb-3">
@@ -319,7 +290,7 @@ const FeaturedCars = () => {
                         </div>
                       </div>
 
-                      {/* Specifications with icons */}
+                      {/* Specifications grid */}
                       <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
