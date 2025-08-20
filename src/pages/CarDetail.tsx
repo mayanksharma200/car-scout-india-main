@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, Star, Share2, ArrowLeft, Phone, Mail, Calendar, Palette, Car as CarIcon, Zap, Gauge, Users, Fuel } from "lucide-react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import ShareModal from "@/components/ShareModal";
 import CarImageGallery from "@/components/CarImageGallery";
 import GetBestPriceModal from "@/components/GetBestPriceModal";
@@ -313,6 +314,8 @@ const CarDetail = () => {
             </div>
           </div>
         </div>
+              <Footer />
+        
       </div>
     );
   }
