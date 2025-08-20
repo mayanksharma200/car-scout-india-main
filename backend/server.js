@@ -2424,6 +2424,69 @@ app.get("/api/wishlist/stats", validateToken, async (req, res) => {
   }
 });
 
+// POST /api/wishlist/check-multiple
+app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
+  try {
+    const { carIds } = req.body;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!Array.isArray(carIds) || carIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "carIds must be a non-empty array",
+      });
+    }
+
+    // Limit batch size to prevent abuse
+    if (carIds.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: "Maximum 100 car IDs allowed per request",
+      });
+    }
+
+    // Query database for all wishlist items for this user and these car IDs
+    const wishlistItems = await db.query(
+      `
+      SELECT car_id, created_at 
+      FROM user_wishlist 
+      WHERE user_id = ? AND car_id IN (${carIds.map(() => "?").join(",")})
+    `,
+      [userId, ...carIds]
+    );
+
+    // Create a map of car_id -> wishlist data
+    const wishlistMap = {};
+    wishlistItems.forEach((item) => {
+      wishlistMap[item.car_id] = {
+        inWishlist: true,
+        addedAt: item.created_at,
+      };
+    });
+
+    // Build response object for all requested car IDs
+    const results = {};
+    carIds.forEach((carId) => {
+      results[carId] = wishlistMap[carId] || {
+        inWishlist: false,
+        addedAt: null,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: results,
+    });
+  } catch (error) {
+    console.error("Error checking multiple wishlist items:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to check wishlist status",
+    });
+  }
+});
+
 
 // ===== ADMIN API SETTINGS ENDPOINTS =====
 
