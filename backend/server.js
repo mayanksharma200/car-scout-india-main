@@ -2425,6 +2425,7 @@ app.get("/api/wishlist/stats", validateToken, async (req, res) => {
 });
 
 // POST /api/wishlist/check-multiple
+// POST /api/wishlist/check-multiple
 app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
   try {
     const { carIds } = req.body;
@@ -2446,24 +2447,30 @@ app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
       });
     }
 
-    // Query database for all wishlist items for this user and these car IDs
-    const wishlistItems = await db.query(
-      `
-      SELECT car_id, created_at 
-      FROM user_wishlist 
-      WHERE user_id = ? AND car_id IN (${carIds.map(() => "?").join(",")})
-    `,
-      [userId, ...carIds]
-    );
+    console.log(`Checking wishlist for user ${userId} with ${carIds.length} car IDs`);
+
+    // Query Supabase for wishlist items
+    const { data: wishlistItems, error } = await supabase
+      .from("user_wishlist")
+      .select("car_id, added_at")
+      .eq("user_id", userId)
+      .in("car_id", carIds);
+
+    if (error) {
+      console.error("Supabase error:", error);
+      throw error;
+    }
 
     // Create a map of car_id -> wishlist data
     const wishlistMap = {};
-    wishlistItems.forEach((item) => {
-      wishlistMap[item.car_id] = {
-        inWishlist: true,
-        addedAt: item.created_at,
-      };
-    });
+    if (wishlistItems) {
+      wishlistItems.forEach((item) => {
+        wishlistMap[item.car_id] = {
+          inWishlist: true,
+          addedAt: item.added_at,
+        };
+      });
+    }
 
     // Build response object for all requested car IDs
     const results = {};
@@ -2473,6 +2480,8 @@ app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
         addedAt: null,
       };
     });
+
+    console.log(`Found ${wishlistItems?.length || 0} wishlist items`);
 
     res.json({
       success: true,
