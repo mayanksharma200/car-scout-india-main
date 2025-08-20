@@ -43,11 +43,13 @@ interface WishlistCar {
 
 // Debug component for development
 const DebugAuthInfo = () => {
-  const { user, tokens, isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { user, tokens, isAuthenticated, loading, getAuthHeaders } =
+    useUserAuth();
 
   const debugInfo = {
     isAuthenticated,
     isAuthenticatedType: typeof isAuthenticated,
+    loading,
     user: user
       ? {
           id: user.id,
@@ -89,35 +91,35 @@ const Wishlist = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const { user, isAuthenticated } = useUserAuth();
+  const { user, isAuthenticated, loading: authLoading } = useUserAuth();
   const api = useAuthenticatedApi();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Enhanced authentication redirect - check immediately when isAuthenticated changes
+  // Enhanced authentication redirect - wait for auth loading to complete
   useEffect(() => {
-    console.log("Auth check:", {
+    console.log("Auth state check:", {
       isAuthenticated,
-      type: typeof isAuthenticated,
+      authLoading,
+      user: user ? "exists" : "null",
       timestamp: new Date().toISOString(),
     });
 
-    // If explicitly not authenticated, redirect immediately
-    if (isAuthenticated === false) {
-      console.log("User not authenticated, redirecting to login...");
+    // Only redirect if authentication check is complete AND user is not authenticated
+    if (!authLoading && isAuthenticated === false) {
+      console.log("Auth complete - user not authenticated, redirecting...");
       navigate("/login", {
         state: { from: { pathname: "/wishlist" } },
-        replace: true, // Prevents back button issues
+        replace: true,
       });
-      return;
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate, user]);
 
   // Fetch wishlist data only when authenticated
   useEffect(() => {
     const fetchWishlist = async () => {
-      // Don't fetch if not authenticated or still determining auth state
-      if (isAuthenticated !== true) {
+      // Don't fetch if auth is still loading or user is not authenticated
+      if (authLoading || isAuthenticated !== true) {
         setLoading(false);
         return;
       }
@@ -127,7 +129,6 @@ const Wishlist = () => {
         setLoading(true);
         setError(null);
 
-        // Use the authenticated API client
         const response = await api.wishlist.getAll();
 
         if (response.success) {
@@ -153,14 +154,13 @@ const Wishlist = () => {
     };
 
     fetchWishlist();
-  }, [isAuthenticated, api, toast]);
+  }, [isAuthenticated, authLoading, api, toast]);
 
   const handleRemoveCar = async (carId: string) => {
     try {
       setActionLoading(`remove-${carId}`);
       console.log(`🗑️ Removing car ${carId} from wishlist...`);
 
-      // Use the authenticated API client
       const response = await api.wishlist.remove(carId);
 
       if (response.success) {
@@ -195,7 +195,6 @@ const Wishlist = () => {
       setActionLoading("bulk-remove");
       console.log(`🗑️ Removing ${selectedCars.length} cars from wishlist...`);
 
-      // Use the authenticated API client
       const response = await api.wishlist.removeMultiple(selectedCars);
 
       if (response.success) {
@@ -237,7 +236,6 @@ const Wishlist = () => {
         } price alert for car ${carId}...`
       );
 
-      // Use the authenticated API client
       const response = await api.wishlist.togglePriceAlert(
         carId,
         !currentValue
@@ -310,8 +308,8 @@ const Wishlist = () => {
     });
   };
 
-  // Show loading while determining authentication state
-  if (isAuthenticated === null || isAuthenticated === undefined) {
+  // Show loading while auth is initializing
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -330,7 +328,7 @@ const Wishlist = () => {
     );
   }
 
-  // Don't render anything if not authenticated (redirect will handle it)
+  // Show unauthenticated state (backup - redirect should handle this)
   if (isAuthenticated === false) {
     return (
       <div className="min-h-screen bg-background">
@@ -358,7 +356,7 @@ const Wishlist = () => {
     );
   }
 
-  // Show loading while fetching wishlist data
+  // Show loading while fetching wishlist data (user is authenticated)
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
