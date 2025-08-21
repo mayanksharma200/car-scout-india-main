@@ -489,7 +489,7 @@ const Wishlist = () => {
                       </Button>
                       <ShareModal
                         title="My Car Wishlist"
-                        description={`Check out my saved cars on AutoScope India - ${
+                        description={`Check out my saved cars on AutoPulses India - ${
                           savedCars.length
                         } cars including ${savedCars
                           .map((item) => `${item.car.brand} ${item.car.model}`)

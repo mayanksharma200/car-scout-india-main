@@ -162,8 +162,8 @@ const FeaturedCars = () => {
 
     if (navigator.share) {
       navigator.share({
-        title: `${car.brand} ${car.model} - AutoScope India`,
-        text: `Check out this ${car.brand} ${car.model} on AutoScope India`,
+        title: `${car.brand} ${car.model} - AutoPulses India`,
+        text: `Check out this ${car.brand} ${car.model} on AutoPulses India`,
         url: url,
       });
     } else {

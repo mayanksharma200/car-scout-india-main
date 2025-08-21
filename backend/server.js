@@ -40,8 +40,8 @@ const TOKEN_CONFIG = {
     (IS_DEVELOPMENT
       ? "dev-refresh-secret-32-chars-min-123"
       : "your-refresh-secret-key-change-in-production"),
-  issuer: "autoscope-api",
-  audience: "autoscope-users",
+  issuer: "AutoPulses-api",
+  audience: "AutoPulses-users",
 };
 
 // CORS configuration based on environment
@@ -441,59 +441,69 @@ app.get("/api/cars/featured", async (req, res) => {
 
 // Replace your existing /api/cars/search endpoint with this improved version
 
-
 // Enhanced /api/cars/search endpoint with comprehensive filter support
 // Enhanced /api/cars/search endpoint with comprehensive filter support
 app.get("/api/cars/search", async (req, res) => {
   try {
-    const { 
-      q, 
-      brand, 
-      city, 
-      budget, 
+    const {
+      q,
+      brand,
+      city,
+      budget,
       carType,
-      minPrice, 
-      maxPrice, 
-      minMileage, 
+      minPrice,
+      maxPrice,
+      minMileage,
       maxMileage,
-      fuelTypes, 
-      transmissions, 
-      bodyTypes, 
-      seatingOptions, 
+      fuelTypes,
+      transmissions,
+      bodyTypes,
+      seatingOptions,
       filterBrands,
-      limit = 500, 
+      limit = 500,
       offset = 0,
       sortBy = "brand",
-      sortOrder = "asc"
+      sortOrder = "asc",
     } = req.query;
 
     console.log(`🔍 Enhanced search with filters:`, {
-      q, brand, city, budget, carType, minPrice, maxPrice,
-      fuelTypes, transmissions, bodyTypes, seatingOptions
+      q,
+      brand,
+      city,
+      budget,
+      carType,
+      minPrice,
+      maxPrice,
+      fuelTypes,
+      transmissions,
+      bodyTypes,
+      seatingOptions,
     });
 
-    let query = supabase
-      .from("cars")
-      .select("*")
-      .eq("status", "active");
+    let query = supabase.from("cars").select("*").eq("status", "active");
 
     // Apply text search if query provided
     if (q && q.trim()) {
-      const searchTerms = q.trim()
+      const searchTerms = q
+        .trim()
         .toLowerCase()
         .split(/\s+/)
-        .filter(term => term.length > 0);
+        .filter((term) => term.length > 0);
 
       console.log(`📝 Search terms:`, searchTerms);
 
       if (searchTerms.length === 1) {
         const term = searchTerms[0];
-        query = query.or(`brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`);
+        query = query.or(
+          `brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`
+        );
       } else {
         // For multi-word searches, we'll filter after getting results
         // to ensure ALL terms match somewhere in brand/model/variant
         const firstTerm = searchTerms[0];
-        query = query.or(`brand.ilike.%${firstTerm}%,model.ilike.%${firstTerm}%,variant.ilike.%${firstTerm}%`);
+        query = query.or(
+          `brand.ilike.%${firstTerm}%,model.ilike.%${firstTerm}%,variant.ilike.%${firstTerm}%`
+        );
       }
     }
 
@@ -537,7 +547,7 @@ app.get("/api/cars/search", async (req, res) => {
         "₹20-30 Lakh": { min: 2000000, max: 3000000 },
         "₹30-50 Lakh": { min: 3000000, max: 5000000 },
         "₹50 Lakh - ₹1 Crore": { min: 5000000, max: 10000000 },
-        "Above ₹1 Crore": { min: 10000000, max: null }
+        "Above ₹1 Crore": { min: 10000000, max: null },
       };
 
       const budgetRange = budgetRanges[budget];
@@ -548,14 +558,14 @@ app.get("/api/cars/search", async (req, res) => {
           query = query.lte("price_min", budgetRange.max); // Car starts within or before budget max
         }
         query = query.gte("price_max", budgetRange.min); // Car ends within or after budget min
-        
+
         console.log(`Budget filter: ${budgetRange.min} - ${budgetRange.max}`);
       }
     }
 
     // Apply fuel type filters
     if (fuelTypes) {
-      const fuelArray = fuelTypes.split(',').map(f => f.trim());
+      const fuelArray = fuelTypes.split(",").map((f) => f.trim());
       if (fuelArray.length === 1) {
         query = query.eq("fuel_type", fuelArray[0]);
       } else {
@@ -565,7 +575,7 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Apply transmission filters
     if (transmissions) {
-      const transmissionArray = transmissions.split(',').map(t => t.trim());
+      const transmissionArray = transmissions.split(",").map((t) => t.trim());
       if (transmissionArray.length === 1) {
         query = query.eq("transmission", transmissionArray[0]);
       } else {
@@ -575,7 +585,7 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Apply body type filters
     if (bodyTypes) {
-      const bodyTypeArray = bodyTypes.split(',').map(b => b.trim());
+      const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
       if (bodyTypeArray.length === 1) {
         query = query.eq("body_type", bodyTypeArray[0]);
       } else {
@@ -585,11 +595,13 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Apply seating capacity filters with logical validation
     if (seatingOptions) {
-      const seatingArray = seatingOptions.split(',').map(s => s.trim());
-      const seatingNumbers = seatingArray.map(s => {
-        if (s === "8+") return 8; // Handle 8+ as 8 or greater
-        return parseInt(s);
-      }).filter(n => !isNaN(n));
+      const seatingArray = seatingOptions.split(",").map((s) => s.trim());
+      const seatingNumbers = seatingArray
+        .map((s) => {
+          if (s === "8+") return 8; // Handle 8+ as 8 or greater
+          return parseInt(s);
+        })
+        .filter((n) => !isNaN(n));
 
       if (seatingNumbers.length > 0) {
         if (seatingArray.includes("8+")) {
@@ -598,12 +610,14 @@ app.get("/api/cars/search", async (req, res) => {
         } else {
           query = query.in("seating_capacity", seatingNumbers);
         }
-        
+
         // Log potential conflicts
-        if (bodyTypes && seatingNumbers.some(s => s >= 7)) {
-          const bodyTypeArray = bodyTypes.split(',').map(b => b.trim());
+        if (bodyTypes && seatingNumbers.some((s) => s >= 7)) {
+          const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
           if (bodyTypeArray.includes("Hatchback")) {
-            console.warn("⚠️ Conflicting filters: 7+ seater Hatchbacks are rare. Consider SUV or MPV body types.");
+            console.warn(
+              "⚠️ Conflicting filters: 7+ seater Hatchbacks are rare. Consider SUV or MPV body types."
+            );
           }
         }
       }
@@ -611,14 +625,16 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Apply additional brand filters from advanced filters
     if (filterBrands) {
-      const brandArray = filterBrands.split(',').map(b => b.trim());
+      const brandArray = filterBrands.split(",").map((b) => b.trim());
       // Combine with main brand filter if both exist
       if (brand) {
         brandArray.push(brand);
       }
-      
+
       // Create OR conditions for brands
-      const brandConditions = brandArray.map(b => `brand.ilike.%${b}%`).join(',');
+      const brandConditions = brandArray
+        .map((b) => `brand.ilike.%${b}%`)
+        .join(",");
       query = query.or(brandConditions);
     }
 
@@ -629,7 +645,9 @@ app.get("/api/cars/search", async (req, res) => {
       // For now, this is a basic implementation
       if (minMileage) {
         // This won't work well with string mileage - consider adding numeric column
-        console.warn("Mileage filtering needs numeric mileage column for accurate results");
+        console.warn(
+          "Mileage filtering needs numeric mileage column for accurate results"
+        );
       }
     }
 
@@ -649,16 +667,18 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Post-process for multi-word text search
     if (q && q.trim()) {
-      const searchTerms = q.trim()
+      const searchTerms = q
+        .trim()
         .toLowerCase()
         .split(/\s+/)
-        .filter(term => term.length > 0);
+        .filter((term) => term.length > 0);
 
       if (searchTerms.length > 1) {
-        filteredData = filteredData.filter(car => {
+        filteredData = filteredData.filter((car) => {
           // Include all car text fields for comprehensive search
-          const carText = `${car.brand} ${car.model} ${car.variant} ${car.fuel_type} ${car.transmission} ${car.body_type}`.toLowerCase();
-          return searchTerms.every(term => carText.includes(term));
+          const carText =
+            `${car.brand} ${car.model} ${car.variant} ${car.fuel_type} ${car.transmission} ${car.body_type}`.toLowerCase();
+          return searchTerms.every((term) => carText.includes(term));
         });
       }
     }
@@ -669,53 +689,70 @@ app.get("/api/cars/search", async (req, res) => {
       // 1. Add city to cars table
       // 2. Filter based on dealer locations
       // 3. Skip city filtering for now
-      console.warn("City filtering not implemented - add city column to cars table");
+      console.warn(
+        "City filtering not implemented - add city column to cars table"
+      );
     }
 
     // Post-process for mileage filtering (better implementation)
     if (minMileage || maxMileage) {
-      filteredData = filteredData.filter(car => {
+      filteredData = filteredData.filter((car) => {
         if (!car.mileage) return true;
-        
+
         // Extract numeric value from mileage string like "24.9 kmpl"
         const mileageMatch = car.mileage.match(/(\d+\.?\d*)/);
         if (!mileageMatch) return true;
-        
+
         const numericMileage = parseFloat(mileageMatch[1]);
-        
+
         if (minMileage && numericMileage < parseFloat(minMileage)) return false;
         if (maxMileage && numericMileage > parseFloat(maxMileage)) return false;
-        
+
         return true;
       });
     }
 
     console.log(`✅ Found ${filteredData.length} cars after all filters`);
-    
+
     // Enhanced debugging for empty results
     if (filteredData.length === 0) {
       console.log("🔍 No results found. Debugging filters:");
-      console.log("Applied filters:", { brand, budget, fuelTypes, transmissions, bodyTypes, seatingOptions });
-      
+      console.log("Applied filters:", {
+        brand,
+        budget,
+        fuelTypes,
+        transmissions,
+        bodyTypes,
+        seatingOptions,
+      });
+
       // Test each filter individually
       if (brand) {
-        const { data: brandTest } = await supabase.from("cars").select("*").eq("status", "active").ilike("brand", `%${brand}%`);
+        const { data: brandTest } = await supabase
+          .from("cars")
+          .select("*")
+          .eq("status", "active")
+          .ilike("brand", `%${brand}%`);
         console.log(`Brand "${brand}" has ${brandTest?.length || 0} cars`);
       }
-      
+
       if (bodyTypes && seatingOptions) {
-        const bodyArray = bodyTypes.split(',');
-        const seatingArray = seatingOptions.split(',');
+        const bodyArray = bodyTypes.split(",");
+        const seatingArray = seatingOptions.split(",");
         if (bodyArray.includes("Hatchback") && seatingArray.includes("7")) {
-          console.log("⚠️ FILTER CONFLICT: Searching for 7-seater Hatchback (these rarely exist)");
+          console.log(
+            "⚠️ FILTER CONFLICT: Searching for 7-seater Hatchback (these rarely exist)"
+          );
           console.log("💡 Suggestion: 7-seaters are typically MPVs or SUVs");
         }
       }
     }
-    
+
     // Log sample results for debugging
-    filteredData.slice(0, 3).forEach(car => {
-      console.log(`🚗 ${car.brand} ${car.model} ${car.variant} - ₹${car.price_min}-${car.price_max}`);
+    filteredData.slice(0, 3).forEach((car) => {
+      console.log(
+        `🚗 ${car.brand} ${car.model} ${car.variant} - ₹${car.price_min}-${car.price_max}`
+      );
     });
 
     res.json({
@@ -729,22 +766,21 @@ app.get("/api/cars/search", async (req, res) => {
         carType,
         priceRange: { min: minPrice, max: maxPrice },
         mileageRange: { min: minMileage, max: maxMileage },
-        fuelTypes: fuelTypes ? fuelTypes.split(',') : [],
-        transmissions: transmissions ? transmissions.split(',') : [],
-        bodyTypes: bodyTypes ? bodyTypes.split(',') : [],
-        seatingOptions: seatingOptions ? seatingOptions.split(',') : [],
-        filterBrands: filterBrands ? filterBrands.split(',') : []
+        fuelTypes: fuelTypes ? fuelTypes.split(",") : [],
+        transmissions: transmissions ? transmissions.split(",") : [],
+        bodyTypes: bodyTypes ? bodyTypes.split(",") : [],
+        seatingOptions: seatingOptions ? seatingOptions.split(",") : [],
+        filterBrands: filterBrands ? filterBrands.split(",") : [],
       },
       totalFound: filteredData.length,
-      searchType: q ? 'search_with_filters' : 'filter_only'
+      searchType: q ? "search_with_filters" : "filter_only",
     });
-
   } catch (error) {
     console.error("💥 Search error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to search cars",
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -1865,7 +1901,7 @@ app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
 if (IS_DEVELOPMENT) {
   app.post("/api/auth/create-test-user", async (req, res) => {
     try {
-      const testEmail = "test@autoscope.com";
+      const testEmail = "test@AutoPulses.com";
       const testPassword = "test123456";
 
       // Delete existing test user if exists

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 import ProfileModal from "@/components/ProfileModal";
-import autoscopeLogo from "@/assets/autoscope-logo.png";
+import AutoPulsesLogo from "@/assets/AutoPulses-logo.png";
 
 const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -276,8 +276,8 @@ const Header = () => {
           {/* Logo */}
           <a href="/" className="flex items-center">
             <img
-              src={`${autoscopeLogo}?v=${Date.now()}`}
-              alt="AutoScope"
+              src={`${AutoPulsesLogo}?v=${Date.now()}`}
+              alt="AutoPulses"
               className="w-20 h-20 md:w-20 md:h-20 object-contain hover:scale-105 transition-transform"
             />
           </a>

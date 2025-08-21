@@ -184,7 +184,7 @@ const Login = () => {
           description: (
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Welcome back to AutoScope!
+              Welcome back to AutoPulses!
             </div>
           ),
         });
@@ -270,7 +270,7 @@ const Login = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-primary-foreground">
-                AutoScope
+                AutoPulses
               </h1>
               <p className="text-sm text-primary-foreground/70">
                 Find Your Perfect Car
@@ -286,7 +286,7 @@ const Login = () => {
             </div>
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <p className="text-muted-foreground">
-              Sign in to your AutoScope account
+              Sign in to your AutoPulses account
             </p>
           </CardHeader>
           <CardContent>
@@ -501,7 +501,7 @@ const Login = () => {
             to="/"
             className="text-primary-foreground/70 hover:text-primary-foreground text-sm flex items-center justify-center gap-1"
           >
-            ← Back to AutoScope India
+            ← Back to AutoPulses India
           </Link>
         </div>
 

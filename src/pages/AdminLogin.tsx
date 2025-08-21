@@ -188,7 +188,7 @@ const AdminLogin = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-primary-foreground">
-                AutoScope
+                AutoPulses
               </h1>
               <p className="text-sm text-primary-foreground/70">Admin Portal</p>
             </div>
@@ -215,7 +215,7 @@ const AdminLogin = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@autoscope.com"
+                    placeholder="admin@AutoPulses.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     className={`pl-10 ${
@@ -342,7 +342,7 @@ const AdminLogin = () => {
                       size="sm"
                       onClick={() => {
                         setFormData({
-                          email: "test@autoscope.com",
+                          email: "test@AutoPulses.com",
                           password: "test123456",
                           rememberMe: false,
                         });
@@ -375,7 +375,7 @@ const AdminLogin = () => {
             to="/"
             className="text-primary-foreground/70 hover:text-primary-foreground text-sm flex items-center justify-center gap-1"
           >
-            ← Back to AutoScope India
+            ← Back to AutoPulses India
           </Link>
         </div>
 
