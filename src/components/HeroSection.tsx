@@ -297,15 +297,15 @@ const HeroSection = () => {
     }
 
     // Add seating capacity (convert to searchable terms)
-    if (seatingOptions.length > 0) {
-      seatingOptions.forEach((seating) => {
-        if (seating === "8+") {
-          searchTerms.push("8 seater", "9 seater");
-        } else {
-          searchTerms.push(`${seating} seater`);
-        }
-      });
-    }
+    // if (seatingOptions.length > 0) {
+    //   seatingOptions.forEach((seating) => {
+    //     if (seating === "8+") {
+    //       searchTerms.push("8 seater", "9 seater");
+    //     } else {
+    //       searchTerms.push(`${seating} seater`);
+    //     }
+    //   });
+    // }
 
     return searchTerms.join(" ");
   };
