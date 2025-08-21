@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import LoanModal from "@/components/LoanModal"; // Import the new component
 
 const EMICalculator = () => {
   const [carPrice, setCarPrice] = useState(1000000);
@@ -16,24 +17,26 @@ const EMICalculator = () => {
     const principal = carPrice - downPayment;
     const monthlyRate = interestRate / 100 / 12;
     const months = loanTenure * 12;
-    
+
     if (monthlyRate === 0) return principal / months;
-    
-    const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-               (Math.pow(1 + monthlyRate, months) - 1);
-    
+
+    const emi =
+      (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) /
+      (Math.pow(1 + monthlyRate, months) - 1);
+
     return emi;
   };
 
   const emiAmount = calculateEMI();
   const totalAmount = emiAmount * loanTenure * 12;
   const totalInterest = totalAmount - (carPrice - downPayment);
+  const loanAmount = carPrice - downPayment;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -45,8 +48,8 @@ const EMICalculator = () => {
             EMI Calculator
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Calculate your monthly EMI and plan your car purchase with confidence. 
-            Get instant results and compare different loan options.
+            Calculate your monthly EMI and plan your car purchase with
+            confidence. Get instant results and compare different loan options.
           </p>
         </div>
 
@@ -116,7 +119,9 @@ const EMICalculator = () => {
 
               {/* Loan Tenure */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Loan Tenure (Years)</Label>
+                <Label className="text-sm font-medium">
+                  Loan Tenure (Years)
+                </Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -177,18 +182,28 @@ const EMICalculator = () => {
             <Card className="shadow-auto-lg border-border bg-gradient-card hover-scale transition-all duration-300">
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-sm text-muted-foreground mb-2">Monthly EMI</div>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Monthly EMI
+                  </div>
                   <div className="text-4xl font-bold text-accent mb-4">
                     {formatCurrency(emiAmount)}
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <div className="text-muted-foreground">Principal Amount</div>
-                      <div className="font-semibold">{formatCurrency(carPrice - downPayment)}</div>
+                      <div className="text-muted-foreground">
+                        Principal Amount
+                      </div>
+                      <div className="font-semibold">
+                        {formatCurrency(carPrice - downPayment)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground">Total Interest</div>
-                      <div className="font-semibold">{formatCurrency(totalInterest)}</div>
+                      <div className="text-muted-foreground">
+                        Total Interest
+                      </div>
+                      <div className="font-semibold">
+                        {formatCurrency(totalInterest)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -203,35 +218,63 @@ const EMICalculator = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground">Car Price</span>
-                  <span className="font-semibold">{formatCurrency(carPrice)}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(carPrice)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground">Down Payment</span>
-                  <span className="font-semibold">{formatCurrency(downPayment)}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(downPayment)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground">Loan Amount</span>
-                  <span className="font-semibold">{formatCurrency(carPrice - downPayment)}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(carPrice - downPayment)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Total Amount Payable</span>
-                  <span className="font-semibold">{formatCurrency(totalAmount + downPayment)}</span>
+                  <span className="text-muted-foreground">
+                    Total Amount Payable
+                  </span>
+                  <span className="font-semibold">
+                    {formatCurrency(totalAmount + downPayment)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-muted-foreground">Total Interest</span>
-                  <span className="font-semibold text-accent">{formatCurrency(totalInterest)}</span>
+                  <span className="font-semibold text-accent">
+                    {formatCurrency(totalInterest)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* CTA */}
+            {/* CTA with Lead Forms */}
             <div className="space-y-3">
-              <Button className="w-full bg-gradient-accent hover:opacity-90 shadow-auto-md text-lg py-6">
-                Get Pre-Approved Loan
-              </Button>
-              <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                Compare Loan Offers
-              </Button>
+              <LoanModal
+                loanAmount={loanAmount}
+                emiAmount={emiAmount}
+                modalType="preapproval"
+              >
+                <Button className="w-full bg-gradient-accent hover:opacity-90 shadow-auto-md text-lg py-6">
+                  Get Pre-Approved Loan
+                </Button>
+              </LoanModal>
+
+              <LoanModal
+                loanAmount={loanAmount}
+                emiAmount={emiAmount}
+                modalType="compare"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                >
+                  Compare Loan Offers
+                </Button>
+              </LoanModal>
             </div>
           </div>
         </div>
