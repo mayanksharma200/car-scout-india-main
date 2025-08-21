@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { Badge } from '@/components/ui/badge';
-import { User, UserPlus } from 'lucide-react';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
+import { User, UserPlus } from "lucide-react";
 
 const DevAuthHelper = () => {
   const [creating, setCreating] = useState(false);
@@ -13,10 +19,11 @@ const DevAuthHelper = () => {
   const { signIn, user } = useAuth();
 
   // Only show in local development (not on deployed environments like fly.dev)
-  const isLocalDevelopment = import.meta.env.DEV &&
-    (window.location.hostname === 'localhost' ||
-     window.location.hostname === '127.0.0.1' ||
-     window.location.hostname.includes('local'));
+  const isLocalDevelopment =
+    import.meta.env.DEV &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.includes("local"));
 
   if (!isLocalDevelopment) {
     return null;
@@ -25,11 +32,12 @@ const DevAuthHelper = () => {
   const createTestUser = async () => {
     setCreating(true);
     try {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const backendUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3001/api";
       const response = await fetch(`${backendUrl}/auth/recreate-test-user`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -57,8 +65,8 @@ const DevAuthHelper = () => {
   const signInTestUser = async () => {
     setSigningIn(true);
     try {
-      const { error } = await signIn("test@autoscope.com", "test123456");
-      
+      const { error } = await signIn("test@AutoPulses.com", "test123456");
+
       if (error) {
         throw error;
       }
@@ -98,9 +106,9 @@ const DevAuthHelper = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={createTestUser}
               disabled={creating}
               className="w-full"
@@ -108,8 +116,8 @@ const DevAuthHelper = () => {
               <UserPlus className="w-4 h-4 mr-2" />
               {creating ? "Creating..." : "Create Confirmed Test User"}
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={signInTestUser}
               disabled={signingIn}
               className="w-full"
@@ -118,7 +126,8 @@ const DevAuthHelper = () => {
               {signingIn ? "Signing In..." : "Sign In Test User"}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Email: test@autoscope.com<br />
+              Email: test@AutoPulses.com
+              <br />
               Password: test123456
             </p>
           </div>

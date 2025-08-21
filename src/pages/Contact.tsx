@@ -21,8 +21,12 @@ const Contact = () => {
                 Back to Home
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Contact Us</h1>
-            <p className="text-muted-foreground">Get in touch with our team for any queries or support</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Contact Us
+            </h1>
+            <p className="text-muted-foreground">
+              Get in touch with our team for any queries or support
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -49,8 +53,12 @@ const Contact = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-lg font-semibold">support@autoscope.com</p>
-                  <p className="text-muted-foreground">We'll respond within 24 hours</p>
+                  <p className="text-lg font-semibold">
+                    support@AutoPulses.com
+                  </p>
+                  <p className="text-muted-foreground">
+                    We'll respond within 24 hours
+                  </p>
                 </CardContent>
               </Card>
 
@@ -62,10 +70,14 @@ const Contact = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-lg font-semibold">AutoScope Headquarters</p>
+                  <p className="text-lg font-semibold">
+                    AutoPulses Headquarters
+                  </p>
                   <p className="text-muted-foreground">
-                    123 Business Park,<br />
-                    Andheri East, Mumbai,<br />
+                    123 Business Park,
+                    <br />
+                    Andheri East, Mumbai,
+                    <br />
                     Maharashtra 400069, India
                   </p>
                 </CardContent>
@@ -80,9 +92,17 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <p><span className="font-medium">Monday - Friday:</span> 9:00 AM - 7:00 PM</p>
-                    <p><span className="font-medium">Saturday:</span> 10:00 AM - 5:00 PM</p>
-                    <p><span className="font-medium">Sunday:</span> Closed</p>
+                    <p>
+                      <span className="font-medium">Monday - Friday:</span> 9:00
+                      AM - 7:00 PM
+                    </p>
+                    <p>
+                      <span className="font-medium">Saturday:</span> 10:00 AM -
+                      5:00 PM
+                    </p>
+                    <p>
+                      <span className="font-medium">Sunday:</span> Closed
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -98,7 +118,10 @@ const Contact = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" placeholder="Enter your first name" />
+                      <Input
+                        id="firstName"
+                        placeholder="Enter your first name"
+                      />
                     </div>
                     <div>
                       <Label htmlFor="lastName">Last Name</Label>
@@ -107,11 +130,19 @@ const Contact = () => {
                   </div>
                   <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="Enter your email" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                    />
                   </div>
                   <div>
                     <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" placeholder="Enter your phone number" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                    />
                   </div>
                   <div>
                     <Label htmlFor="subject">Subject</Label>
@@ -119,8 +150,8 @@ const Contact = () => {
                   </div>
                   <div>
                     <Label htmlFor="message">Message</Label>
-                    <Textarea 
-                      id="message" 
+                    <Textarea
+                      id="message"
                       placeholder="Please describe your query in detail..."
                       rows={5}
                     />

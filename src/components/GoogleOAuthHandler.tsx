@@ -154,7 +154,7 @@ const GoogleOAuthHandler = () => {
           description: (
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
-              Welcome to AutoScope! You're now signed in with Google.
+              Welcome to AutoPulses! You're now signed in with Google.
             </div>
           ),
         });
