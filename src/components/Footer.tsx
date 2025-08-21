@@ -9,7 +9,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import AutoPulsesLogo from "@/assets/AutoPulses-logo.png";
+import AutoPulsesLogo from "@/assets/autoscope-logo.png";
 
 const Footer = () => {
   return (
