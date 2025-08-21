@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 import ProfileModal from "@/components/ProfileModal";
-import AutoPulsesLogo from "@/assets/AutoPulses-logo.png";
+import AutoPulsesLogo from "@/assets/autoscope-logo.png";
 
 const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
