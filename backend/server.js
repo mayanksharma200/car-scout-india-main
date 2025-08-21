@@ -441,6 +441,7 @@ app.get("/api/cars/featured", async (req, res) => {
 
 // Replace your existing /api/cars/search endpoint with this improved version
 
+
 // Enhanced /api/cars/search endpoint with comprehensive filter support
 app.get("/api/cars/search", async (req, res) => {
   try {
@@ -540,14 +541,14 @@ app.get("/api/cars/search", async (req, res) => {
 
       const budgetRange = budgetRanges[budget];
       if (budgetRange) {
-        // For budget filtering, ensure cars fall within the price range
-        // Use price_min for minimum check and price_max for maximum check
+        // Correct logic: Car price range should overlap with budget range
+        // A car fits if: car_min <= budget_max AND car_max >= budget_min
         if (budgetRange.max) {
-          query = query.lte("price_min", budgetRange.max); // Car's starting price should be within budget
+          query = query.lte("price_min", budgetRange.max); // Car starts within or before budget max
         }
-        if (budgetRange.min > 0) {
-          query = query.gte("price_max", budgetRange.min); // Car's max price should be above minimum
-        }
+        query = query.gte("price_max", budgetRange.min); // Car ends within or after budget min
+        
+        console.log(`Budget filter: ${budgetRange.min} - ${budgetRange.max}`);
       }
     }
 
@@ -581,7 +582,7 @@ app.get("/api/cars/search", async (req, res) => {
       }
     }
 
-    // Apply seating capacity filters
+    // Apply seating capacity filters with logical validation
     if (seatingOptions) {
       const seatingArray = seatingOptions.split(',').map(s => s.trim());
       const seatingNumbers = seatingArray.map(s => {
@@ -595,6 +596,14 @@ app.get("/api/cars/search", async (req, res) => {
           query = query.gte("seating_capacity", 8);
         } else {
           query = query.in("seating_capacity", seatingNumbers);
+        }
+        
+        // Log potential conflicts
+        if (bodyTypes && seatingNumbers.some(s => s >= 7)) {
+          const bodyTypeArray = bodyTypes.split(',').map(b => b.trim());
+          if (bodyTypeArray.includes("Hatchback")) {
+            console.warn("⚠️ Conflicting filters: 7+ seater Hatchbacks are rare. Consider SUV or MPV body types.");
+          }
         }
       }
     }
@@ -680,6 +689,27 @@ app.get("/api/cars/search", async (req, res) => {
     }
 
     console.log(`✅ Found ${filteredData.length} cars after all filters`);
+    
+    // Enhanced debugging for empty results
+    if (filteredData.length === 0) {
+      console.log("🔍 No results found. Debugging filters:");
+      console.log("Applied filters:", { brand, budget, fuelTypes, transmissions, bodyTypes, seatingOptions });
+      
+      // Test each filter individually
+      if (brand) {
+        const { data: brandTest } = await supabase.from("cars").select("*").eq("status", "active").ilike("brand", `%${brand}%`);
+        console.log(`Brand "${brand}" has ${brandTest?.length || 0} cars`);
+      }
+      
+      if (bodyTypes && seatingOptions) {
+        const bodyArray = bodyTypes.split(',');
+        const seatingArray = seatingOptions.split(',');
+        if (bodyArray.includes("Hatchback") && seatingArray.includes("7")) {
+          console.log("⚠️ FILTER CONFLICT: Searching for 7-seater Hatchback (these rarely exist)");
+          console.log("💡 Suggestion: 7-seaters are typically MPVs or SUVs");
+        }
+      }
+    }
     
     // Log sample results for debugging
     filteredData.slice(0, 3).forEach(car => {
