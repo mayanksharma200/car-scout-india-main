@@ -12,7 +12,9 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       proxy: {
         '/api': {
-          target: 'https://car-scout-india-main-production.up.railway.app',
+          target: mode === 'development' 
+            ? 'http://localhost:3001'  // Development: local backend
+            : 'https://car-scout-india-main-production.up.railway.app', // Production
           changeOrigin: true,
           secure: false,
         }
@@ -31,7 +33,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_API_BASE_URL': 
         mode === 'production' 
           ? JSON.stringify('/api') 
-          : JSON.stringify('https://car-scout-india-main-production.up.railway.app/api')
+          : JSON.stringify('/api') // Use proxy in both cases
     }
   };
 });
