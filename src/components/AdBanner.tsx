@@ -5,9 +5,14 @@ import { useAds } from "@/hooks/useAds";
 interface AdBannerProps {
   placement: string;
   className?: string;
+  showFallback?: boolean;
 }
 
-const AdBanner: React.FC<AdBannerProps> = ({ placement, className = "" }) => {
+const AdBanner: React.FC<AdBannerProps> = ({
+  placement,
+  className = "",
+  showFallback = true,
+}) => {
   const { getAdForPlacement } = useAds();
 
   const adSlot = getAdForPlacement(placement);
@@ -18,7 +23,7 @@ const AdBanner: React.FC<AdBannerProps> = ({ placement, className = "" }) => {
 
   return (
     <div className={`ad-banner w-full flex justify-center ${className}`}>
-      <AdSlot slot={adSlot} />
+      <AdSlot slot={adSlot} showFallback={showFallback} />
     </div>
   );
 };
