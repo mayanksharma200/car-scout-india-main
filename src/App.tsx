@@ -43,6 +43,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import Disclaimer from "./pages/Disclaimer";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import AdTestPage from "./pages/AdTestPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ const App = () => {
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/disclaimer" element={<Disclaimer />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/ad-test" element={<AdTestPage />} />
 
               {/* Admin Routes - Wrapped with separate TokenAuthProvider for admin authentication */}
               <Route

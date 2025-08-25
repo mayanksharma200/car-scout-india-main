@@ -2,6 +2,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ShareModal from "@/components/ShareModal";
+import AdBanner from "@/components/AdBanner";
 import React, { useState, useEffect } from "react";
 import {
   TrendingUp,
@@ -466,6 +467,7 @@ const Compare = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <AdBanner placement="below_navigation" />
       
     <section className="py-16 bg-background">
       <div className="container mx-auto px-4 animate-fade-in">
@@ -1520,6 +1522,7 @@ const Compare = () => {
         />
       </div>
     </section>
+    <AdBanner placement="above_footer" />
     <Footer/>
     </div>
   );

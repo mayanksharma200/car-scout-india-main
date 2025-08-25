@@ -1,10 +1,9 @@
-/// <reference types="vite/client" />
-
+// types/googletag.d.ts
 declare global {
   interface Window {
     googletag: {
       cmd: Array<() => void>;
-      defineSlot: (adUnitPath: string, size: number[] | number[][], div: string) => {
+      defineSlot: (adUnitPath: string, size: [number, number], div: string) => {
         addService: (service: any) => any;
       } | null;
       pubads: () => any;
@@ -13,3 +12,5 @@ declare global {
     };
   }
 }
+
+export {};
