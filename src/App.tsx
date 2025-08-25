@@ -11,6 +11,9 @@ import DevAuthHelper from "@/components/DevAuthHelper";
 import { SupabaseAuthSync } from "@/components/SupabaseAuthSync";
 import GoogleOAuthHandler from "@/components/GoogleOAuthHandler";
 
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/Terms";
+
 
 import AuthStatus from "@/components/AuthStatus";
 import { TokenAuthProvider } from "@/contexts/TokenAuthContext";
@@ -106,6 +109,8 @@ const App = () => {
               {/* Legal Pages */}
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-conditions" element={<TermsConditions />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/disclaimer" element={<Disclaimer />} />
               <Route path="/contact" element={<Contact />} />
