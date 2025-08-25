@@ -714,7 +714,7 @@ const CarDetail = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Price Card */}
-            <Card className="sticky top-4">
+            <Card className="top-4">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>
