@@ -1863,6 +1863,63 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
   }
 });
 
+
+// Update user profile
+app.put("/api/user/profile", validateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updateData = req.body;
+
+    // Remove fields that shouldn't be updated directly
+    const allowedFields = [
+      'first_name',
+      'last_name', 
+      'phone',
+      'date_of_birth',
+      'gender',
+      'city',
+      'state',
+      'preferences'
+    ];
+
+    const filteredData = {};
+    Object.keys(updateData).forEach(key => {
+      if (allowedFields.includes(key)) {
+        filteredData[key] = updateData[key];
+      }
+    });
+
+    // Add updated timestamp
+    filteredData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(filteredData)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Profile update error:", error);
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      data: data,
+      message: "Profile updated successfully"
+    });
+
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update profile",
+      details: IS_DEVELOPMENT ? error.message : undefined
+    });
+  }
+});
+
 // Admin routes
 app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
   try {
