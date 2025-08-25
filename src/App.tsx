@@ -11,7 +11,7 @@ import DevAuthHelper from "@/components/DevAuthHelper";
 import { SupabaseAuthSync } from "@/components/SupabaseAuthSync";
 import GoogleOAuthHandler from "@/components/GoogleOAuthHandler";
 
-import Privacy from "@/pages/privacy";
+import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 
 
