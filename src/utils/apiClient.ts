@@ -23,7 +23,7 @@ interface FetchOptions extends RequestInit {
 class ApiClient {
   private config: ApiClientConfig;
   private authRefreshPromise: Promise<boolean> | null = null;
-  private getAuthHeaders: (() => Record<string, string>) | null = null;
+  private getAuthHeaders: (() => HeadersInit) | null = null; // Changed this line
   private isTokenExpired: (() => boolean) | null = null;
   private refreshTokens: (() => Promise<boolean>) | null = null;
 
@@ -41,14 +41,14 @@ class ApiClient {
 
   // Initialize with auth context methods
   initializeAuth(authMethods: {
-    getAuthHeaders: () => Record<string, string>;
+  getAuthHeaders: () => HeadersInit; // Changed from Record<string, string>
     isTokenExpired: () => boolean;
     refreshTokens: () => Promise<boolean>;
   }) {
-    this.getAuthHeaders = authMethods.getAuthHeaders;
-    this.isTokenExpired = authMethods.isTokenExpired;
-    this.refreshTokens = authMethods.refreshTokens;
-    console.log('🔐 API Client auth methods initialized');
+  this.getAuthHeaders = authMethods.getAuthHeaders;
+  this.isTokenExpired = authMethods.isTokenExpired;
+  this.refreshTokens = authMethods.refreshTokens;
+  console.log('🔐 API Client auth methods initialized');
   }
 
   // Create timeout promise
@@ -63,56 +63,56 @@ class ApiClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Enhanced fetch with authentication and retry logic
-  private async enhancedFetch(
-    endpoint: string,
-    options: FetchOptions = {}
-  ): Promise<Response> {
-    const {
-      skipAuthRefresh = false,
-      timeout = this.config.timeout,
-      ...fetchOptions
-    } = options;
+// Enhanced fetch with authentication and retry logic
+private async enhancedFetch(
+  endpoint: string,
+  options: FetchOptions = {}
+): Promise<Response> {
+  const {
+    skipAuthRefresh = false,
+    timeout = this.config.timeout,
+    ...fetchOptions
+  } = options;
 
-    // Prepare URL
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
-      : `${this.config.baseURL}${endpoint}`;
+  // Prepare URL
+  const url = endpoint.startsWith('http') 
+    ? endpoint 
+    : `${this.config.baseURL}${endpoint}`;
 
-    // Prepare headers
-    let headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...fetchOptions.headers,
-    };
+  // Fix: Use HeadersInit type instead of Record<string, string>
+  let headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...fetchOptions.headers,
+  };
 
-    // Add authentication headers if available and not explicitly skipped
-    if (!skipAuthRefresh && this.getAuthHeaders && this.isTokenExpired && this.refreshTokens) {
-      // Check if token needs refresh
-      if (this.isTokenExpired()) {
-        if (!this.authRefreshPromise) {
-          console.log('🔄 Token expired, refreshing...');
-          this.authRefreshPromise = this.refreshTokens();
-        }
-        
-        const refreshed = await this.authRefreshPromise;
-        this.authRefreshPromise = null;
-        
-        if (!refreshed) {
-          throw new Error('Authentication failed - please log in again');
-        }
+  // Add authentication headers if available and not explicitly skipped
+  if (!skipAuthRefresh && this.getAuthHeaders && this.isTokenExpired && this.refreshTokens) {
+    // Check if token needs refresh
+    if (this.isTokenExpired()) {
+      if (!this.authRefreshPromise) {
+        console.log('🔄 Token expired, refreshing...');
+        this.authRefreshPromise = this.refreshTokens();
       }
-
-      // Get fresh auth headers
-      const authHeaders = this.getAuthHeaders();
-      headers = { ...headers, ...authHeaders };
+      
+      const refreshed = await this.authRefreshPromise;
+      this.authRefreshPromise = null;
+      
+      if (!refreshed) {
+        throw new Error('Authentication failed - please log in again');
+      }
     }
 
-    // Prepare fetch options
-    const finalOptions: RequestInit = {
-      ...fetchOptions,
-      headers,
-      credentials: 'include', // Always include credentials for cookie support
-    };
+    // Get fresh auth headers
+    const authHeaders = this.getAuthHeaders();
+    headers = { ...headers, ...authHeaders };
+  }
+
+  // Prepare fetch options
+  const finalOptions: RequestInit = {
+    ...fetchOptions,
+    headers,
+    credentials: 'include', // Always include credentials for cookie support
+  };
 
     // Create fetch promise with timeout
     const fetchPromise = fetch(url, finalOptions);
@@ -329,13 +329,30 @@ class ApiClient {
       this.post<any>('/leads', leadData),
   };
 
-  user = {
-    getProfile: () =>
-      this.get<{
-        user: any;
-        profile: any;
-      }>('/user/profile'),
-  };
+user = {
+  getProfile: () =>
+    this.get<{
+      user: any;
+      profile: any;
+    }>('/user/profile'),
+
+  updateProfile: (profileData: {
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    date_of_birth?: string;
+    gender?: string;
+    city?: string;
+    state?: string;
+    preferences?: any;
+  }) =>
+    this.put<{
+      data: any;
+      message: string;
+    }>('/user/profile', profileData),
+};
+
+  
 
   admin = {
     getStats: () =>
@@ -406,7 +423,7 @@ const apiClient = new ApiClient();
 
 // Factory function to create API client with auth context
 export const createApiClient = (authContext?: {
-  getAuthHeaders: () => Record<string, string>;
+  getAuthHeaders: () => HeadersInit; // Changed type
   isTokenExpired: () => boolean;
   refreshTokens: () => Promise<boolean>;
 }) => {
