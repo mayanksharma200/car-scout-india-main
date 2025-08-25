@@ -10,7 +10,7 @@ import CompareSection from "@/components/CompareSection";
 import EMICalculator from "@/components/EMICalculator";
 import Footer from "@/components/Footer";
 import AdBanner from "@/components/AdBanner";
-
+import AdDebugger from "@/components/AdDebugger"; // Import the debug component
 
 const Index = () => {
   const navigate = useNavigate();
@@ -20,35 +20,38 @@ const Index = () => {
     // Handle OAuth callback
     const handleAuthCallback = async () => {
       const urlParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = urlParams.get('access_token');
-      const refreshToken = urlParams.get('refresh_token');
-      const providerToken = urlParams.get('provider_token');
+      const accessToken = urlParams.get("access_token");
+      const refreshToken = urlParams.get("refresh_token");
+      const providerToken = urlParams.get("provider_token");
 
       if (accessToken && refreshToken) {
         try {
-          console.log('🔐 Processing OAuth callback...');
+          console.log("Processing OAuth callback...");
 
           // Set the session with the tokens from URL
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken
+            refresh_token: refreshToken,
           });
 
           if (error) {
-            console.error('OAuth callback error:', error);
+            console.error("OAuth callback error:", error);
             toast({
               title: "Authentication Error",
               description: "Failed to complete sign-in. Please try again.",
               variant: "destructive",
             });
           } else {
-            console.log('✅ OAuth callback successful:', data);
+            console.log("OAuth callback successful:", data);
 
             // Determine provider from the user data
-            const provider = data.user?.app_metadata?.provider || 'OAuth';
-            const providerName = provider === 'google' ? 'Google' :
-                               provider === 'facebook' ? 'Facebook' :
-                               provider.charAt(0).toUpperCase() + provider.slice(1);
+            const provider = data.user?.app_metadata?.provider || "OAuth";
+            const providerName =
+              provider === "google"
+                ? "Google"
+                : provider === "facebook"
+                ? "Facebook"
+                : provider.charAt(0).toUpperCase() + provider.slice(1);
 
             toast({
               title: "Welcome!",
@@ -56,10 +59,14 @@ const Index = () => {
             });
 
             // Clean up the URL by removing the hash
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
           }
         } catch (err) {
-          console.error('OAuth callback exception:', err);
+          console.error("OAuth callback exception:", err);
           toast({
             title: "Authentication Error",
             description: "An unexpected error occurred during sign-in.",
@@ -76,15 +83,34 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <HeroSection />
-      <AdBanner placement="below_hero" />
+
+      <div className="my-8">
+        <AdBanner placement="below_hero" className="mb-8" />
+      </div>
+
       <BrandGrid />
-      <AdBanner placement="between_brands_1" />
+
+      <div className="my-8">
+        <AdBanner placement="between_brands_1" className="mb-8" />
+      </div>
+
       <FeaturedCars />
-      <AdBanner placement="between_brands_2" />
+
+      <div className="my-8">
+        <AdBanner placement="between_brands_2" className="mb-8" />
+      </div>
+
       <CompareSection />
       <EMICalculator />
-      <AdBanner placement="above_footer" />
+
+      <div className="my-8">
+        <AdBanner placement="above_footer" className="mb-8" />
+      </div>
+
       <Footer />
+
+      {/* Debug component - remove in production */}
+      {process.env.NODE_ENV === "development" && <AdDebugger />}
     </div>
   );
 };

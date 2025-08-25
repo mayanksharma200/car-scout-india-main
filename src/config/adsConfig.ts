@@ -10,8 +10,8 @@ export interface AdSlot {
 
 export const AD_SLOTS: AdSlot[] = [
   {
-    id: 'c_nav_728x90',
-    name: 'Homepage Below HeroSection',
+    id: 'carsp_home_nav_728x90',
+    name: 'Homepage Below Navigation',
     path: '/',
     size: [728, 90],
     mobileSize: [320, 50],
@@ -71,6 +71,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Homepage Above Footer',
     path: '/',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'above_footer',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -89,6 +90,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Search Results Below Navigation',
     path: '/cars',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'below_navigation',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -107,6 +109,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Search Left Sidebar',
     path: '/cars',
     size: [300, 250],
+    mobileSize: [300, 250],
     placement: 'left_sidebar',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -125,6 +128,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Search Results Listing',
     path: '/cars',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'below_results',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -143,6 +147,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Search Above Footer',
     path: '/cars',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'above_footer',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -161,6 +166,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Compare Below Navigation',
     path: '/compare',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'below_navigation',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -179,6 +185,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Compare Above Footer',
     path: '/compare',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'above_footer',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -197,6 +204,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'EMI Page Below Navigation',
     path: '/emi-calculator',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'below_navigation',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -215,6 +223,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'EMI Page Above Footer',
     path: '/emi-calculator',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'above_footer',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -233,6 +242,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Car Details Below Navigation',
     path: '/cars/:slug',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'below_navigation',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -251,6 +261,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Car Details Between Tiles',
     path: '/cars/:slug',
     size: [300, 250],
+    mobileSize: [300, 250],
     placement: 'between_tiles',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">
@@ -269,6 +280,7 @@ export const AD_SLOTS: AdSlot[] = [
     name: 'Car Details Above Footer',
     path: '/cars/:slug',
     size: [728, 90],
+    mobileSize: [320, 50],
     placement: 'above_footer',
     code: `<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" crossorigin="anonymous"></script>
 <div id="gpt-passback">

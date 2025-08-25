@@ -36,6 +36,14 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 import AdBanner from "@/components/AdBanner";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const CarListing = () => {
   const location = useLocation();
@@ -574,6 +582,163 @@ const CarListing = () => {
     "USB Port",
   ];
 
+  // Filters Component for reuse in mobile sheet and desktop sidebar
+  const FiltersContent = () => (
+    <div className="space-y-4 lg:space-y-6">
+      {/* Price Range */}
+      <div>
+        <h4 className="font-medium mb-3 flex items-center gap-2 text-sm lg:text-base">
+          <IndianRupee className="w-4 h-4" />
+          Price Range
+        </h4>
+        <Slider
+          value={filters.priceRange}
+          onValueChange={(value) =>
+            setFilters((prev) => ({ ...prev, priceRange: value }))
+          }
+          max={5000000}
+          min={0}
+          step={50000}
+          className="w-full mb-3"
+        />
+        <div className="flex justify-between text-xs lg:text-sm text-muted-foreground">
+          <span>₹{(filters.priceRange[0] / 100000).toFixed(1)}L</span>
+          <span>₹{(filters.priceRange[1] / 100000).toFixed(1)}L</span>
+        </div>
+      </div>
+
+      {/* Brand */}
+      <div>
+        <h4 className="font-medium mb-3 text-sm lg:text-base">Brand</h4>
+        <div className="space-y-2 max-h-32 overflow-y-auto">
+          {brands.map((brand) => (
+            <div key={brand} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${brand}-filter`}
+                checked={filters.brands.includes(brand)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("brands", brand, checked as boolean)
+                }
+              />
+              <label
+                htmlFor={`${brand}-filter`}
+                className="text-xs lg:text-sm cursor-pointer"
+              >
+                {brand}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Body Type */}
+      <div>
+        <h4 className="font-medium mb-3 flex items-center gap-2 text-sm lg:text-base">
+          <CarIcon className="w-4 h-4" />
+          Body Type
+        </h4>
+        <div className="space-y-2">
+          {bodyTypes.map((type) => (
+            <div key={type} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${type}-filter`}
+                checked={filters.bodyTypes.includes(type)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("bodyTypes", type, checked as boolean)
+                }
+              />
+              <label
+                htmlFor={`${type}-filter`}
+                className="text-xs lg:text-sm cursor-pointer"
+              >
+                {type}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fuel Type */}
+      <div>
+        <h4 className="font-medium mb-3 flex items-center gap-2 text-sm lg:text-base">
+          <Zap className="w-4 h-4" />
+          Fuel Type
+        </h4>
+        <div className="space-y-2">
+          {fuelTypes.map((fuel) => (
+            <div key={fuel} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${fuel}-filter`}
+                checked={filters.fuelTypes.includes(fuel)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("fuelTypes", fuel, checked as boolean)
+                }
+              />
+              <label
+                htmlFor={`${fuel}-filter`}
+                className="text-xs lg:text-sm cursor-pointer"
+              >
+                {fuel}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Transmission */}
+      <div>
+        <h4 className="font-medium mb-3 text-sm lg:text-base">Transmission</h4>
+        <div className="space-y-2">
+          {transmissions.map((transmission) => (
+            <div key={transmission} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${transmission}-filter`}
+                checked={filters.transmissions.includes(transmission)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange(
+                    "transmissions",
+                    transmission,
+                    checked as boolean
+                  )
+                }
+              />
+              <label
+                htmlFor={`${transmission}-filter`}
+                className="text-xs lg:text-sm cursor-pointer"
+              >
+                {transmission}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Seating Capacity */}
+      <div>
+        <h4 className="font-medium mb-3 text-sm lg:text-base">Seating</h4>
+        <div className="space-y-2">
+          {seatingOptions.map((seating) => (
+            <div key={seating} className="flex items-center space-x-2">
+              <Checkbox
+                id={`seating-${seating}-filter`}
+                checked={filters.seating.includes(seating)}
+                onCheckedChange={(checked) =>
+                  handleFilterChange("seating", seating, checked as boolean)
+                }
+              />
+              <label
+                htmlFor={`seating-${seating}-filter`}
+                className="text-xs lg:text-sm cursor-pointer"
+              >
+                {seating} Seater
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -591,23 +756,27 @@ const CarListing = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <AdBanner placement="below_navigation" />
+
+      {/* Desktop Ad Banner */}
+      <div className="hidden md:block">
+        <AdBanner placement="below_navigation" />
+      </div>
 
       {/* Search Results Header */}
       {hasSearchResults && (
         <div className="bg-blue-50 border-b border-blue-200">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
+          <div className="container mx-auto px-4 py-3 lg:py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-blue-900">
+                <h2 className="text-base lg:text-lg font-semibold text-blue-900">
                   Search Results
                   {searchInfo?.query && (
-                    <span className="ml-2 text-blue-600">
+                    <span className="block sm:inline sm:ml-2 text-blue-600 text-sm lg:text-base">
                       for "{searchInfo.query}"
                     </span>
                   )}
                 </h2>
-                <p className="text-blue-700">
+                <p className="text-blue-700 text-sm">
                   Found {filteredAndSortedCars.length} car
                   {filteredAndSortedCars.length !== 1 ? "s" : ""}
                 </p>
@@ -615,7 +784,8 @@ const CarListing = () => {
               <Button
                 onClick={clearSearch}
                 variant="outline"
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                className="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-auto"
+                size="sm"
               >
                 Show All Cars
               </Button>
@@ -626,7 +796,7 @@ const CarListing = () => {
                 {searchInfo.filters.selectedBrand && (
                   <Badge
                     variant="secondary"
-                    className="bg-blue-100 text-blue-800"
+                    className="bg-blue-100 text-blue-800 text-xs"
                   >
                     Brand: {searchInfo.filters.selectedBrand}
                   </Badge>
@@ -634,7 +804,7 @@ const CarListing = () => {
                 {searchInfo.filters.carType && (
                   <Badge
                     variant="secondary"
-                    className="bg-blue-100 text-blue-800"
+                    className="bg-blue-100 text-blue-800 text-xs"
                   >
                     Type: {searchInfo.filters.carType}
                   </Badge>
@@ -642,7 +812,7 @@ const CarListing = () => {
                 {searchInfo.filters.fuelTypes?.length > 0 && (
                   <Badge
                     variant="secondary"
-                    className="bg-blue-100 text-blue-800"
+                    className="bg-blue-100 text-blue-800 text-xs"
                   >
                     Fuel: {searchInfo.filters.fuelTypes.join(", ")}
                   </Badge>
@@ -654,23 +824,26 @@ const CarListing = () => {
       )}
 
       {/* Search & Filter Bar */}
-      <div className="bg-muted/30 py-4 sm:py-6">
+      <div className="bg-muted/30 py-3 lg:py-6 sticky top-0 z-40 lg:relative">
         <div className="container mx-auto px-4">
-          <div className="space-y-4">
-            <div className="flex gap-2 sm:gap-4">
+          <div className="space-y-3 lg:space-y-4">
+            {/* Search Row */}
+            <div className="flex gap-2 lg:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   placeholder="Search cars, brands..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-sm"
+                  className="pl-10 text-sm h-9 lg:h-10"
                 />
               </div>
               <Select>
-                <SelectTrigger className="w-28 sm:w-40 md:w-48">
-                  <MapPin className="w-4 h-4 mr-1 sm:mr-2" />
-                  <SelectValue placeholder="City" />
+                <SelectTrigger className="w-20 sm:w-24 lg:w-32 h-9 lg:h-10">
+                  <MapPin className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs lg:text-sm">
+                    City
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mumbai">Mumbai</SelectItem>
@@ -680,44 +853,92 @@ const CarListing = () => {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between">
+            {/* Controls Row */}
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
+                {/* Mobile Filter Sheet */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`lg:hidden ${
+                        getActiveFiltersCount() > 0
+                          ? "border-primary bg-primary/10"
+                          : ""
+                      }`}
+                    >
+                      <Filter className="w-4 h-4 mr-1" />
+                      <span className="text-xs">Filters</span>
+                      {getActiveFiltersCount() > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-4 text-xs">
+                          {getActiveFiltersCount()}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="left"
+                    className="w-80 sm:w-96 overflow-y-auto"
+                  >
+                    <SheetHeader>
+                      <SheetTitle>Filter Cars</SheetTitle>
+                      <SheetDescription>
+                        Refine your search results
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-sm">Filters</h3>
+                        {getActiveFiltersCount() > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearAllFilters}
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                      </div>
+                      <FiltersContent />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                {/* Desktop Filter Toggle */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`text-xs sm:text-sm ${
+                  className={`hidden lg:flex ${
                     getActiveFiltersCount() > 0
                       ? "border-primary bg-primary/10"
                       : ""
                   }`}
                 >
-                  <Filter className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Filters</span>
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filters
                   {getActiveFiltersCount() > 0 && (
-                    <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
+                    <Badge variant="secondary" className="ml-2 text-xs">
                       {getActiveFiltersCount()}
                     </Badge>
                   )}
                 </Button>
               </div>
 
+              {/* Right Side Controls */}
               <div className="flex items-center gap-2">
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-24 sm:w-32 md:w-40 text-xs sm:text-sm">
+                  <SelectTrigger className="w-20 sm:w-28 lg:w-40 text-xs lg:text-sm h-9 lg:h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="popularity">Popular</SelectItem>
-                    <SelectItem value="price-low">
-                      Price: Low to High
-                    </SelectItem>
-                    <SelectItem value="price-high">
-                      Price: High to Low
-                    </SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
+                    <SelectItem value="price-low">Low Price</SelectItem>
+                    <SelectItem value="price-high">High Price</SelectItem>
+                    <SelectItem value="rating">Top Rated</SelectItem>
                     <SelectItem value="mileage">Best Mileage</SelectItem>
-                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="year">Newest</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -726,353 +947,121 @@ const CarListing = () => {
                     variant={viewMode === "grid" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("grid")}
-                    className="rounded-r-none px-2 sm:px-3"
+                    className="rounded-r-none px-2 lg:px-3 h-9 lg:h-10"
                   >
-                    <Grid className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <Grid className="w-3 h-3 lg:w-4 lg:h-4" />
                   </Button>
                   <Button
                     variant={viewMode === "list" ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode("list")}
-                    className="rounded-l-none border-l px-2 sm:px-3"
+                    className="rounded-l-none border-l px-2 lg:px-3 h-9 lg:h-10"
                   >
-                    <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <List className="w-3 h-3 lg:w-4 lg:h-4" />
                   </Button>
                 </div>
               </div>
             </div>
-          </div>
 
-          {getActiveFiltersCount() > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium">Active filters:</span>
-              {filters.brands.map((brand) => (
-                <Badge
-                  key={brand}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => handleFilterChange("brands", brand, false)}
+            {/* Active Filters */}
+            {getActiveFiltersCount() > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs lg:text-sm font-medium">
+                  Active filters:
+                </span>
+                {filters.brands.map((brand) => (
+                  <Badge
+                    key={brand}
+                    variant="secondary"
+                    className="cursor-pointer text-xs"
+                    onClick={() => handleFilterChange("brands", brand, false)}
+                  >
+                    {brand} <X className="w-3 h-3 ml-1" />
+                  </Badge>
+                ))}
+                {filters.fuelTypes.map((fuel) => (
+                  <Badge
+                    key={fuel}
+                    variant="secondary"
+                    className="cursor-pointer text-xs"
+                    onClick={() => handleFilterChange("fuelTypes", fuel, false)}
+                  >
+                    {fuel} <X className="w-3 h-3 ml-1" />
+                  </Badge>
+                ))}
+                {filters.bodyTypes.map((type) => (
+                  <Badge
+                    key={type}
+                    variant="secondary"
+                    className="cursor-pointer text-xs"
+                    onClick={() => handleFilterChange("bodyTypes", type, false)}
+                  >
+                    {type} <X className="w-3 h-3 ml-1" />
+                  </Badge>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-xs h-6 lg:h-8"
                 >
-                  {brand} <X className="w-3 h-3 ml-1" />
-                </Badge>
-              ))}
-              {filters.fuelTypes.map((fuel) => (
-                <Badge
-                  key={fuel}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => handleFilterChange("fuelTypes", fuel, false)}
-                >
-                  {fuel} <X className="w-3 h-3 ml-1" />
-                </Badge>
-              ))}
-              {filters.bodyTypes.map((type) => (
-                <Badge
-                  key={type}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => handleFilterChange("bodyTypes", type, false)}
-                >
-                  {type} <X className="w-3 h-3 ml-1" />
-                </Badge>
-              ))}
-              {filters.colors.map((color) => (
-                <Badge
-                  key={color}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => handleFilterChange("colors", color, false)}
-                >
-                  {color} <X className="w-3 h-3 ml-1" />
-                </Badge>
-              ))}
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                Clear All <X className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-          )}
+                  Clear All <X className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          {/* Advanced Filters Sidebar */}
+      <div className="container mx-auto px-4 py-4 lg:py-8">
+        <div className="flex gap-4 lg:gap-8">
+          {/* Desktop Sidebar Filters */}
           <div
             className={`${
               showFilters ? "block" : "hidden"
-            } lg:block w-80 space-y-6`}
+            } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
           >
-            <AdBanner placement="left_sidebar" />
+            {/* Desktop Ad in Sidebar */}
+            <div className="hidden xl:block">
+              <AdBanner placement="left_sidebar" />
+            </div>
+
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 lg:p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Advanced Filters</h3>
+                  <h3 className="font-semibold text-sm lg:text-base">
+                    Advanced Filters
+                  </h3>
                   {getActiveFiltersCount() > 0 && (
                     <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                       Clear All
                     </Button>
                   )}
                 </div>
-
-                {/* Price Range */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <IndianRupee className="w-4 h-4" />
-                    Price Range
-                  </h4>
-                  <Slider
-                    value={filters.priceRange}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({ ...prev, priceRange: value }))
-                    }
-                    max={5000000}
-                    min={0}
-                    step={50000}
-                    className="w-full mb-3"
-                  />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>₹{(filters.priceRange[0] / 100000).toFixed(1)}L</span>
-                    <span>₹{(filters.priceRange[1] / 100000).toFixed(1)}L</span>
-                  </div>
-                </div>
-
-                {/* Brand */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3">Brand</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {brands.map((brand) => (
-                      <div key={brand} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={brand}
-                          checked={filters.brands.includes(brand)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "brands",
-                              brand,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={brand}
-                          className="text-sm cursor-pointer"
-                        >
-                          {brand}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Body Type */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <CarIcon className="w-4 h-4" />
-                    Body Type
-                  </h4>
-                  <div className="space-y-2">
-                    {bodyTypes.map((type) => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={type}
-                          checked={filters.bodyTypes.includes(type)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "bodyTypes",
-                              type,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={type}
-                          className="text-sm cursor-pointer"
-                        >
-                          {type}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Fuel Type */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
-                    Fuel Type
-                  </h4>
-                  <div className="space-y-2">
-                    {fuelTypes.map((fuel) => (
-                      <div key={fuel} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={fuel}
-                          checked={filters.fuelTypes.includes(fuel)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "fuelTypes",
-                              fuel,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={fuel}
-                          className="text-sm cursor-pointer"
-                        >
-                          {fuel}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Transmission */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
-                    Transmission
-                  </h4>
-                  <div className="space-y-2">
-                    {transmissions.map((transmission) => (
-                      <div
-                        key={transmission}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={transmission}
-                          checked={filters.transmissions.includes(transmission)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "transmissions",
-                              transmission,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={transmission}
-                          className="text-sm cursor-pointer"
-                        >
-                          {transmission}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Color */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Palette className="w-4 h-4" />
-                    Color
-                  </h4>
-                  <div className="space-y-2">
-                    {colors.map((color) => (
-                      <div key={color} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={color}
-                          checked={filters.colors.includes(color)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "colors",
-                              color,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={color}
-                          className="text-sm cursor-pointer"
-                        >
-                          {color}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Seating Capacity */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3">Seating Capacity</h4>
-                  <div className="space-y-2">
-                    {seatingOptions.map((seating) => (
-                      <div
-                        key={seating}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`seating-${seating}`}
-                          checked={filters.seating.includes(seating)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "seating",
-                              seating,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={`seating-${seating}`}
-                          className="text-sm cursor-pointer"
-                        >
-                          {seating} Seater
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Features */}
-                <div className="mb-6">
-                  <h4 className="font-medium mb-3">Features</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {popularFeatures.map((feature) => (
-                      <div
-                        key={feature}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={feature}
-                          checked={filters.features.includes(feature)}
-                          onCheckedChange={(checked) =>
-                            handleFilterChange(
-                              "features",
-                              feature,
-                              checked as boolean
-                            )
-                          }
-                        />
-                        <label
-                          htmlFor={feature}
-                          className="text-sm cursor-pointer"
-                        >
-                          {feature}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <FiltersContent />
               </CardContent>
             </Card>
           </div>
 
           {/* Car Listings */}
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-bold">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6 gap-3 lg:gap-4">
+              <div className="flex items-center gap-2 lg:gap-4">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
                   {hasSearchResults ? "Search Results" : "New Cars"} (
-                  {filteredAndSortedCars.length} Results)
+                  {filteredAndSortedCars.length})
                 </h1>
                 {wishlistBatchLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    Checking wishlist...
+                  <div className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-3 w-3 lg:h-4 lg:w-4 border-b-2 border-primary"></div>
+                    <span className="hidden sm:inline">
+                      Checking wishlist...
+                    </span>
                   </div>
                 )}
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-44 lg:w-48 text-xs lg:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">
@@ -1088,20 +1077,24 @@ const CarListing = () => {
 
             {/* Results */}
             {filteredAndSortedCars.length === 0 ? (
-              <div className="text-center py-12">
-                <CarIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mb-2">No cars found</h3>
-                <p className="text-muted-foreground mb-4">
+              <div className="text-center py-8 lg:py-12">
+                <CarIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg lg:text-xl font-semibold mb-2">
+                  No cars found
+                </h3>
+                <p className="text-muted-foreground mb-4 text-sm lg:text-base px-4">
                   {hasSearchResults
                     ? "Try adjusting your search criteria or browse all available cars."
                     : "Try adjusting your filters or search query"}
                 </p>
-                <div className="flex gap-3 justify-center">
-                  <Button onClick={clearAllFilters} variant="outline">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={clearAllFilters} variant="outline" size="sm">
                     Clear All Filters
                   </Button>
                   {hasSearchResults && (
-                    <Button onClick={clearSearch}>View All Cars</Button>
+                    <Button onClick={clearSearch} size="sm">
+                      View All Cars
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1109,7 +1102,7 @@ const CarListing = () => {
               <div
                 className={
                   viewMode === "grid"
-                    ? "grid md:grid-cols-2 xl:grid-cols-3 gap-6"
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6"
                     : "space-y-4"
                 }
               >
@@ -1121,9 +1114,14 @@ const CarListing = () => {
                       onToggleWishlist={() => toggleWishlist(car.id)}
                       wishlistLoading={wishlistLoading[car.id] || false}
                     />
-                    {(index + 1) % 6 === 0 && viewMode === "grid" && (
-                      <div className="col-span-full w-full">
-                        <AdBanner placement="below_results" />
+                    {/* Insert ads every 6 cars in grid view, every 4 in mobile */}
+                    {(index + 1) % (viewMode === "grid" ? 6 : 4) === 0 && (
+                      <div
+                        className={viewMode === "grid" ? "col-span-full" : ""}
+                      >
+                        <div className="my-4">
+                          <AdBanner placement="below_results" />
+                        </div>
                       </div>
                     )}
                   </React.Fragment>
@@ -1133,6 +1131,7 @@ const CarListing = () => {
           </div>
         </div>
       </div>
+
       <AdBanner placement="above_footer" />
       <Footer />
     </div>

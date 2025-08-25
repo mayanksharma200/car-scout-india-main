@@ -36,7 +36,7 @@ const SimpleAdSlot: React.FC<SimpleAdSlotProps> = ({ slot, className = '' }) => 
             <div style="color: #6c757d; font-size: 0.875rem;">
               <div>Advertisement</div>
               <div style="font-size: 0.75rem; margin-top: 0.25rem; opacity: 0.7;">
-                ${slot.name}
+                // ${slot.name}
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ const SimpleAdSlot: React.FC<SimpleAdSlotProps> = ({ slot, className = '' }) => 
             <div className="text-center">
               <div>Loading Advertisement...</div>
               <div className="text-xs mt-1 opacity-60">
-                {slot.name}
+                {/* {slot.name} */}
               </div>
             </div>
           </div>
