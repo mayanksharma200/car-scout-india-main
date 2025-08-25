@@ -7,6 +7,7 @@ import ShareModal from "@/components/ShareModal";
 import CarImageGallery from "@/components/CarImageGallery";
 import GetBestPriceModal from "@/components/GetBestPriceModal";
 import RequestQuoteModal from "@/components/RequestQuoteModal";
+import AdBanner from "@/components/AdBanner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -322,6 +323,7 @@ const CarDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <AdBanner placement="below_navigation" />
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
@@ -754,6 +756,8 @@ const CarDetail = () => {
               </CardContent>
             </Card>
 
+            <AdBanner placement="between_tiles" />
+
             {/* EMI Calculator */}
             <Card>
               <CardHeader>
@@ -796,6 +800,7 @@ const CarDetail = () => {
           </div>
         </div>
       </div>
+      <AdBanner placement="above_footer" />
       <Footer />
     </div>
   );

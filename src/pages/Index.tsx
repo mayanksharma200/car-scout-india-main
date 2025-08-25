@@ -9,6 +9,7 @@ import FeaturedCars from "@/components/FeaturedCars";
 import CompareSection from "@/components/CompareSection";
 import EMICalculator from "@/components/EMICalculator";
 import Footer from "@/components/Footer";
+import AdBanner from "@/components/AdBanner";
 
 
 const Index = () => {
@@ -75,10 +76,14 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <HeroSection />
+      <AdBanner placement="below_hero" />
       <BrandGrid />
+      <AdBanner placement="between_brands_1" />
       <FeaturedCars />
+      <AdBanner placement="between_brands_2" />
       <CompareSection />
       <EMICalculator />
+      <AdBanner placement="above_footer" />
       <Footer />
     </div>
   );

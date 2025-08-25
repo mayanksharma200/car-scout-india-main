@@ -139,3 +139,177 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Responsive Ad Styles */
+
+.ad-banner {
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.ad-slot-container {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ad-slot {
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  position: relative;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 767px) {
+  .ad-banner {
+    margin: 0.75rem 0;
+    padding: 0 1rem;
+  }
+  
+  .ad-slot {
+    max-width: 100%;
+    /* Ensure mobile ads don't overflow on small screens */
+    max-width: min(320px, 100vw - 2rem);
+  }
+  
+  /* Hide sidebar ads on mobile */
+  .ad-banner.sidebar-ad {
+    display: none;
+  }
+  
+  /* Stack content vertically on mobile */
+  .search-layout {
+    flex-direction: column;
+  }
+  
+  /* Reduce spacing for mobile */
+  .ad-banner.mobile-reduced {
+    margin: 0.5rem 0;
+  }
+}
+
+/* Tablet styles */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ad-banner {
+    margin: 1.5rem 0;
+  }
+  
+  .ad-slot {
+    /* Allow tablet-specific sizing if needed */
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .ad-banner {
+    margin: 2rem 0;
+  }
+  
+  /* Show sidebar ads on desktop */
+  .ad-banner.sidebar-ad {
+    display: flex;
+  }
+  
+  /* Full width for large banners */
+  .ad-banner.full-width {
+    max-width: 728px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Specific placement styles */
+.ad-banner[data-placement="below_hero"] {
+  margin-top: 2rem;
+  margin-bottom: 3rem;
+}
+
+.ad-banner[data-placement="between_brands_1"],
+.ad-banner[data-placement="between_brands_2"] {
+  margin: 2rem 0;
+}
+
+.ad-banner[data-placement="above_footer"] {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+.ad-banner[data-placement="left_sidebar"] {
+  position: sticky;
+  top: 2rem;
+  align-self: flex-start;
+}
+
+.ad-banner[data-placement="below_navigation"] {
+  margin-bottom: 1.5rem;
+}
+
+.ad-banner[data-placement="below_results"] {
+  margin: 2rem 0;
+}
+
+.ad-banner[data-placement="between_tiles"] {
+  margin: 1rem 0;
+  justify-self: center;
+}
+
+/* Loading states */
+.ad-slot.loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Error states */
+.ad-slot.error {
+  background-color: #fee;
+  border-color: #fcc;
+  color: #c66;
+}
+
+/* Accessibility improvements */
+.ad-slot:focus-visible {
+  outline: 2px solid #007acc;
+  outline-offset: 2px;
+}
+
+/* Print styles - hide ads */
+@media print {
+  .ad-banner {
+    display: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ad-slot {
+    border-width: 2px;
+    border-color: currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ad-slot {
+    transition: none;
+  }
+  
+  .ad-slot.loading {
+    animation: none;
+    background: #f0f0f0;
+  }
+}

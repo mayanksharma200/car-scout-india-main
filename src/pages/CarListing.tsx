@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useUserAuth } from "@/contexts/UserAuthContext";
+import AdBanner from "@/components/AdBanner";
 
 const CarListing = () => {
   const location = useLocation();
@@ -590,6 +591,7 @@ const CarListing = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <AdBanner placement="below_navigation" />
 
       {/* Search Results Header */}
       {hasSearchResults && (
@@ -800,6 +802,7 @@ const CarListing = () => {
               showFilters ? "block" : "hidden"
             } lg:block w-80 space-y-6`}
           >
+            <AdBanner placement="left_sidebar" />
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1110,20 +1113,27 @@ const CarListing = () => {
                     : "space-y-4"
                 }
               >
-                {filteredAndSortedCars.map((car) => (
-                  <CarCard
-                    key={car.id}
-                    car={car}
-                    isWishlisted={wishlistStatus[car.id] || false}
-                    onToggleWishlist={() => toggleWishlist(car.id)}
-                    wishlistLoading={wishlistLoading[car.id] || false}
-                  />
+                {filteredAndSortedCars.map((car, index) => (
+                  <React.Fragment key={car.id}>
+                    <CarCard
+                      car={car}
+                      isWishlisted={wishlistStatus[car.id] || false}
+                      onToggleWishlist={() => toggleWishlist(car.id)}
+                      wishlistLoading={wishlistLoading[car.id] || false}
+                    />
+                    {(index + 1) % 6 === 0 && viewMode === "grid" && (
+                      <div className="col-span-full w-full">
+                        <AdBanner placement="below_results" />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
+      <AdBanner placement="above_footer" />
       <Footer />
     </div>
   );
