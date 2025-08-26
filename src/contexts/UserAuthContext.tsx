@@ -172,6 +172,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshTimer = useRef<NodeJS.Timeout | null>(null);
   const refreshPromise = useRef<Promise<boolean> | null>(null);
   const initializationPromise = useRef<Promise<void> | null>(null);
+  const profileLoaded = useRef(false);
 
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -257,6 +258,11 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);
         refreshTimer.current = null;
+      }
+
+      // Reset profile loaded flag when clearing tokens
+      if (profileLoaded.current) {
+        profileLoaded.current = false;
       }
 
       console.log("User session cleared from cookies");
@@ -646,12 +652,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     loadUserProfile,
   ]);
 
-  // Load user profile when tokens are available
+  // Load user profile when tokens are available (only once per session)
   useEffect(() => {
-    if (user && tokens?.accessToken && !loading) {
+    if (user && tokens?.accessToken && !loading && !profileLoaded.current) {
       // Only load profile if we don't have phone and city data
       if (!user.phone && !user.city) {
         console.log("Loading profile data for authenticated user...");
+        profileLoaded.current = true; // Mark as loaded to prevent repeated calls
         loadUserProfile();
       }
     }
