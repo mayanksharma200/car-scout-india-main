@@ -13,17 +13,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 import { User, LogOut, Settings, Heart, Car, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuthenticatedApi } from "@/hooks/useAuthenticatedApi";
 
 const ProfileModal = () => {
+  const api = useAuthenticatedApi();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     phone: "",
     city: "",
   });
-  const { user, logout } = useUserAuth();
+  const { user, logout, updateUser } = useUserAuth(); // Add updateUser method
   const { toast } = useToast();
 
   // Debug: Log user data to see what's coming from Google
@@ -40,49 +42,47 @@ const ProfileModal = () => {
         user.lastName || user.family_name || user.name?.split(" ")[1] || "";
 
       setProfile({
-        firstName: googleFirstName,
-        lastName: googleLastName,
+        first_name: googleFirstName,
+        last_name: googleLastName,
         phone: user.phone || "",
         city: user.city || "",
       });
     }
   }, [user, open]);
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+const handleUpdateProfile = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // API call to update profile
-      const response = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-        body: JSON.stringify(profile),
-      });
+  try {
+    const result = await api.user.updateProfile(profile);
 
-      if (!response.ok) {
-        throw new Error("Failed to update profile");
-      }
-
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully",
-      });
-
-      setOpen(false);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update profile",
-      });
-    } finally {
-      setLoading(false);
+    if (!result.success) {
+      throw new Error(result.error || "Failed to update profile");
     }
-  };
+
+    // After updating profile, fetch the complete user data again
+    const userResponse = await api.user.getCurrentUser();
+    if (userResponse.success && userResponse.user) {
+      // Update the user context with the complete data
+      updateUser(userResponse.user);
+    }
+
+    toast({
+      title: "Profile Updated",
+      description: "Your profile has been updated successfully",
+    });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: error.message || "Failed to update profile",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSignOut = async () => {
     try {
@@ -92,7 +92,7 @@ const ProfileModal = () => {
         title: "Signed Out",
         description: "You have been signed out successfully",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -116,14 +116,6 @@ const ProfileModal = () => {
       return `${user.given_name} ${user.family_name}`;
     }
     return user.email?.split("@")[0] || "User";
-  };
-
-  const getFirstName = () => {
-    return user.firstName || user.given_name || user.name?.split(" ")[0] || "";
-  };
-
-  const getLastName = () => {
-    return user.lastName || user.family_name || user.name?.split(" ")[1] || "";
   };
 
   return (
@@ -217,11 +209,11 @@ const ProfileModal = () => {
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
                   id="firstName"
-                  value={profile.firstName}
+                  value={profile.first_name}
                   onChange={(e) =>
                     setProfile((prev) => ({
                       ...prev,
-                      firstName: e.target.value,
+                      first_name: e.target.value,
                     }))
                   }
                   placeholder="Enter first name"
@@ -231,11 +223,11 @@ const ProfileModal = () => {
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
                   id="lastName"
-                  value={profile.lastName}
+                  value={profile.last_name}
                   onChange={(e) =>
                     setProfile((prev) => ({
                       ...prev,
-                      lastName: e.target.value,
+                      last_name: e.target.value,
                     }))
                   }
                   placeholder="Enter last name"

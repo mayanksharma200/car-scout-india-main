@@ -170,6 +170,8 @@ const generateTokens = async (user) => {
       email: user.email,
       role: profile?.role || "user",
       firstName: profile?.first_name,
+      phone:profile?.phone,
+      city:profile?.city,
       lastName: profile?.last_name,
       emailVerified: user.email_confirmed_at ? true : false,
       iat: Math.floor(Date.now() / 1000),
@@ -1813,6 +1815,7 @@ app.get("/api/auth/verify", validateToken, (req, res) => {
 // ===== PROTECTED ROUTES =====
 
 // User routes
+// User routes
 app.get("/api/user/profile", validateToken, async (req, res) => {
   try {
     const { data: profile, error } = await supabase
@@ -1825,6 +1828,8 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
       throw error;
     }
 
+    let userProfile = profile;
+
     if (!profile) {
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
@@ -1833,6 +1838,8 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
           role: "user",
           first_name: req.user.firstName,
           last_name: req.user.lastName,
+          phone: req.user.phone,
+          city: req.user.city,
           is_active: true,
           email_verified: req.user.emailVerified,
         })
@@ -1840,18 +1847,26 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
         .single();
 
       if (createError) throw createError;
+      userProfile = newProfile;
     }
+
+    // Merge user data with profile data
+    const completeUserData = {
+      ...req.user,
+      id:userProfile.id,
+      firstName: userProfile.first_name,
+      lastName: userProfile.last_name,
+      role:"user",
+      phone: userProfile.phone,
+      city: userProfile.city,
+      // Add other profile fields as needed
+    };
 
     res.json({
       success: true,
       data: {
-        user: req.user,
-        profile: profile || {
-          id: req.user.id,
-          role: "user",
-          first_name: req.user.firstName,
-          last_name: req.user.lastName,
-        },
+        user: completeUserData, // Return the merged user data
+        profile: userProfile,
       },
     });
   } catch (error) {
@@ -1862,7 +1877,6 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
     });
   }
 });
-
 
 // Update user profile
 app.put("/api/user/profile", validateToken, async (req, res) => {
