@@ -544,6 +544,37 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Load complete user profile data
+  const loadUserProfile = useCallback(async () => {
+    try {
+      console.log("Loading complete user profile data...");
+      
+      // Check if we have valid tokens before making the request
+      if (!tokens?.accessToken) {
+        console.warn("No access token available for profile request");
+        return;
+      }
+      
+      const response = await fetch(`${backendUrl}/user/profile`, {
+        method: "GET",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.user) {
+          console.log("Complete user profile loaded:", result.data.user);
+          updateUser(result.data.user);
+        }
+      } else {
+        console.warn("Profile request failed:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.warn("Failed to load user profile:", error);
+    }
+  }, [backendUrl, getAuthHeaders, updateUser, tokens?.accessToken]);
+
   // Initialize authentication state on mount
   useEffect(() => {
     if (initializationPromise.current) {
@@ -612,7 +643,19 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshTokens,
     scheduleTokenRefresh,
     hasRefreshToken,
+    loadUserProfile,
   ]);
+
+  // Load user profile when tokens are available
+  useEffect(() => {
+    if (user && tokens?.accessToken && !loading) {
+      // Only load profile if we don't have phone and city data
+      if (!user.phone && !user.city) {
+        console.log("Loading profile data for authenticated user...");
+        loadUserProfile();
+      }
+    }
+  }, [user, tokens?.accessToken, loading, loadUserProfile]);
 
   // Cleanup on unmount
   useEffect(() => {
