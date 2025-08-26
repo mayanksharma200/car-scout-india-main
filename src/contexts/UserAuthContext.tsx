@@ -12,6 +12,8 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  phone?:string,
+  city?:string,
   role: string;
   emailVerified: boolean;
   provider?: string;
@@ -23,6 +25,7 @@ interface TokenData {
   tokenType: string;
   expiresAt?: number;
 }
+
 
 interface UserAuthContextType {
   user: User | null;
@@ -40,6 +43,7 @@ interface UserAuthContextType {
   getAuthHeaders: () => Record<string, string>;
   isTokenExpired: () => boolean;
   saveTokens: (tokenData: TokenData, userData: any) => void;
+  updateUser: (userData: Partial<User>) => void;
   clearTokens: () => void;
 }
 
@@ -172,6 +176,21 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
+
+    const updateUser = useCallback((userData: Partial<User>) => {
+      setUser((prev) => {
+        if (!prev) return prev; // no user yet
+        const updated = { ...prev, ...userData };
+
+        // Also update cookie storage
+        cookieStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+        console.log("User updated:", updated);
+
+        return updated;
+      });
+    }, []);
+
+
   // Save tokens and user data to cookies
   const saveTokens = useCallback((tokenData: TokenData, userData: any) => {
     try {
@@ -196,6 +215,8 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
           userData.name?.split(" ")[1] ||
           "",
         role: userData.role || "user",
+        phone: userData.phone,
+        city: userData.city,
         emailVerified:
           userData.emailVerified || userData.email_verified || false,
         provider: userData.provider || "email",
@@ -615,6 +636,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     getAuthHeaders,
     isTokenExpired,
     saveTokens,
+    updateUser,
     clearTokens,
   };
 
