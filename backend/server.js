@@ -170,8 +170,8 @@ const generateTokens = async (user) => {
       email: user.email,
       role: profile?.role || "user",
       firstName: profile?.first_name,
-      phone: profile?.phone,
-      city: profile?.city,
+      phone:profile?.phone,
+      city:profile?.city,
       lastName: profile?.last_name,
       emailVerified: user.email_confirmed_at ? true : false,
       iat: Math.floor(Date.now() / 1000),
@@ -1853,10 +1853,10 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
     // Merge user data with profile data
     const completeUserData = {
       ...req.user,
-      id: userProfile.id,
+      id:userProfile.id,
       firstName: userProfile.first_name,
       lastName: userProfile.last_name,
-      role: "user",
+      role:"user",
       phone: userProfile.phone,
       city: userProfile.city,
       // Add other profile fields as needed
@@ -1886,18 +1886,18 @@ app.put("/api/user/profile", validateToken, async (req, res) => {
 
     // Remove fields that shouldn't be updated directly
     const allowedFields = [
-      "first_name",
-      "last_name",
-      "phone",
-      "date_of_birth",
-      "gender",
-      "city",
-      "state",
-      "preferences",
+      'first_name',
+      'last_name', 
+      'phone',
+      'date_of_birth',
+      'gender',
+      'city',
+      'state',
+      'preferences'
     ];
 
     const filteredData = {};
-    Object.keys(updateData).forEach((key) => {
+    Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {
         filteredData[key] = updateData[key];
       }
@@ -1921,14 +1921,15 @@ app.put("/api/user/profile", validateToken, async (req, res) => {
     res.json({
       success: true,
       data: data,
-      message: "Profile updated successfully",
+      message: "Profile updated successfully"
     });
+
   } catch (error) {
     console.error("Error updating profile:", error);
     res.status(500).json({
       success: false,
       error: "Failed to update profile",
-      details: IS_DEVELOPMENT ? error.message : undefined,
+      details: IS_DEVELOPMENT ? error.message : undefined
     });
   }
 });
@@ -2428,7 +2429,7 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Name, email, and phone are required",
-        code: "MISSING_REQUIRED_FIELDS",
+        code: "MISSING_REQUIRED_FIELDS"
       });
     }
 
@@ -2452,24 +2453,24 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating lead:", error);
-
+    
     // Handle specific database errors
-    if (error.code === "PGRST204") {
+    if (error.code === 'PGRST204') {
       return res.status(400).json({
         success: false,
-        error:
-          "Database column missing. Please add missing fields to leads table.",
-        code: "MISSING_COLUMNS",
+        error: "Database column missing. Please add missing fields to leads table.",
+        code: "MISSING_COLUMNS"
       });
     }
 
     res.status(500).json({
       success: false,
       error: "Failed to create lead",
-      details: IS_DEVELOPMENT ? error.message : undefined,
+      details: IS_DEVELOPMENT ? error.message : undefined
     });
   }
 });
+
 
 // Add this helper function for URL encoding
 const encodeURL = (url) => {
@@ -2480,21 +2481,21 @@ const encodeURL = (url) => {
 app.post("/api/sms/send-otp", async (req, res) => {
   try {
     const { phoneNumber } = req.body;
-
+    
     if (!phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: "Phone number is required",
+        error: "Phone number is required"
       });
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
+    
     // Clean phone number (remove +91 if present)
-    const cleanedPhone = phoneNumber.startsWith("+91")
-      ? phoneNumber.substring(3)
-      : phoneNumber.startsWith("91")
+    const cleanedPhone = phoneNumber.startsWith('+91') 
+      ? phoneNumber.substring(3) 
+      : phoneNumber.startsWith('91') 
       ? phoneNumber.substring(2)
       : phoneNumber;
 
@@ -2506,7 +2507,7 @@ app.post("/api/sms/send-otp", async (req, res) => {
     if (!/^\d{10}$/.test(cleanedPhone)) {
       return res.status(400).json({
         success: false,
-        error: "Invalid phone number format",
+        error: "Invalid phone number format"
       });
     }
 
@@ -2521,40 +2522,32 @@ app.post("/api/sms/send-otp", async (req, res) => {
 
     console.log(`🔧 SMS Config:`, {
       username: SMS_CONFIG.username,
-      password: SMS_CONFIG.password
-        ? SMS_CONFIG.password.slice(0, -1) + "*"
-        : "NOT SET",
+      password: SMS_CONFIG.password ? SMS_CONFIG.password.slice(0, -1) + '*' : 'NOT SET',
       from: SMS_CONFIG.from,
       pe_id: SMS_CONFIG.pe_id,
-      template_id: SMS_CONFIG.template_id,
+      template_id: SMS_CONFIG.template_id
     });
 
     // Prepare SMS text - Use the exact same text that worked in the direct test
-    const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Team Ventes Avenues`;
-
+const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Team Ventes Avenues`;
+    
     // Build the SMS gateway URL - DON'T encode the entire URL, just encode the text
-    const baseUrl = "https://web.smsgw.in/smsapi/httpapi.jsp";
-
+    const baseUrl = 'https://web.smsgw.in/smsapi/httpapi.jsp';
+    
     // Build URL manually like the working example - minimal encoding
-    const smsUrl = `${baseUrl}?username=${SMS_CONFIG.username}&password=${
-      SMS_CONFIG.password
-    }&from=${SMS_CONFIG.from}&to=${cleanedPhone}&text=${encodeURIComponent(
-      smsText
-    )}&coding=0&pe_id=${SMS_CONFIG.pe_id}&template_id=${
-      SMS_CONFIG.template_id
-    }`;
-
+    const smsUrl = `${baseUrl}?username=${SMS_CONFIG.username}&password=${SMS_CONFIG.password}&from=${SMS_CONFIG.from}&to=${cleanedPhone}&text=${encodeURIComponent(smsText)}&coding=0&pe_id=${SMS_CONFIG.pe_id}&template_id=${SMS_CONFIG.template_id}`;
+    
     console.log(`📤 SMS URL:`, smsUrl);
     console.log(`📝 SMS Text:`, smsText);
     console.log(`📞 Sending to:`, cleanedPhone);
 
     // Send SMS
     const response = await fetch(smsUrl, {
-      method: "GET",
+      method: 'GET',
       headers: {
-        "User-Agent": "AutoPulses-SMS-Service/1.0",
-        Accept: "text/xml, application/xml, text/plain",
-      },
+        'User-Agent': 'AutoPulses-SMS-Service/1.0',
+        'Accept': 'text/xml, application/xml, text/plain'
+      }
     });
 
     const responseText = await response.text();
@@ -2563,38 +2556,38 @@ app.post("/api/sms/send-otp", async (req, res) => {
 
     // Store OTP in database with expiration
     const expirationTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
+    
     try {
       // First, cleanup any existing OTPs for this number
       const { error: deleteError } = await supabase
-        .from("otp_verification")
+        .from('otp_verification')
         .delete()
-        .eq("mobile_no", cleanedPhone);
+        .eq('mobile_no', cleanedPhone);
 
       if (deleteError) {
-        console.warn("⚠️ Could not cleanup old OTPs:", deleteError);
+        console.warn('⚠️ Could not cleanup old OTPs:', deleteError);
       }
 
       // Insert new OTP
       const { data: otpData, error: otpError } = await supabase
-        .from("otp_verification")
+        .from('otp_verification')
         .insert({
           mobile_no: cleanedPhone,
           otp: otp,
-          status: "pending",
+          status: 'pending',
           expires_at: expirationTime.toISOString(),
-          created_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
         })
         .select()
         .single();
 
       if (otpError) {
-        console.error("❌ Failed to store OTP:", otpError);
+        console.error('❌ Failed to store OTP:', otpError);
       } else {
-        console.log("✅ OTP stored in database:", otpData.id);
+        console.log('✅ OTP stored in database:', otpData.id);
       }
     } catch (dbError) {
-      console.error("💥 Database error while storing OTP:", dbError);
+      console.error('💥 Database error while storing OTP:', dbError);
     }
 
     // Parse SMS gateway response - look for the successful pattern
@@ -2603,13 +2596,10 @@ app.post("/api/sms/send-otp", async (req, res) => {
 
     if (response.ok) {
       // Check for the successful response pattern like your test
-      if (
-        responseText.includes("<data>") &&
-        responseText.includes("<ack_id>")
-      ) {
+      if (responseText.includes('<data>') && responseText.includes('<ack_id>')) {
         smsSuccess = true;
-        console.log("✅ SMS sent successfully - found <data> tag in response");
-
+        console.log('✅ SMS sent successfully - found <data> tag in response');
+        
         // Extract message ID for logging
         const msgIdMatch = responseText.match(/<msgid>(.*?)<\/msgid>/);
         const ackIdMatch = responseText.match(/<ack_id>(.*?)<\/ack_id>/);
@@ -2617,12 +2607,11 @@ app.post("/api/sms/send-otp", async (req, res) => {
           console.log(`📋 Message ID: ${msgIdMatch[1]}`);
           console.log(`📋 ACK ID: ${ackIdMatch[1]}`);
         }
-      } else if (responseText.includes("<errordesc>")) {
+      } else if (responseText.includes('<errordesc>')) {
         // Error response format
-        const errorMatch =
-          responseText.match(/<errordesc[^>]*>(.*?)<\/errordesc>/) ||
-          responseText.match(/<errordesc[^>]*>(.*?),errorcode/);
-
+        const errorMatch = responseText.match(/<errordesc[^>]*>(.*?)<\/errordesc>/) || 
+                           responseText.match(/<errordesc[^>]*>(.*?),errorcode/);
+        
         if (errorMatch) {
           gatewayMessage = errorMatch[1];
           console.log(`❌ SMS Gateway Error: ${gatewayMessage}`);
@@ -2631,52 +2620,45 @@ app.post("/api/sms/send-otp", async (req, res) => {
     }
 
     if (smsSuccess) {
-      res.json({
-        success: true,
-        otp: process.env.NODE_ENV === "development" ? otp : undefined,
-        message: "OTP sent successfully",
-        debug:
-          process.env.NODE_ENV === "development"
-            ? {
-                phoneNumber: cleanedPhone,
-                gatewayResponse: responseText,
-                timestamp: new Date().toISOString(),
-              }
-            : undefined,
+      res.json({ 
+        success: true, 
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+        message: 'OTP sent successfully',
+        debug: process.env.NODE_ENV === 'development' ? {
+          phoneNumber: cleanedPhone,
+          gatewayResponse: responseText,
+          timestamp: new Date().toISOString()
+        } : undefined
       });
     } else {
       // For development, still return success but log the error
-      if (process.env.NODE_ENV === "development") {
-        console.error(
-          `❌ SMS Gateway Error but continuing in dev mode: ${gatewayMessage}`
-        );
-        res.json({
-          success: true,
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`❌ SMS Gateway Error but continuing in dev mode: ${gatewayMessage}`);
+        res.json({ 
+          success: true, 
           otp: otp,
-          message: "OTP generated (development mode - SMS may have failed)",
+          message: 'OTP generated (development mode - SMS may have failed)',
           debug: {
             phoneNumber: cleanedPhone,
             gatewayResponse: responseText,
             gatewayError: true,
-            timestamp: new Date().toISOString(),
-          },
+            timestamp: new Date().toISOString()
+          }
         });
       } else {
         throw new Error(`SMS gateway error: ${gatewayMessage}`);
       }
     }
+
   } catch (error) {
-    console.error("💥 Send OTP error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Failed to send OTP",
-      debug:
-        process.env.NODE_ENV === "development"
-          ? {
-              stack: error.stack,
-              timestamp: new Date().toISOString(),
-            }
-          : undefined,
+    console.error('💥 Send OTP error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to send OTP',
+      debug: process.env.NODE_ENV === 'development' ? {
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      } : undefined
     });
   }
 });
@@ -2689,61 +2671,63 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     if (!phoneNumber || !otp) {
       return res.status(400).json({
         success: false,
-        error: "Phone number and OTP are required",
+        error: "Phone number and OTP are required"
       });
     }
 
     // Clean phone number
-    const cleanedPhone = phoneNumber.startsWith("+91")
-      ? phoneNumber.substring(3)
-      : phoneNumber.startsWith("91")
+    const cleanedPhone = phoneNumber.startsWith('+91') 
+      ? phoneNumber.substring(3) 
+      : phoneNumber.startsWith('91') 
       ? phoneNumber.substring(2)
       : phoneNumber;
 
     // Verify OTP from database
     const { data: otpRecord, error } = await supabase
-      .from("otp_verification")
-      .select("*")
-      .eq("mobile_no", cleanedPhone)
-      .eq("otp", otp)
-      .eq("status", "pending")
-      .gte("expires_at", new Date().toISOString())
+      .from('otp_verification')
+      .select('*')
+      .eq('mobile_no', cleanedPhone)
+      .eq('otp', otp)
+      .eq('status', 'pending')
+      .gte('expires_at', new Date().toISOString())
       .single();
 
     if (error || !otpRecord) {
       return res.status(400).json({
         success: false,
-        error: "Invalid or expired OTP",
+        error: "Invalid or expired OTP"
       });
     }
 
     // Mark OTP as verified
     await supabase
-      .from("otp_verification")
-      .update({
-        status: "verified",
-        verified_at: new Date().toISOString(),
+      .from('otp_verification')
+      .update({ 
+        status: 'verified',
+        verified_at: new Date().toISOString()
       })
-      .eq("id", otpRecord.id);
+      .eq('id', otpRecord.id);
 
     // Clean up expired OTPs (optional housekeeping)
     await supabase
-      .from("otp_verification")
+      .from('otp_verification')
       .delete()
-      .lt("expires_at", new Date().toISOString());
+      .lt('expires_at', new Date().toISOString());
 
     res.json({
       success: true,
-      message: "OTP verified successfully",
+      message: 'OTP verified successfully'
     });
+
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    console.error('Verify OTP error:', error);
     res.status(500).json({
       success: false,
-      error: "Failed to verify OTP",
+      error: 'Failed to verify OTP'
     });
   }
 });
+
 
 // Find this section in your server.js and replace it:
 
@@ -2831,6 +2815,8 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     });
   }
 });
+
+
 
 // Run OTP cleanup every hour
 setInterval(cleanupExpiredOTPs, 60 * 60 * 1000);
