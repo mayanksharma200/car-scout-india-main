@@ -62,10 +62,10 @@ const handleUpdateProfile = async (e) => {
     }
 
     // After updating profile, fetch the complete user data again
-    const userResponse = await api.user.getCurrentUser();
-    if (userResponse.success && userResponse.user) {
+    const userResponse = await api.user.getProfile();
+    if (userResponse.success && userResponse.data && userResponse.data.user) {
       // Update the user context with the complete data
-      updateUser(userResponse.user);
+      updateUser(userResponse.data.user);
     }
 
     toast({
