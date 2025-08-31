@@ -20,56 +20,75 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
   onLoad,
   onError
 }) => {
-  // Convert proxy URLs to direct URLs to bypass CSP issues
-  const getDirectImageUrl = (url: string) => {
-    // If it's a proxy URL, extract the direct URL
+  // Simplified URL processing for maximum performance
+  const getOptimizedUrl = (url: string) => {
+    // Direct extraction without regex for proxy URLs
     if (url.includes('imagin-proxy?url=')) {
-      try {
-        const proxyMatch = url.match(/imagin-proxy\?url=(.+)/);
-        if (proxyMatch) {
-          return decodeURIComponent(proxyMatch[1]);
-        }
-      } catch (error) {
-        console.warn('Failed to parse proxy URL:', error);
-      }
+      const urlIndex = url.indexOf('imagin-proxy?url=') + 17;
+      url = decodeURIComponent(url.substring(urlIndex));
     }
+
+    // Fast IMAGIN optimization without URL object creation
+    if (url.includes('cdn.imagin.studio')) {
+      // Replace parameters directly for speed
+      return url
+        .replace(/width=\d+/g, 'width=440')
+        .replace(/fileType=\w+/g, 'fileType=png')
+        .replace(/zoomType=\w+/g, 'zoomType=relative')
+        .replace(/&randomPaint=\w+/g, '')
+        .replace(/&safeMode=\w+/g, '')
+        .replace(/&fullscreen=\w+/g, '')
+        + (url.includes('zoomLevel=') ? '' : '&zoomLevel=60')
+        + (url.includes('aspectRatio=') ? '' : '&aspectRatio=1.6');
+    }
+    
     return url;
   };
 
-  const [imageSrc, setImageSrc] = useState(getDirectImageUrl(src));
+  const [imageSrc, setImageSrc] = useState(getOptimizedUrl(src));
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [timeoutReached, setTimeoutReached] = useState(false);
+  const [loadStartTime, setLoadStartTime] = useState(Date.now());
 
-  // Reset states when src changes (with dependency fix)
+  // Minimal effect for maximum performance
   useEffect(() => {
-    const directUrl = getDirectImageUrl(src);
-    console.log('IMAGINImage: New src received:', src);
-    console.log('IMAGINImage: Using direct URL:', directUrl);
+    const optimizedUrl = getOptimizedUrl(src);
     
-    // Only update if URL actually changed
-    if (imageSrc !== directUrl) {
-      setImageSrc(directUrl);
+    if (imageSrc !== optimizedUrl) {
+      setLoadStartTime(Date.now());
+      setImageSrc(optimizedUrl);
       setHasError(false);
       setIsLoading(true);
       setTimeoutReached(false);
     }
 
-    // Set a timeout to fallback if image takes too long
+    // Faster timeout for quicker fallback
     const timeoutId = setTimeout(() => {
       setTimeoutReached(true);
       if (isLoading) {
-        console.warn(`⏰ Image loading timeout (5s): ${directUrl}`);
         setIsLoading(false);
         setHasError(true);
       }
-    }, 5000); // Reduced from 10s to 5s
+    }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [src]); // Removed isLoading from dependency to prevent loops
+  }, [src]);
 
   const handleImageLoad = () => {
-    console.log(`Successfully loaded IMAGIN image: ${imageSrc}`);
+    const loadTime = Date.now() - loadStartTime;
+    console.log(`✅ Successfully loaded IMAGIN image in ${loadTime}ms: ${imageSrc}`);
+    
+    // Clean up timer if it exists
+    const timerId = (setImageSrc as any)._timerId;
+    if (timerId) {
+      try {
+        console.timeEnd(timerId);
+      } catch (e) {
+        // Timer doesn't exist, ignore
+      }
+    }
+    
     setIsLoading(false);
     setHasError(false);
     onLoad?.();
@@ -95,17 +114,8 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
     onError?.();
   };
 
-  // Show loading placeholder (but only for first 2 seconds to avoid stuck loading)
-  if (isLoading && !timeoutReached) {
-    return (
-      <div className={`bg-gray-100 flex items-center justify-center ${className}`}>
-        <div className="animate-pulse">
-          <Car className="h-8 w-8 text-gray-400" />
-          <p className="text-xs text-gray-500 mt-2">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Don't show loading placeholder - show image immediately for better perceived performance
+  // Loading state will be handled by browser's native loading behavior
 
   // Show error state with fallback
   if (hasError && imageSrc === fallback) {
@@ -121,24 +131,35 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
 
   return (
     <div className="relative">
+      {/* DNS prefetch and preconnect to IMAGIN CDN for faster connections */}
+      {imageSrc.includes('cdn.imagin.studio') && (
+        <>
+          <link rel="dns-prefetch" href="//cdn.imagin.studio" />
+          <link rel="preconnect" href="https://cdn.imagin.studio" crossOrigin="" />
+        </>
+      )}
+      
       <img
         src={imageSrc}
         alt={alt}
         className={className}
-        loading="eager" // Force eager loading for better performance
+        loading="eager" // Force eager loading for immediate display
         onLoad={handleImageLoad}
         onError={handleImageError}
         referrerPolicy="no-referrer"
+        fetchpriority="high" // Use high priority for faster loading (lowercase for React)
+        decoding="async" // Enable async decoding for better performance
         style={{ 
-          display: isLoading ? 'none' : 'block',
-          backgroundColor: 'transparent'
+          display: 'block', // Always show image, let browser handle loading
+          backgroundColor: '#f3f4f6', // Light gray background while loading
+          imageRendering: 'optimizeSpeed', // Optimize for speed over quality
+          transition: 'opacity 0.2s ease-in-out' // Smooth fade-in
         }}
-        // Remove crossOrigin to avoid CORS preflight requests that slow things down
       />
       
-      {/* Debug info overlay - remove in production */}
+      {/* Debug info overlay with load time */}
       <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs p-1 rounded max-w-[200px] truncate">
-        {isLoading ? 'Loading...' : hasError ? 'Error' : 'Loaded'}
+        {isLoading ? `Loading... ${Math.round((Date.now() - loadStartTime) / 1000)}s` : hasError ? 'Error' : `Loaded ${Math.round((Date.now() - loadStartTime) / 1000)}s`}
       </div>
     </div>
   );
