@@ -205,6 +205,14 @@ const CarDetail = () => {
 
         if (foundCar) {
           console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
+          console.log('🖼️ Car images data:', {
+            images: foundCar.images,
+            imagesType: typeof foundCar.images,
+            imagesIsArray: Array.isArray(foundCar.images),
+            imagesLength: foundCar.images?.length,
+            firstImage: foundCar.images?.[0],
+            image: foundCar.image
+          });
           setCar(foundCar);
         } else {
           console.error('❌ Car not found for slug:', slug);
@@ -395,7 +403,17 @@ const CarDetail = () => {
 
             {/* Image Gallery */}
             <CarImageGallery
-              images={Array.isArray(car.images) ? car.images : [car.image]}
+              images={(() => {
+                const imageData = Array.isArray(car.images) ? car.images : [car.image];
+                console.log('🎬 Passing to CarImageGallery:', {
+                  originalImages: car.images,
+                  originalImage: car.image,
+                  finalImageData: imageData,
+                  imageDataLength: imageData?.length,
+                  firstItem: imageData?.[0]
+                });
+                return imageData;
+              })()}
               carName={`${car.brand} ${car.model}`}
             />
 

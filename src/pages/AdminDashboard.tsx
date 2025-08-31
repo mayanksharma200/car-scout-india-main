@@ -13,6 +13,9 @@ import {
   Upload,
   Database,
 } from "lucide-react";
+import IMAGINBulkUpdater from "@/components/IMAGINBulkUpdater";
+import IMAGINImageTest from "@/components/IMAGINImageTest";
+import ImageDebugTest from "@/components/ImageDebugTest";
 import { useStats } from "@/hooks/useSupabaseData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -435,6 +438,19 @@ const AdminDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* IMAGIN Bulk Updater */}
+          <IMAGINBulkUpdater />
+
+          {/* IMAGIN Image Test */}
+          <div className="mt-8">
+            <IMAGINImageTest />
+          </div>
+
+          {/* Image Debug Test */}
+          <div className="mt-8">
+            <ImageDebugTest />
+          </div>
         </main>
       </div>
     </div>
