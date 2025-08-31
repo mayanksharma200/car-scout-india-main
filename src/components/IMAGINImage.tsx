@@ -41,28 +41,32 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [timeoutReached, setTimeoutReached] = useState(false);
 
-  // Reset states when src changes
+  // Reset states when src changes (with dependency fix)
   useEffect(() => {
     const directUrl = getDirectImageUrl(src);
     console.log('IMAGINImage: New src received:', src);
     console.log('IMAGINImage: Using direct URL:', directUrl);
-    setImageSrc(directUrl);
-    setHasError(false);
-    setIsLoading(true);
-    setTimeoutReached(false);
+    
+    // Only update if URL actually changed
+    if (imageSrc !== directUrl) {
+      setImageSrc(directUrl);
+      setHasError(false);
+      setIsLoading(true);
+      setTimeoutReached(false);
+    }
 
     // Set a timeout to fallback if image takes too long
     const timeoutId = setTimeout(() => {
+      setTimeoutReached(true);
       if (isLoading) {
-        console.warn(`⏰ Image loading timeout (10s): ${directUrl}`);
-        setTimeoutReached(true);
+        console.warn(`⏰ Image loading timeout (5s): ${directUrl}`);
         setIsLoading(false);
         setHasError(true);
       }
-    }, 10000);
+    }, 5000); // Reduced from 10s to 5s
 
     return () => clearTimeout(timeoutId);
-  }, [src]);
+  }, [src]); // Removed isLoading from dependency to prevent loops
 
   const handleImageLoad = () => {
     console.log(`Successfully loaded IMAGIN image: ${imageSrc}`);
@@ -121,18 +125,18 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
         src={imageSrc}
         alt={alt}
         className={className}
-        loading={loading}
+        loading="eager" // Force eager loading for better performance
         onLoad={handleImageLoad}
         onError={handleImageError}
-        crossOrigin="anonymous"
         referrerPolicy="no-referrer"
         style={{ 
           display: isLoading ? 'none' : 'block',
           backgroundColor: 'transparent'
         }}
+        // Remove crossOrigin to avoid CORS preflight requests that slow things down
       />
       
-      {/* Debug info overlay */}
+      {/* Debug info overlay - remove in production */}
       <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs p-1 rounded max-w-[200px] truncate">
         {isLoading ? 'Loading...' : hasError ? 'Error' : 'Loaded'}
       </div>
