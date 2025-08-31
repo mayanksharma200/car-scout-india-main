@@ -51,8 +51,7 @@ const IMAGINBulkUpdater = () => {
   const [currentBatch, setCurrentBatch] = useState<BulkUpdateResponse | null>(null);
 
   const BATCH_SIZE = 10;
-  // const API_URL = "http://localhost:3001"; // Adjust based on your backend URL
-  const API_URL = import.meta.env.VITE_API_URL; // Adjust based on your backend URL
+  const API_URL = "http://localhost:3001"; // Adjust based on your backend URL
 
   const startBulkUpdate = async () => {
     if (!confirm("Start IMAGIN bulk update? This will process cars in batches of 10.")) {
@@ -76,11 +75,7 @@ const IMAGINBulkUpdater = () => {
     try {
       console.log(`🔄 Processing batch at offset ${offset}`);
       
-      //localhost fetch
-      // const response = await fetch(`${API_URL}/api/admin/cars/imagin-bulk-update`, {
-
-      //prod fetch
-      const response = await fetch(`${API_URL}/admin/cars/imagin-bulk-update`, {
+      const response = await fetch(`${API_URL}/api/admin/cars/imagin-bulk-update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
