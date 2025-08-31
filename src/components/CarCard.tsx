@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import ShareModal from "./ShareModal";
 import { getCarSlugFromCar } from "@/utils/carSlugUtils";
+import IMAGINImage from "./IMAGINImage";
 
 interface Car {
   id: string;
@@ -24,7 +25,8 @@ interface Car {
   variant: string;
   price: number;
   onRoadPrice?: number;
-  image: string;
+  image?: string;
+  images?: string[];
   rating: number;
   fuelType: string;
   transmission: string;
@@ -142,14 +144,11 @@ const CarCard = ({
 
         {/* Car Image */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-muted/30 to-muted/60">
-          <img
-            src={car.image}
+          <IMAGINImage
+            src={car.images?.[0] || car.image || "/placeholder.svg"}
             alt={`${car.brand} ${car.model}`}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "/placeholder.svg";
-            }}
+            fallback="/placeholder.svg"
           />
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

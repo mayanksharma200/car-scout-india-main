@@ -3,33 +3,78 @@ import { ChevronLeft, ChevronRight, ZoomIn, X, Download, Share2, Maximize2 } fro
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ShareModal from "./ShareModal";
+import IMAGINImage from "./IMAGINImage";
 
 interface CarImageGalleryProps {
-  images: {
+  images: (string | {
     id: string;
     url: string;
     alt: string;
     category?: string;
-  }[];
+  })[];
   carName: string;
 }
 
 const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
+  console.log('🖼️ CarImageGallery received:', {
+    images,
+    imagesType: typeof images,
+    imagesIsArray: Array.isArray(images),
+    imagesLength: images?.length,
+    carName
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const thumbnailRef = useRef<HTMLDivElement>(null);
 
+  // Transform images to normalized format
+  let normalizedImages = (images || []).map((img, index) => {
+    if (typeof img === 'string') {
+      const normalized = {
+        id: `image-${index}`,
+        url: img,
+        alt: `${carName} - Image ${index + 1}`,
+        category: 'exterior'
+      };
+      console.log(`🔄 Normalized image ${index}:`, { original: img, normalized });
+      return normalized;
+    }
+    console.log(`✅ Already normalized image ${index}:`, img);
+    return img;
+  });
+
+  console.log('🎯 Final normalized images:', normalizedImages);
+
+  // If no images, use a placeholder
+  if (normalizedImages.length === 0) {
+    console.warn('⚠️ No images found, using placeholder');
+    normalizedImages = [{
+      id: 'placeholder',
+      url: '/placeholder.svg',
+      alt: `${carName} - No image available`,
+      category: 'placeholder'
+    }];
+  }
+
   // Get unique categories
-  const categories = ["all", ...Array.from(new Set(images.map(img => img.category).filter(Boolean)))];
+  const categories = ["all", ...Array.from(new Set(normalizedImages.map(img => img.category).filter(Boolean)))];
   
   // Filter images by category
   const filteredImages = activeCategory === "all" 
-    ? images 
-    : images.filter(img => img.category === activeCategory);
+    ? normalizedImages 
+    : normalizedImages.filter(img => img.category === activeCategory);
 
   const currentImage = filteredImages[currentIndex];
+
+  console.log('🎯 Current image state:', {
+    currentIndex,
+    filteredImagesLength: filteredImages.length,
+    currentImage,
+    currentImageUrl: currentImage?.url
+  });
 
   const goToNext = () => {
     setCurrentIndex((prev) => (prev + 1) % filteredImages.length);
@@ -114,10 +159,11 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
       {/* Main Image Display */}
       <div className="relative group">
         <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-          <img
-            src={currentImage?.url}
-            alt={currentImage?.alt}
+          <IMAGINImage
+            src={currentImage?.url || "/placeholder.svg"}
+            alt={currentImage?.alt || carName}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fallback="/placeholder.svg"
           />
           
           {/* Image Overlay Controls */}
@@ -196,10 +242,11 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
                     : 'border-transparent hover:border-primary/50'
                 }`}
               >
-                <img
+                <IMAGINImage
                   src={image.url}
                   alt={image.alt}
                   className="w-full h-full object-cover"
+                  fallback="/placeholder.svg"
                 />
               </button>
             ))}
@@ -264,12 +311,15 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
             )}
 
             {/* Main Image */}
-            <div className={`transition-transform duration-300 ${isZoomed ? 'scale-150' : 'scale-100'} cursor-${isZoomed ? 'zoom-out' : 'zoom-in'}`}>
-              <img
-                src={currentImage?.url}
-                alt={currentImage?.alt}
+            <div 
+              className={`transition-transform duration-300 ${isZoomed ? 'scale-150' : 'scale-100'} cursor-${isZoomed ? 'zoom-out' : 'zoom-in'}`}
+              onClick={() => setIsZoomed(!isZoomed)}
+            >
+              <IMAGINImage
+                src={currentImage?.url || "/placeholder.svg"}
+                alt={currentImage?.alt || carName}
                 className="max-w-full max-h-full object-contain"
-                onClick={() => setIsZoomed(!isZoomed)}
+                fallback="/placeholder.svg"
               />
             </div>
 
@@ -295,10 +345,11 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
                       : 'border-transparent hover:border-white/50'
                   }`}
                 >
-                  <img
+                  <IMAGINImage
                     src={image.url}
                     alt={image.alt}
                     className="w-full h-full object-cover"
+                    fallback="/placeholder.svg"
                   />
                 </button>
               ))}

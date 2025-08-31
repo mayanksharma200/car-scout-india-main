@@ -7,6 +7,8 @@ import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
+import IMAGINAPIService from "./services/imaginAPI.js";
+import IMAGINOnlyService from "./services/imaginOnlyService.js";
 
 dotenv.config();
 
@@ -23,6 +25,10 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
 );
+
+// Initialize IMAGIN API service
+const imaginAPI = new IMAGINAPIService();
+const imaginOnlyAPI = new IMAGINOnlyService();
 
 // ===== ENVIRONMENT-AWARE CONFIGURATIONS =====
 
@@ -72,7 +78,7 @@ const HELMET_CONFIG = {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https:", ...(IS_DEVELOPMENT ? ["http://localhost:*"] : [])],
       scriptSrc: ["'self'"],
       connectSrc: [
         "'self'",
@@ -997,6 +1003,398 @@ app.get("/api/cars/:id", async (req, res) => {
       error: "Failed to fetch car",
     });
   }
+});
+
+// IMAGIN.studio image generation endpoints
+app.get("/api/cars/:id/images/generate", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { angles = "21", refresh = false } = req.query;
+
+    // Get car data
+    const { data: car, error: carError } = await supabase
+      .from("cars")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (carError || !car) {
+      return res.status(404).json({
+        success: false,
+        error: "Car not found",
+      });
+    }
+
+    // Skip if images exist and refresh not requested
+    if (!refresh && car.imagin_images && car.imagin_images.primary) {
+      return res.json({
+        success: true,
+        data: car.imagin_images,
+        cached: true,
+        message: "Images already exist. Use refresh=true to regenerate."
+      });
+    }
+
+    // Generate images
+    const angleArray = angles.split(',');
+    const imageAngles = imaginAPI.generateMultipleAngles(car, angleArray);
+    const bestImage = await imaginAPI.getBestCarImage(car);
+
+    // Prepare image data
+    const imaginImages = {
+      primary: bestImage.url,
+      angles: imageAngles,
+      last_updated: new Date().toISOString(),
+      fallback: bestImage.fallback || false,
+      valid: bestImage.valid
+    };
+
+    // Update car with new images
+    const updatedImages = [bestImage.url];
+    if (bestImage.valid && !bestImage.fallback) {
+      const additionalAngles = imageAngles
+        .filter(img => img.angle !== bestImage.angle)
+        .slice(0, 3)
+        .map(img => img.url);
+      updatedImages.push(...additionalAngles);
+    }
+
+    const { error: updateError } = await supabase
+      .from("cars")
+      .update({
+        images: updatedImages,
+        imagin_images: imaginImages,
+        image_last_updated: new Date().toISOString()
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      console.error("Error updating car images:", updateError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to update car images",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: imaginImages,
+      message: "Car images generated successfully"
+    });
+
+  } catch (error) {
+    console.error("Error generating car images:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to generate car images",
+    });
+  }
+});
+
+// Bulk image generation endpoint
+app.post("/api/cars/images/generate-bulk", async (req, res) => {
+  try {
+    const { car_ids, refresh = false } = req.body;
+
+    if (!car_ids || !Array.isArray(car_ids)) {
+      return res.status(400).json({
+        success: false,
+        error: "car_ids array is required",
+      });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const carId of car_ids) {
+      try {
+        // Get car data
+        const { data: car, error: carError } = await supabase
+          .from("cars")
+          .select("*")
+          .eq("id", carId)
+          .single();
+
+        if (carError || !car) {
+          errors.push({ car_id: carId, error: "Car not found" });
+          continue;
+        }
+
+        // Skip if images exist and refresh not requested
+        if (!refresh && car.imagin_images && car.imagin_images.primary) {
+          results.push({ car_id: carId, status: "skipped", reason: "Images already exist" });
+          continue;
+        }
+
+        // Generate images
+        const imageAngles = imaginAPI.generateMultipleAngles(car);
+        const bestImage = await imaginAPI.getBestCarImage(car);
+
+        const imaginImages = {
+          primary: bestImage.url,
+          angles: imageAngles,
+          last_updated: new Date().toISOString(),
+          fallback: bestImage.fallback || false,
+          valid: bestImage.valid
+        };
+
+        const updatedImages = [bestImage.url];
+        if (bestImage.valid && !bestImage.fallback) {
+          const additionalAngles = imageAngles
+            .filter(img => img.angle !== bestImage.angle)
+            .slice(0, 3)
+            .map(img => img.url);
+          updatedImages.push(...additionalAngles);
+        }
+
+        // Update car
+        const { error: updateError } = await supabase
+          .from("cars")
+          .update({
+            images: updatedImages,
+            imagin_images: imaginImages,
+            image_last_updated: new Date().toISOString()
+          })
+          .eq("id", carId);
+
+        if (updateError) {
+          errors.push({ car_id: carId, error: "Failed to update car" });
+        } else {
+          results.push({ car_id: carId, status: "success", images: imaginImages });
+        }
+
+      } catch (error) {
+        errors.push({ car_id: carId, error: error.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      processed: results.length + errors.length,
+      successful: results.length,
+      failed: errors.length,
+      results,
+      errors
+    });
+
+  } catch (error) {
+    console.error("Error in bulk image generation:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to process bulk image generation",
+    });
+  }
+});
+
+// Admin IMAGIN-only bulk update endpoint
+app.post("/api/admin/cars/imagin-bulk-update", async (req, res) => {
+  try {
+    const { limit = 10, offset = 0 } = req.body;
+
+    console.log(`🔧 Admin IMAGIN bulk update: processing ${limit} cars from offset ${offset}`);
+
+    // Get cars that need IMAGIN images (no imagin_images field or placeholder images)
+    const { data: cars, error } = await supabase
+      .from('cars')
+      .select('*')
+      .eq('status', 'active')
+      .is('imagin_images', null)
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch cars'
+      });
+    }
+
+    const results = [];
+    const errors = [];
+
+    console.log(`📊 Found ${cars.length} cars to process`);
+
+    for (const car of cars) {
+      try {
+        console.log(`🔄 Processing: ${car.brand} ${car.model} ${car.variant || ''}`);
+
+        // Get IMAGIN images ONLY
+        const imaginImages = await imaginOnlyAPI.getIMAGINImages(car, ['21', '01', '05', '09']);
+
+        if (imaginImages && imaginImages.length > 0) {
+          // IMAGIN worked! Update the car
+          const imageUrls = imaginImages.map(img => img.url);
+          const primaryImage = imaginImages[0];
+
+          const updateData = {
+            images: imageUrls,
+            imagin_images: {
+              primary: primaryImage.url,
+              angles: imaginImages,
+              last_updated: new Date().toISOString(),
+              valid: true,
+              fallback: false,
+              source: 'imagin'
+            },
+            image_last_updated: new Date().toISOString()
+          };
+
+          const { error: updateError } = await supabase
+            .from('cars')
+            .update(updateData)
+            .eq('id', car.id);
+
+          if (updateError) {
+            console.error(`Update failed for ${car.id}:`, updateError);
+            errors.push({
+              car_id: car.id,
+              car_name: `${car.brand} ${car.model} ${car.variant || ''}`,
+              error: 'Database update failed'
+            });
+          } else {
+            console.log(`✅ Successfully updated: ${car.brand} ${car.model}`);
+            results.push({
+              car_id: car.id,
+              car_name: `${car.brand} ${car.model} ${car.variant || ''}`,
+              status: 'success',
+              images_count: imaginImages.length,
+              primary_image: primaryImage.url
+            });
+          }
+        } else {
+          // IMAGIN didn't work for this car
+          console.log(`❌ IMAGIN failed for: ${car.brand} ${car.model}`);
+          errors.push({
+            car_id: car.id,
+            car_name: `${car.brand} ${car.model} ${car.variant || ''}`,
+            error: 'IMAGIN API did not return valid images'
+          });
+        }
+
+        // Small delay to avoid overwhelming IMAGIN API
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (error) {
+        console.error(`Error processing car ${car.id}:`, error);
+        errors.push({
+          car_id: car.id,
+          car_name: `${car.brand} ${car.model} ${car.variant || ''}`,
+          error: error.message
+        });
+      }
+    }
+
+    // Get remaining count for pagination
+    const { count: remainingCount } = await supabase
+      .from('cars')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .is('imagin_images', null);
+
+    const response = {
+      success: true,
+      processed: cars.length,
+      successful: results.length,
+      failed: errors.length,
+      results,
+      errors,
+      pagination: {
+        limit,
+        offset,
+        remaining: Math.max(0, remainingCount - limit - offset),
+        hasMore: (remainingCount - offset - limit) > 0
+      }
+    };
+
+    console.log(`🎉 Batch complete: ${results.length} successful, ${errors.length} failed`);
+    res.json(response);
+
+  } catch (error) {
+    console.error('Fatal error in admin IMAGIN bulk update:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// IMAGIN image proxy endpoint to handle CORS issues
+app.get("/api/imagin-proxy", async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url || !url.startsWith('https://cdn.imagin.studio/')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or missing IMAGIN URL'
+      });
+    }
+
+    console.log(`🖼️  Proxying IMAGIN image: ${url}`);
+
+    // Fetch the image from IMAGIN with proper headers
+    const imageResponse = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${process.env.IMAGIN_TAILORING_KEY}`,
+        'User-Agent': 'CarScout-India/1.0',
+        'Accept': 'image/png,image/jpeg,image/webp,image/*,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+      }
+    });
+
+    if (!imageResponse.ok) {
+      console.error(`❌ IMAGIN returned ${imageResponse.status}: ${imageResponse.statusText}`);
+      return res.status(404).send('Image not found');
+    }
+
+    // Get the image data
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const contentType = imageResponse.headers.get('content-type') || 'image/png';
+
+    console.log(`✅ Successfully proxied image: ${contentType}, ${imageBuffer.byteLength} bytes`);
+
+    // Set appropriate headers for the image
+    res.set({
+      'Content-Type': contentType,
+      'Content-Length': imageBuffer.byteLength.toString(),
+      'Cache-Control': 'public, max-age=86400, immutable', // Cache for 1 day
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+      'Access-Control-Expose-Headers': 'Content-Length, Content-Type',
+      'Vary': 'Origin',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    // Send the image
+    res.send(Buffer.from(imageBuffer));
+
+  } catch (error) {
+    console.error('IMAGIN proxy error:', error);
+    
+    // Send a fallback placeholder image or error response
+    res.status(500).set({
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }).json({
+      success: false,
+      error: 'Failed to load image'
+    });
+  }
+});
+
+// Handle OPTIONS requests for CORS preflight
+app.options("/api/imagin-proxy", (req, res) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    'Access-Control-Max-Age': '3600'
+  });
+  res.status(200).end();
 });
 
 app.post("/api/leads", optionalAuth, async (req, res) => {

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import ShareModal from "@/components/ShareModal";
+import IMAGINImage from "@/components/IMAGINImage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -563,13 +564,11 @@ const Wishlist = () => {
 
                       {/* Car Image */}
                       <div className="aspect-video bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center">
-                        <img
-                          src={item.car.image}
+                        <IMAGINImage
+                          src={item.car.images?.[0] || item.car.image || "/placeholder.svg"}
                           alt={`${item.car.brand} ${item.car.model}`}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            e.currentTarget.src = "/placeholder.svg";
-                          }}
+                          fallback="/placeholder.svg"
                         />
                       </div>
                     </div>
