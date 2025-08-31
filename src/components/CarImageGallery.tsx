@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, X, Download, Share2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -30,34 +30,38 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const thumbnailRef = useRef<HTMLDivElement>(null);
 
-  // Transform images to normalized format
-  let normalizedImages = (images || []).map((img, index) => {
-    if (typeof img === 'string') {
-      const normalized = {
-        id: `image-${index}`,
-        url: img,
-        alt: `${carName} - Image ${index + 1}`,
-        category: 'exterior'
-      };
-      console.log(`🔄 Normalized image ${index}:`, { original: img, normalized });
-      return normalized;
+  // Transform images to normalized format (memoized to prevent re-computation)
+  const normalizedImages = useMemo(() => {
+    let normalized = (images || []).map((img, index) => {
+      if (typeof img === 'string') {
+        const normalizedImg = {
+          id: `image-${index}`,
+          url: img,
+          alt: `${carName} - Image ${index + 1}`,
+          category: 'exterior'
+        };
+        console.log(`🔄 Normalized image ${index}:`, { original: img, normalized: normalizedImg });
+        return normalizedImg;
+      }
+      console.log(`✅ Already normalized image ${index}:`, img);
+      return img;
+    });
+
+    // If no images, use a placeholder
+    if (normalized.length === 0) {
+      console.warn('⚠️ No images found, using placeholder');
+      normalized = [{
+        id: 'placeholder',
+        url: '/placeholder.svg',
+        alt: `${carName} - No image available`,
+        category: 'placeholder'
+      }];
     }
-    console.log(`✅ Already normalized image ${index}:`, img);
-    return img;
-  });
+
+    return normalized;
+  }, [images, carName]);
 
   console.log('🎯 Final normalized images:', normalizedImages);
-
-  // If no images, use a placeholder
-  if (normalizedImages.length === 0) {
-    console.warn('⚠️ No images found, using placeholder');
-    normalizedImages = [{
-      id: 'placeholder',
-      url: '/placeholder.svg',
-      alt: `${carName} - No image available`,
-      category: 'placeholder'
-    }];
-  }
 
   // Get unique categories
   const categories = ["all", ...Array.from(new Set(normalizedImages.map(img => img.category).filter(Boolean)))];
