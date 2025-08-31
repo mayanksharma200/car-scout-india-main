@@ -28,6 +28,7 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [preloadedImages, setPreloadedImages] = useState<Set<string>>(new Set());
   const thumbnailRef = useRef<HTMLDivElement>(null);
 
   // Transform images to normalized format (memoized to prevent re-computation)
@@ -73,11 +74,26 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
 
   const currentImage = filteredImages[currentIndex];
 
+  // Preload images for instant display
+  useEffect(() => {
+    normalizedImages.forEach((img, index) => {
+      if (!preloadedImages.has(img.url) && index < 3) { // Preload first 3 images
+        const imageElement = new Image();
+        imageElement.onload = () => {
+          console.log(`🚀 Preloaded image ${index}: ${img.url}`);
+          setPreloadedImages(prev => new Set([...prev, img.url]));
+        };
+        imageElement.src = img.url;
+      }
+    });
+  }, [normalizedImages, preloadedImages]);
+
   console.log('🎯 Current image state:', {
     currentIndex,
     filteredImagesLength: filteredImages.length,
     currentImage,
-    currentImageUrl: currentImage?.url
+    currentImageUrl: currentImage?.url,
+    preloadedCount: preloadedImages.size
   });
 
   const goToNext = () => {
