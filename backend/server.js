@@ -1320,6 +1320,85 @@ app.post("/api/admin/cars/imagin-bulk-update", async (req, res) => {
   }
 });
 
+// Admin endpoint for generating images for selected cars
+app.post("/api/admin/cars/generate-images", async (req, res) => {
+  try {
+    const { carId, carData, angles = ['21', '01', '05', '09'] } = req.body;
+
+    if (!carId || !carData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: carId and carData'
+      });
+    }
+
+    console.log(`🎯 Generating images for selected car: ${carData.brand} ${carData.model}`);
+
+    // Generate images using IMAGIN service
+    const imaginImages = await imaginOnlyAPI.getIMAGINImages(carData, angles);
+
+    if (imaginImages && imaginImages.length > 0) {
+      // Update the car with new images
+      const imageUrls = imaginImages.map(img => img.url);
+      const primaryImage = imaginImages[0];
+
+      const updateData = {
+        images: imageUrls,
+        imagin_images: {
+          primary: primaryImage.url,
+          angles: imaginImages,
+          last_updated: new Date().toISOString(),
+          valid: true,
+          fallback: false,
+          source: 'imagin'
+        },
+        image_last_updated: new Date().toISOString()
+      };
+
+      const { error: updateError } = await supabase
+        .from('cars')
+        .update(updateData)
+        .eq('id', carId);
+
+      if (updateError) {
+        console.error(`Failed to update car ${carId}:`, updateError);
+        return res.status(500).json({
+          success: false,
+          error: 'Database update failed',
+          details: updateError.message
+        });
+      }
+
+      console.log(`✅ Successfully generated ${imaginImages.length} images for: ${carData.brand} ${carData.model}`);
+      
+      res.json({
+        success: true,
+        carId,
+        carName: `${carData.brand} ${carData.model}`,
+        images: imaginImages,
+        imagesCount: imaginImages.length,
+        primaryImage: primaryImage.url
+      });
+    } else {
+      console.log(`❌ IMAGIN failed for: ${carData.brand} ${carData.model}`);
+      res.status(422).json({
+        success: false,
+        error: 'IMAGIN API did not return valid images for this car',
+        carId,
+        carName: `${carData.brand} ${carData.model}`
+      });
+    }
+
+  } catch (error) {
+    console.error('Error generating images for selected car:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate images',
+      message: error.message
+    });
+  }
+});
+
 // IMAGIN image proxy endpoint to handle CORS issues
 app.get("/api/imagin-proxy", async (req, res) => {
   try {
