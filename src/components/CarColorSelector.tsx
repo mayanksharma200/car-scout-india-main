@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Palette, Check } from "lucide-react";
+import { Palette, Check, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,12 @@ interface CarColorSelectorProps {
     brand: string;
     model: string;
     variant?: string;
+    bodyType?: string;
   };
   isChanging?: boolean;
+  show360View?: boolean;
+  onViewModeChange?: (is360View: boolean) => void;
+  is360ViewActive?: boolean;
 }
 
 const getColorOptions = (brand: string): ColorOption[] => {
@@ -75,8 +79,24 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
   onColorChange,
   car,
   isChanging = false,
+  show360View = true,
+  onViewModeChange,
+  is360ViewActive = false,
 }) => {
   const [selectedColor, setSelectedColor] = useState<ColorOption | null>(null);
+  const [internal360ViewActive, setInternal360ViewActive] = useState(false);
+  
+  // Use internal state if no external state management
+  const active360View = onViewModeChange ? is360ViewActive : internal360ViewActive;
+  
+  const handleViewModeToggle = (is360View: boolean) => {
+    console.log("🚀 View mode toggle clicked:", is360View);
+    if (onViewModeChange) {
+      onViewModeChange(is360View);
+    } else {
+      setInternal360ViewActive(is360View);
+    }
+  };
 
   const colorOptions = getColorOptions(car.brand);
   const currentColorOption = colorOptions.find(
@@ -119,6 +139,30 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
+        
+        {/* View Mode Toggle Buttons */}
+        {show360View && (
+          <div className="flex flex-wrap gap-2 max-w-full overflow-hidden mb-4">
+            <Button
+              variant={!active360View ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleViewModeToggle(false)}
+              className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0"
+            >
+              Images
+            </Button>
+            <Button
+              variant={active360View ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleViewModeToggle(true)}
+              className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0 flex items-center gap-2"
+            >
+              <RotateCcw className="w-3 h-3 md:w-4 md:h-4" />
+              360° View
+            </Button>
+          </div>
+        )}
+
         {/* Current Selected Color */}
         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[68px]">
           <div

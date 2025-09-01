@@ -5,7 +5,10 @@
       "Bash(npm run dev:*)",
       "Bash(curl:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": []
