@@ -158,9 +158,9 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
       />
       
       {/* Debug info overlay with load time */}
-      <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs p-1 rounded max-w-[200px] truncate">
+      {/* <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs p-1 rounded max-w-[200px] truncate">
         {isLoading ? `Loading... ${Math.round((Date.now() - loadStartTime) / 1000)}s` : hasError ? 'Error' : `Loaded ${Math.round((Date.now() - loadStartTime) / 1000)}s`}
-      </div>
+      </div> */}
     </div>
   );
 };
