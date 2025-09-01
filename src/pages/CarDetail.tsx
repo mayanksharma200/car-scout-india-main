@@ -30,6 +30,7 @@ const CarDetail = () => {
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [currentCarImages, setCurrentCarImages] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<any>(null);
+  const [isColorChanging, setIsColorChanging] = useState(false);
   
   const { isAuthenticated } = useUserAuth();
   const api = useAuthenticatedApi();
@@ -288,28 +289,65 @@ const CarDetail = () => {
     );
   };
 
-  // Handle color change
-  const handleColorChange = (colorOption: any) => {
+  // Handle color change with smooth transitions and layout stability
+  const handleColorChange = async (colorOption: any) => {
     console.log('🎨 Changing car color to:', colorOption);
+    
+    // Prevent multiple simultaneous color changes
+    if (isColorChanging) return;
+    
+    setIsColorChanging(true);
     setSelectedColor(colorOption);
     
     if (car) {
-      // Generate new images with the selected color
-      const newImages = generateCarImages(car, colorOption.paintId, colorOption.paintDescription);
-      console.log('🖼️ New images with color:', newImages);
-      setCurrentCarImages(newImages);
-      
-      // Update car color in state
-      setCar(prev => ({
-        ...prev,
-        color: colorOption.name
-      }));
+      try {
+        // Prevent viewport scrolling during color change (mobile fix)
+        const viewportMeta = document.querySelector('meta[name="viewport"]');
+        const originalContent = viewportMeta?.getAttribute('content');
+        if (viewportMeta) {
+          viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
 
-      // Show toast notification
-      toast({
-        title: "Color Updated",
-        description: `Car color changed to ${colorOption.name}`,
-      });
+        // Generate new images with the selected color
+        const newImages = generateCarImages(car, colorOption.paintId, colorOption.paintDescription);
+        console.log('🖼️ New images with color:', newImages);
+        
+        // Small delay to prevent jarring transitions and allow DOM to stabilize
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        setCurrentCarImages(newImages);
+        
+        // Update car color in state
+        setCar(prev => ({
+          ...prev,
+          color: colorOption.name
+        }));
+
+        // Restore original viewport settings after a short delay
+        setTimeout(() => {
+          if (viewportMeta && originalContent) {
+            viewportMeta.setAttribute('content', originalContent);
+          }
+        }, 500);
+
+        // Show toast notification
+        toast({
+          title: "Color Updated",
+          description: `Car color changed to ${colorOption.name}`,
+        });
+      } catch (error) {
+        console.error('Error changing color:', error);
+        toast({
+          title: "Error",
+          description: "Failed to change car color. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        // Delay to ensure smooth transition completion
+        setTimeout(() => {
+          setIsColorChanging(false);
+        }, 300);
+      }
     }
   };
 
@@ -390,9 +428,9 @@ const CarDetail = () => {
       <Header />
       <AdBanner placement="below_navigation" />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 md:py-6 lg:py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-6 text-sm">
+        <div className="flex items-center gap-2 mb-4 md:mb-6 text-sm">
           <button
             onClick={() => window.history.back()}
             className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
@@ -408,9 +446,9 @@ const CarDetail = () => {
           </span>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6 lg:space-y-8">
             {/* Car Header */}
             <div>
               <div className="flex items-center gap-4 mb-4">
@@ -458,35 +496,63 @@ const CarDetail = () => {
               </ShareModal>
             </div>
 
-            {/* Image Gallery */}
-            <CarImageGallery
-              images={(() => {
-                // Use dynamic color images if available, otherwise fallback to original
-                const imageData = currentCarImages.length > 0 
-                  ? currentCarImages 
-                  : Array.isArray(car.images) ? car.images : [car.image];
-                
-                console.log('🎬 Passing to CarImageGallery:', {
-                  currentCarImages: currentCarImages,
-                  originalImages: car.images,
-                  originalImage: car.image,
-                  finalImageData: imageData,
-                  imageDataLength: imageData?.length,
-                  firstItem: imageData?.[0]
-                });
-                return imageData;
-              })()}
-              carName={`${car.brand} ${car.model}`}
-            />
+            {/* Image Gallery with Loading Overlay */}
+            <div className="relative">
+              <CarImageGallery
+                images={(() => {
+                  // Use dynamic color images if available, otherwise fallback to original
+                  const imageData = currentCarImages.length > 0 
+                    ? currentCarImages 
+                    : Array.isArray(car.images) ? car.images : [car.image];
+                  
+                  console.log('🎬 Passing to CarImageGallery:', {
+                    currentCarImages: currentCarImages,
+                    originalImages: car.images,
+                    originalImage: car.image,
+                    finalImageData: imageData,
+                    imageDataLength: imageData?.length,
+                    firstItem: imageData?.[0],
+                    isColorChanging: isColorChanging
+                  });
+                  return imageData;
+                })()}
+                carName={`${car.brand} ${car.model}`}
+                isLoading={isColorChanging}
+              />
+              
+              {/* Color Change Loading Overlay */}
+              {isColorChanging && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="text-sm text-muted-foreground">Updating color...</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Rest of the component remains the same... */}
+            {/* Mobile Color Selector - Show below image gallery on mobile only */}
+            <div className="lg:hidden">
+              <div className={`transition-all duration-300 ${isColorChanging ? 'pointer-events-none opacity-75' : ''}`}>
+                <CarColorSelector
+                  currentColor={car.color}
+                  onColorChange={handleColorChange}
+                  car={{
+                    brand: car.brand,
+                    model: car.model,
+                    variant: car.variant
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Car Details Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="specifications">Specifications</TabsTrigger>
-                <TabsTrigger value="features">Features</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+                <TabsTrigger value="overview" className="text-xs md:text-sm">Overview</TabsTrigger>
+                <TabsTrigger value="specifications" className="text-xs md:text-sm">Specs</TabsTrigger>
+                <TabsTrigger value="features" className="text-xs md:text-sm">Features</TabsTrigger>
+                <TabsTrigger value="reviews" className="text-xs md:text-sm">Reviews</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -792,7 +858,7 @@ const CarDetail = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {/* Price Card */}
             <Card className="top-4">
               <CardHeader>
@@ -836,16 +902,20 @@ const CarDetail = () => {
               </CardContent>
             </Card>
 
-            {/* Color Selector */}
-            <CarColorSelector
-              currentColor={car.color}
-              onColorChange={handleColorChange}
-              car={{
-                brand: car.brand,
-                model: car.model,
-                variant: car.variant
-              }}
-            />
+            {/* Desktop Color Selector - Show in sidebar on desktop only */}
+            <div className="hidden lg:block">
+              <div className={`transition-all duration-300 ${isColorChanging ? 'pointer-events-none opacity-75' : ''}`}>
+                <CarColorSelector
+                  currentColor={car.color}
+                  onColorChange={handleColorChange}
+                  car={{
+                    brand: car.brand,
+                    model: car.model,
+                    variant: car.variant
+                  }}
+                />
+              </div>
+            </div>
 
             <AdBanner placement="between_tiles" />
 

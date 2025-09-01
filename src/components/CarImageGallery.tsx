@@ -13,9 +13,10 @@ interface CarImageGalleryProps {
     category?: string;
   })[];
   carName: string;
+  isLoading?: boolean;
 }
 
-const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
+const CarImageGallery = ({ images, carName, isLoading = false }: CarImageGalleryProps) => {
   console.log('🖼️ CarImageGallery received:', {
     images,
     imagesType: typeof images,
@@ -182,7 +183,9 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
           <IMAGINImage
             src={currentImage?.url || "/placeholder.svg"}
             alt={currentImage?.alt || carName}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className={`w-full h-full object-cover transition-all duration-300 ${
+              isLoading ? 'opacity-60' : 'group-hover:scale-105'
+            }`}
             fallback="/placeholder.svg"
           />
           
@@ -249,7 +252,9 @@ const CarImageGallery = ({ images, carName }: CarImageGalleryProps) => {
         <div className="relative">
           <div
             ref={thumbnailRef}
-            className="flex gap-2 overflow-x-auto scrollbar-hide pb-2"
+            className={`flex gap-2 overflow-x-auto scrollbar-hide pb-2 transition-opacity duration-300 ${
+              isLoading ? 'opacity-50 pointer-events-none' : ''
+            }`}
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {filteredImages.map((image, index) => (
