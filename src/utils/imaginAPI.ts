@@ -82,6 +82,58 @@ export const generateCarImageGallery = (
 };
 
 /**
+ * Generate 360-degree car image URLs for smooth rotation
+ */
+export const generate360CarImages = (
+  car: { brand: string; model: string; bodyType?: string; variant?: string },
+  paintId: string = "1",
+  paintDescription: string = "white",
+  totalAngles: number = 24
+): string[] => {
+  if (!car.brand || !car.model) return [];
+
+  // Map body type to model variant (simple mapping)
+  const getModelVariant = (bodyType?: string): string => {
+    if (!bodyType) return 'suv';
+    
+    const bodyTypeMap: Record<string, string> = {
+      'hatchback': 'hatchback',
+      'sedan': 'sedan', 
+      'suv': 'suv',
+      'crossover': 'suv',
+      'wagon': 'wagon',
+      'coupe': 'coupe',
+      'convertible': 'convertible',
+    };
+    
+    return bodyTypeMap[bodyType.toLowerCase()] || 'suv';
+  };
+
+  // Generate API angles - IMAGIN typically supports 01-21 range
+  const getApiAngle = (index: number): string => {
+    // Map index range to 01-21 range with cycling
+    const apiAngles = [
+      '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12',
+      '13', '14', '15', '16', '17', '18', '19', '20', '21', '01', '02', '03'
+    ];
+    return apiAngles[index % apiAngles.length];
+  };
+
+  return Array.from({ length: totalAngles }, (_, index) => 
+    generateImageUrl({
+      make: car.brand,
+      modelFamily: car.model,
+      modelVariant: car.variant || getModelVariant(car.bodyType),
+      paintId,
+      paintDescription,
+      angle: getApiAngle(index),
+      width: '800',
+      fileType: 'png',
+    })
+  );
+};
+
+/**
  * Fetch image with proper authorization (for server-side usage)
  * This would typically be used in a backend API route
  */
