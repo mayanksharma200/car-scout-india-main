@@ -8,7 +8,7 @@ interface ColorOption {
   id: string;
   name: string;
   hexCode: string;
-  paintId: string;  // Now uses generic IDs: "1", "2", "3", "4", "5"
+  paintId: string;
   paintDescription: string;
   isPopular?: boolean;
 }
@@ -21,11 +21,10 @@ interface CarColorSelectorProps {
     model: string;
     variant?: string;
   };
+  isChanging?: boolean; // Add this prop to handle loading state from parent
 }
 
-// Generic paint colors using the working IMAGIN.studio API structure
 const getColorOptions = (brand: string): ColorOption[] => {
-  // Using generic paint IDs that work with the API
   const baseColors: ColorOption[] = [
     {
       id: "white",
@@ -37,7 +36,7 @@ const getColorOptions = (brand: string): ColorOption[] => {
     },
     {
       id: "black",
-      name: "Black", 
+      name: "Black",
       hexCode: "#000000",
       paintId: "2",
       paintDescription: "black",
@@ -46,7 +45,7 @@ const getColorOptions = (brand: string): ColorOption[] => {
     {
       id: "silver",
       name: "Silver",
-      hexCode: "#C0C0C0", 
+      hexCode: "#C0C0C0",
       paintId: "3",
       paintDescription: "silver",
       isPopular: true,
@@ -55,7 +54,7 @@ const getColorOptions = (brand: string): ColorOption[] => {
       id: "red",
       name: "Red",
       hexCode: "#DC2626",
-      paintId: "4", 
+      paintId: "4",
       paintDescription: "red",
       isPopular: true,
     },
@@ -75,28 +74,30 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
   currentColor = "Pearl White",
   onColorChange,
   car,
+  isChanging = false, // Use prop instead of internal state
 }) => {
   const [selectedColor, setSelectedColor] = useState<ColorOption | null>(null);
-  const [isChangingColor, setIsChangingColor] = useState(false);
 
   const colorOptions = getColorOptions(car.brand);
-  const currentColorOption = colorOptions.find(
-    (color) => color.name.toLowerCase() === currentColor.toLowerCase()
-  ) || colorOptions[0];
+  const currentColorOption =
+    colorOptions.find(
+      (color) => color.name.toLowerCase() === currentColor.toLowerCase()
+    ) || colorOptions[0];
 
   const handleColorSelect = async (colorOption: ColorOption) => {
-    if (selectedColor?.id === colorOption.id || isChangingColor) return;
-    
-    setIsChangingColor(true);
+    if (selectedColor?.id === colorOption.id || isChanging) return;
+
     setSelectedColor(colorOption);
-    
+
     try {
-      // Call the parent color change handler
       await onColorChange(colorOption);
     } catch (error) {
       console.error("Error changing color:", error);
     } finally {
-      setIsChangingColor(false);
+      // Reset selected color after a delay to prevent UI flickering
+      setTimeout(() => {
+        setSelectedColor(null);
+      }, 500);
     }
   };
 
@@ -108,8 +109,8 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         <CardTitle className="flex items-center gap-2 text-base md:text-lg">
           <Palette className="w-4 h-4 md:w-5 md:h-5 text-primary" />
           Choose Color
-          {isChangingColor && (
-            <Badge variant="secondary" className="ml-2 text-xs">
+          {isChanging && (
+            <Badge variant="secondary" className="ml-2 text-xs animate-pulse">
               Updating...
             </Badge>
           )}
@@ -119,16 +120,18 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         </p>
       </CardHeader>
       <CardContent className="space-y-3 md:space-y-4 pt-0">
-        {/* Current Selected Color */}
-        <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-muted/50 rounded-lg">
+        {/* Current Selected Color - Fixed height to prevent layout shift */}
+        <div className="flex items-center gap-2 md:gap-3 p-2 md:p-3 bg-muted/50 rounded-lg min-h-[60px] md:min-h-[68px]">
           <div
-            className="w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-white shadow-md flex-shrink-0"
+            className="w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-white shadow-md flex-shrink-0 transition-colors duration-300"
             style={{ backgroundColor: activeColor.hexCode }}
           />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm md:text-base truncate">{activeColor.name}</p>
+            <p className="font-medium text-sm md:text-base truncate transition-opacity duration-200">
+              {activeColor.name}
+            </p>
             <p className="text-xs text-muted-foreground truncate">
-              {activeColor.paintDescription.replace(/-/g, ' ')}
+              {activeColor.paintDescription.replace(/-/g, " ")}
             </p>
           </div>
           {activeColor.isPopular && (
@@ -138,29 +141,40 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
           )}
         </div>
 
-        {/* Color Grid */}
-        <div>
-          <p className="text-xs md:text-sm font-medium mb-2 md:mb-3">Available Colors</p>
-          <div className="grid grid-cols-5 md:grid-cols-4 gap-2 md:gap-3">
+        {/* Color Grid - Fixed container height to prevent layout jumps */}
+        <div className="space-y-2 md:space-y-3">
+          <p className="text-xs md:text-sm font-medium">Available Colors</p>
+          <div
+            className="grid grid-cols-5 md:grid-cols-4 gap-2 md:gap-3 min-h-[80px] md:min-h-[100px]"
+            style={{
+              opacity: isChanging ? 0.6 : 1,
+              pointerEvents: isChanging ? "none" : "auto",
+            }}
+          >
             {colorOptions.map((colorOption) => {
               const isSelected = activeColor.id === colorOption.id;
-              const isCurrentlySelected = selectedColor?.id === colorOption.id && isChangingColor;
-              
+              const isCurrentlySelected =
+                selectedColor?.id === colorOption.id && isChanging;
+
               return (
                 <Button
                   key={colorOption.id}
                   variant="ghost"
                   className={`h-auto p-1 md:p-2 hover:bg-muted/50 transition-all duration-200 ${
-                    isSelected ? 'ring-1 md:ring-2 ring-primary' : ''
-                  }`}
-                  onClick={() => handleColorSelect(colorOption)}
-                  disabled={isChangingColor}
+                    isSelected ? "ring-1 md:ring-2 ring-primary" : ""
+                  } ${isChanging ? "cursor-not-allowed" : "cursor-pointer"}`}
+                  onClick={() => !isChanging && handleColorSelect(colorOption)}
+                  disabled={isChanging}
                 >
                   <div className="flex flex-col items-center gap-1 md:gap-2">
                     <div className="relative">
                       <div
-                        className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white shadow-md transition-transform duration-200 ${
-                          isCurrentlySelected ? 'scale-110' : 'hover:scale-105'
+                        className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white shadow-md transition-all duration-200 ${
+                          isCurrentlySelected
+                            ? "scale-110"
+                            : isChanging
+                            ? "scale-95"
+                            : "hover:scale-105"
                         }`}
                         style={{ backgroundColor: colorOption.hexCode }}
                       />
@@ -183,13 +197,13 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
           </div>
         </div>
 
-        {/* Color Info */}
-        <div className="text-[10px] md:text-xs text-muted-foreground border-t border-border pt-2 md:pt-3">
-          <p className="flex items-center gap-1">
+        {/* Color Info - Fixed height container */}
+        <div className="text-[10px] md:text-xs text-muted-foreground border-t border-border pt-2 md:pt-3 min-h-[40px]">
+          <p className="flex items-center gap-1 mb-1">
             <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-orange-500 rounded-full flex-shrink-0" />
             <span>Popular colors</span>
           </p>
-          <p className="mt-1 leading-relaxed">
+          <p className="leading-relaxed">
             Color appearance may vary based on lighting and screen settings
           </p>
         </div>
