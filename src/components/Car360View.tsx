@@ -27,7 +27,7 @@ const Car360View: React.FC<Car360ViewProps> = ({
   height = 400,
   className = "",
   autoRotate = false,
-  rotationSpeed = 50, // Faster default rotation (lower = faster)
+  rotationSpeed = 650, // Slower, more comfortable rotation speed (higher = slower)
 }) => {
   const [currentAngle, setCurrentAngle] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
