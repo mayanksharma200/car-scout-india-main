@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ShareModal from "@/components/ShareModal";
 import CarImageGallery from "@/components/CarImageGallery";
+import CarColorSelector from "@/components/CarColorSelector";
 import GetBestPriceModal from "@/components/GetBestPriceModal";
 import RequestQuoteModal from "@/components/RequestQuoteModal";
 import AdBanner from "@/components/AdBanner";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { addMissingMGHectorCars } from "@/utils/addMissingCars";
+import { generateCarImageGallery } from "@/utils/imaginAPI";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -26,6 +28,8 @@ const CarDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [currentCarImages, setCurrentCarImages] = useState<string[]>([]);
+  const [selectedColor, setSelectedColor] = useState<any>(null);
   
   const { isAuthenticated } = useUserAuth();
   const api = useAuthenticatedApi();
@@ -269,6 +273,59 @@ const CarDetail = () => {
     }
   };
 
+  // Generate dynamic car images using the IMAGIN.studio API utility
+  const generateCarImages = (car: any, paintId: string = "1", paintDescription: string = "white") => {
+    if (!car) return [];
+    
+    return generateCarImageGallery(
+      {
+        brand: car.brand,
+        model: car.model,
+        bodyType: car.bodyType || car.body_type
+      },
+      paintId,
+      paintDescription
+    );
+  };
+
+  // Handle color change
+  const handleColorChange = (colorOption: any) => {
+    console.log('🎨 Changing car color to:', colorOption);
+    setSelectedColor(colorOption);
+    
+    if (car) {
+      // Generate new images with the selected color
+      const newImages = generateCarImages(car, colorOption.paintId, colorOption.paintDescription);
+      console.log('🖼️ New images with color:', newImages);
+      setCurrentCarImages(newImages);
+      
+      // Update car color in state
+      setCar(prev => ({
+        ...prev,
+        color: colorOption.name
+      }));
+
+      // Show toast notification
+      toast({
+        title: "Color Updated",
+        description: `Car color changed to ${colorOption.name}`,
+      });
+    }
+  };
+
+  // Initialize car images when car loads
+  useEffect(() => {
+    if (car && !currentCarImages.length) {
+      // If car has existing images, use them, otherwise generate new ones
+      const initialImages = Array.isArray(car.images) && car.images.length > 0 
+        ? car.images 
+        : generateCarImages(car);
+      
+      setCurrentCarImages(initialImages);
+      console.log('🚗 Initial car images set:', initialImages);
+    }
+  }, [car]);
+
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
       return `₹${(price / 10000000).toFixed(2)} Cr`;
@@ -404,8 +461,13 @@ const CarDetail = () => {
             {/* Image Gallery */}
             <CarImageGallery
               images={(() => {
-                const imageData = Array.isArray(car.images) ? car.images : [car.image];
+                // Use dynamic color images if available, otherwise fallback to original
+                const imageData = currentCarImages.length > 0 
+                  ? currentCarImages 
+                  : Array.isArray(car.images) ? car.images : [car.image];
+                
                 console.log('🎬 Passing to CarImageGallery:', {
+                  currentCarImages: currentCarImages,
                   originalImages: car.images,
                   originalImage: car.image,
                   finalImageData: imageData,
@@ -773,6 +835,17 @@ const CarDetail = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Color Selector */}
+            <CarColorSelector
+              currentColor={car.color}
+              onColorChange={handleColorChange}
+              car={{
+                brand: car.brand,
+                model: car.model,
+                variant: car.variant
+              }}
+            />
 
             <AdBanner placement="between_tiles" />
 
