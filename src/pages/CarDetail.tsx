@@ -31,7 +31,7 @@ const CarDetail = () => {
   const [currentCarImages, setCurrentCarImages] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<any>(null);
   const [isColorChanging, setIsColorChanging] = useState(false);
-  
+
   const { isAuthenticated } = useUserAuth();
   const api = useAuthenticatedApi();
   const { toast } = useToast();
@@ -48,14 +48,14 @@ const CarDetail = () => {
 
   const checkWishlistStatus = async () => {
     if (!car || !isAuthenticated) return;
-    
+
     try {
       const response = await api.wishlist.check(car.id);
       if (response.success) {
         setIsWishlisted(response.data.inWishlist);
       }
     } catch (error) {
-      console.error('Error checking wishlist status:', error);
+      console.error("Error checking wishlist status:", error);
     }
   };
 
@@ -71,7 +71,7 @@ const CarDetail = () => {
 
     try {
       setWishlistLoading(true);
-      
+
       if (isWishlisted) {
         const response = await api.wishlist.remove(car.id);
         if (response.success) {
@@ -92,10 +92,11 @@ const CarDetail = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error toggling wishlist:', error);
+      console.error("Error toggling wishlist:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update wishlist. Please try again.",
+        description:
+          error.message || "Failed to update wishlist. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -105,47 +106,54 @@ const CarDetail = () => {
 
   const loadCarBySlug = async () => {
     try {
-      console.log('🔍 Loading car by slug:', slug);
+      console.log("🔍 Loading car by slug:", slug);
       setLoading(true);
 
       let carsData = null;
 
       // Try to get all cars from API first
       try {
-        const response = await api.cars.getAll({ status: 'active' });
+        const response = await api.cars.getAll({ status: "active" });
         if (response.success && response.data) {
           carsData = response.data;
-          console.log('✅ Data loaded from backend API');
+          console.log("✅ Data loaded from backend API");
         }
       } catch (apiError) {
-        console.warn('⚠️ Backend API not available, trying Supabase directly:', apiError.message);
+        console.warn(
+          "⚠️ Backend API not available, trying Supabase directly:",
+          apiError.message
+        );
       }
 
       // If API failed, try Supabase directly
       if (!carsData) {
-        console.log('🔄 Falling back to Supabase direct access...');
+        console.log("🔄 Falling back to Supabase direct access...");
         const { data: supabaseData, error: supabaseError } = await supabase
-          .from('cars')
-          .select('*')
-          .eq('status', 'active');
+          .from("cars")
+          .select("*")
+          .eq("status", "active");
 
         if (supabaseError) {
-          console.error('❌ Supabase error:', supabaseError);
-          throw new Error('Failed to load cars from both API and Supabase');
+          console.error("❌ Supabase error:", supabaseError);
+          throw new Error("Failed to load cars from both API and Supabase");
         }
 
         carsData = supabaseData;
-        console.log('✅ Data loaded from Supabase directly');
+        console.log("✅ Data loaded from Supabase directly");
       }
 
       if (carsData) {
-        console.log('All cars loaded:', carsData);
+        console.log("All cars loaded:", carsData);
 
         // Transform cars to match existing interface while preserving key fields
-        const transformedCars = carsData.map(dbCar => {
+        const transformedCars = carsData.map((dbCar) => {
           // Get the first image from the images array, or use placeholder
           let carImage = "/placeholder.svg";
-          if (Array.isArray(dbCar.images) && dbCar.images.length > 0 && dbCar.images[0] !== "/placeholder.svg") {
+          if (
+            Array.isArray(dbCar.images) &&
+            dbCar.images.length > 0 &&
+            dbCar.images[0] !== "/placeholder.svg"
+          ) {
             carImage = dbCar.images[0] as string;
           }
 
@@ -153,46 +161,52 @@ const CarDetail = () => {
             ...dbCar, // Keep all original fields
             // Override specific fields with transformed values
             price: dbCar.price_min || dbCar.price || 0,
-            onRoadPrice: dbCar.price_max || dbCar.onRoadPrice || dbCar.price_min || 0,
+            onRoadPrice:
+              dbCar.price_max || dbCar.onRoadPrice || dbCar.price_min || 0,
             fuelType: dbCar.fuel_type || dbCar.fuelType || "Petrol",
             bodyType: dbCar.body_type || dbCar.bodyType || "Hatchback",
             seating: dbCar.seating_capacity || dbCar.seating || 5,
-            rating: dbCar.rating || (4.2 + Math.random() * 0.8),
+            rating: dbCar.rating || 4.2 + Math.random() * 0.8,
             image: carImage,
             color: dbCar.color || "Pearl White",
             year: dbCar.year || 2024,
             features: dbCar.features || [],
-            mileage: parseFloat(dbCar.mileage?.toString()?.replace(/[^\d.]/g, '') || '15'),
+            mileage: parseFloat(
+              dbCar.mileage?.toString()?.replace(/[^\d.]/g, "") || "15"
+            ),
             reviews: dbCar.reviews || Math.floor(Math.random() * 500) + 50,
             isPopular: dbCar.isPopular || Math.random() > 0.7,
             isBestSeller: dbCar.isBestSeller || Math.random() > 0.8,
             // Ensure these key fields are never empty for slug generation
-            brand: dbCar.brand || 'Unknown',
-            model: dbCar.model || 'Unknown',
-            variant: dbCar.variant || ''
+            brand: dbCar.brand || "Unknown",
+            model: dbCar.model || "Unknown",
+            variant: dbCar.variant || "",
           };
         });
 
         // Debug: Log all available cars and their slugs
-        console.log('Available cars from API:', transformedCars.map(car => ({
-          id: car.id,
-          brand: car.brand,
-          model: car.model,
-          variant: car.variant,
-          slug: getCarSlugFromCar(car)
-        })));
+        console.log(
+          "Available cars from API:",
+          transformedCars.map((car) => ({
+            id: car.id,
+            brand: car.brand,
+            model: car.model,
+            variant: car.variant,
+            slug: getCarSlugFromCar(car),
+          }))
+        );
 
-        console.log('Looking for slug:', slug);
+        console.log("Looking for slug:", slug);
 
         // Find car by slug
-        let foundCar = findCarBySlug(transformedCars, slug || '');
+        let foundCar = findCarBySlug(transformedCars, slug || "");
 
         // If not found, try some common redirects for missing cars
         if (!foundCar && slug) {
           const redirectMap = {
-            'mg-hector-super': ['mg-astor-sharp', 'mg-astor-super'],
-            'mg-hector-style': ['mg-astor-style'],
-            'mg-hector-smart': ['mg-astor-sharp'],
+            "mg-hector-super": ["mg-astor-sharp", "mg-astor-super"],
+            "mg-hector-style": ["mg-astor-style"],
+            "mg-hector-smart": ["mg-astor-sharp"],
           };
 
           if (redirectMap[slug]) {
@@ -201,7 +215,7 @@ const CarDetail = () => {
               if (foundCar) {
                 console.log(`🔀 Redirecting from ${slug} to ${redirectSlug}`);
                 // Update URL without page reload
-                window.history.replaceState({}, '', `/cars/${redirectSlug}`);
+                window.history.replaceState({}, "", `/cars/${redirectSlug}`);
                 break;
               }
             }
@@ -209,60 +223,74 @@ const CarDetail = () => {
         }
 
         if (foundCar) {
-          console.log('✅ Found car:', foundCar.brand, foundCar.model, foundCar.variant);
-          console.log('🖼️ Car images data:', {
+          console.log(
+            "✅ Found car:",
+            foundCar.brand,
+            foundCar.model,
+            foundCar.variant
+          );
+          console.log("🖼️ Car images data:", {
             images: foundCar.images,
             imagesType: typeof foundCar.images,
             imagesIsArray: Array.isArray(foundCar.images),
             imagesLength: foundCar.images?.length,
             firstImage: foundCar.images?.[0],
-            image: foundCar.image
+            image: foundCar.image,
           });
           setCar(foundCar);
         } else {
-          console.error('❌ Car not found for slug:', slug);
-          console.error('Available slugs:', transformedCars.map(car => getCarSlugFromCar(car)));
+          console.error("❌ Car not found for slug:", slug);
+          console.error(
+            "Available slugs:",
+            transformedCars.map((car) => getCarSlugFromCar(car))
+          );
 
           // Try to find a similar car or suggest alternatives
-          const suggestedCars = transformedCars.filter(car =>
-            car.brand.toLowerCase().includes('mg') ||
-            car.model.toLowerCase().includes('hector') ||
-            getCarSlugFromCar(car).includes('mg')
+          const suggestedCars = transformedCars.filter(
+            (car) =>
+              car.brand.toLowerCase().includes("mg") ||
+              car.model.toLowerCase().includes("hector") ||
+              getCarSlugFromCar(car).includes("mg")
           );
 
           if (suggestedCars.length > 0) {
-            console.log('🔍 Suggested similar cars:', suggestedCars.map(car => ({
-              brand: car.brand,
-              model: car.model,
-              variant: car.variant,
-              slug: getCarSlugFromCar(car)
-            })));
+            console.log(
+              "🔍 Suggested similar cars:",
+              suggestedCars.map((car) => ({
+                brand: car.brand,
+                model: car.model,
+                variant: car.variant,
+                slug: getCarSlugFromCar(car),
+              }))
+            );
           }
 
           // If looking for MG Hector and not found, try to add missing cars and retry
-          if (slug?.includes('mg-hector')) {
-            console.log('🔧 Attempting to add missing MG Hector cars...');
-            addMissingMGHectorCars().then((result) => {
-              if (result.success && result.count && result.count > 0) {
-                console.log('🔄 MG Hector cars added, retrying...');
-                // Retry loading after adding cars
-                setTimeout(() => {
-                  loadCarBySlug();
-                }, 1000);
-              }
-            }).catch(err => {
-              console.error('Failed to add MG Hector cars:', err);
-            });
+          if (slug?.includes("mg-hector")) {
+            console.log("🔧 Attempting to add missing MG Hector cars...");
+            addMissingMGHectorCars()
+              .then((result) => {
+                if (result.success && result.count && result.count > 0) {
+                  console.log("🔄 MG Hector cars added, retrying...");
+                  // Retry loading after adding cars
+                  setTimeout(() => {
+                    loadCarBySlug();
+                  }, 1000);
+                }
+              })
+              .catch((err) => {
+                console.error("Failed to add MG Hector cars:", err);
+              });
           }
 
           setCar(null);
         }
       } else {
-        console.error('🔄 API response failed or no data');
+        console.error("🔄 API response failed or no data");
         setCar(null);
       }
     } catch (error) {
-      console.error('🔥 Error loading car by slug:', error.message || error);
+      console.error("🔥 Error loading car by slug:", error.message || error);
       setCar(null);
       toast({
         title: "Error loading car",
@@ -275,60 +303,54 @@ const CarDetail = () => {
   };
 
   // Generate dynamic car images using the IMAGIN.studio API utility
-  const generateCarImages = (car: any, paintId: string = "1", paintDescription: string = "white") => {
+  const generateCarImages = (
+    car: any,
+    paintId: string = "1",
+    paintDescription: string = "white"
+  ) => {
     if (!car) return [];
-    
+
     return generateCarImageGallery(
       {
         brand: car.brand,
         model: car.model,
-        bodyType: car.bodyType || car.body_type
+        bodyType: car.bodyType || car.body_type,
       },
       paintId,
       paintDescription
     );
   };
 
-  // Handle color change with smooth transitions and layout stability
+  // In your CarDetail component, update the color change handler:
   const handleColorChange = async (colorOption: any) => {
-    console.log('🎨 Changing car color to:', colorOption);
-    
+    console.log("🎨 Changing car color to:", colorOption);
+
     // Prevent multiple simultaneous color changes
     if (isColorChanging) return;
-    
+
     setIsColorChanging(true);
     setSelectedColor(colorOption);
-    
+
     if (car) {
       try {
-        // Prevent viewport scrolling during color change (mobile fix)
-        const viewportMeta = document.querySelector('meta[name="viewport"]');
-        const originalContent = viewportMeta?.getAttribute('content');
-        if (viewportMeta) {
-          viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        }
-
         // Generate new images with the selected color
-        const newImages = generateCarImages(car, colorOption.paintId, colorOption.paintDescription);
-        console.log('🖼️ New images with color:', newImages);
-        
-        // Small delay to prevent jarring transitions and allow DOM to stabilize
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        setCurrentCarImages(newImages);
-        
-        // Update car color in state
-        setCar(prev => ({
-          ...prev,
-          color: colorOption.name
-        }));
+        const newImages = generateCarImages(
+          car,
+          colorOption.paintId,
+          colorOption.paintDescription
+        );
+        console.log("🖼️ New images with color:", newImages);
 
-        // Restore original viewport settings after a short delay
-        setTimeout(() => {
-          if (viewportMeta && originalContent) {
-            viewportMeta.setAttribute('content', originalContent);
-          }
-        }, 500);
+        // Small delay to prevent jarring transitions and allow DOM to stabilize
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        setCurrentCarImages(newImages);
+
+        // Update car color in state
+        setCar((prev) => ({
+          ...prev,
+          color: colorOption.name,
+        }));
 
         // Show toast notification
         toast({
@@ -336,7 +358,7 @@ const CarDetail = () => {
           description: `Car color changed to ${colorOption.name}`,
         });
       } catch (error) {
-        console.error('Error changing color:', error);
+        console.error("Error changing color:", error);
         toast({
           title: "Error",
           description: "Failed to change car color. Please try again.",
@@ -346,7 +368,7 @@ const CarDetail = () => {
         // Delay to ensure smooth transition completion
         setTimeout(() => {
           setIsColorChanging(false);
-        }, 300);
+        }, 500);
       }
     }
   };
@@ -355,12 +377,13 @@ const CarDetail = () => {
   useEffect(() => {
     if (car && !currentCarImages.length) {
       // If car has existing images, use them, otherwise generate new ones
-      const initialImages = Array.isArray(car.images) && car.images.length > 0 
-        ? car.images 
-        : generateCarImages(car);
-      
+      const initialImages =
+        Array.isArray(car.images) && car.images.length > 0
+          ? car.images
+          : generateCarImages(car);
+
       setCurrentCarImages(initialImages);
-      console.log('🚗 Initial car images set:', initialImages);
+      console.log("🚗 Initial car images set:", initialImages);
     }
   }, [car]);
 
@@ -397,20 +420,19 @@ const CarDetail = () => {
             <CarIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">Car not found</h3>
             <p className="text-muted-foreground mb-4">
-              {slug?.includes('mg-hector')
+              {slug?.includes("mg-hector")
                 ? "The MG Hector variant you're looking for is not available. Try browsing our MG Astor collection instead."
-                : "The car you're looking for doesn't exist."
-              }
+                : "The car you're looking for doesn't exist."}
             </p>
             <div className="flex gap-3 justify-center">
               <Button onClick={() => window.history.back()}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Go Back
               </Button>
-              {slug?.includes('mg-hector') && (
+              {slug?.includes("mg-hector") && (
                 <Button
                   variant="outline"
-                  onClick={() => window.location.href = '/cars?brand=MG'}
+                  onClick={() => (window.location.href = "/cars?brand=MG")}
                 >
                   Browse MG Cars
                 </Button>
@@ -418,7 +440,6 @@ const CarDetail = () => {
             </div>
           </div>
         </div>
-        
       </div>
     );
   }
@@ -501,31 +522,36 @@ const CarDetail = () => {
               <CarImageGallery
                 images={(() => {
                   // Use dynamic color images if available, otherwise fallback to original
-                  const imageData = currentCarImages.length > 0 
-                    ? currentCarImages 
-                    : Array.isArray(car.images) ? car.images : [car.image];
-                  
-                  console.log('🎬 Passing to CarImageGallery:', {
+                  const imageData =
+                    currentCarImages.length > 0
+                      ? currentCarImages
+                      : Array.isArray(car.images)
+                      ? car.images
+                      : [car.image];
+
+                  console.log("🎬 Passing to CarImageGallery:", {
                     currentCarImages: currentCarImages,
                     originalImages: car.images,
                     originalImage: car.image,
                     finalImageData: imageData,
                     imageDataLength: imageData?.length,
                     firstItem: imageData?.[0],
-                    isColorChanging: isColorChanging
+                    isColorChanging: isColorChanging,
                   });
                   return imageData;
                 })()}
                 carName={`${car.brand} ${car.model}`}
                 isLoading={isColorChanging}
               />
-              
+
               {/* Color Change Loading Overlay */}
               {isColorChanging && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
                   <div className="flex flex-col items-center gap-3">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p className="text-sm text-muted-foreground">Updating color...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Updating color...
+                    </p>
                   </div>
                 </div>
               )}
@@ -533,14 +559,18 @@ const CarDetail = () => {
 
             {/* Mobile Color Selector - Show below image gallery on mobile only */}
             <div className="lg:hidden">
-              <div className={`transition-all duration-300 ${isColorChanging ? 'pointer-events-none opacity-75' : ''}`}>
+              <div
+                className={`transition-all duration-300 ${
+                  isColorChanging ? "pointer-events-none opacity-75" : ""
+                }`}
+              >
                 <CarColorSelector
                   currentColor={car.color}
                   onColorChange={handleColorChange}
                   car={{
                     brand: car.brand,
                     model: car.model,
-                    variant: car.variant
+                    variant: car.variant,
                   }}
                 />
               </div>
@@ -549,10 +579,21 @@ const CarDetail = () => {
             {/* Car Details Tabs */}
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
-                <TabsTrigger value="overview" className="text-xs md:text-sm">Overview</TabsTrigger>
-                <TabsTrigger value="specifications" className="text-xs md:text-sm">Specs</TabsTrigger>
-                <TabsTrigger value="features" className="text-xs md:text-sm">Features</TabsTrigger>
-                <TabsTrigger value="reviews" className="text-xs md:text-sm">Reviews</TabsTrigger>
+                <TabsTrigger value="overview" className="text-xs md:text-sm">
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger
+                  value="specifications"
+                  className="text-xs md:text-sm"
+                >
+                  Specs
+                </TabsTrigger>
+                <TabsTrigger value="features" className="text-xs md:text-sm">
+                  Features
+                </TabsTrigger>
+                <TabsTrigger value="reviews" className="text-xs md:text-sm">
+                  Reviews
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -902,23 +943,35 @@ const CarDetail = () => {
               </CardContent>
             </Card>
 
+            {/* // Update the Mobile Color Selector section: */}
+            {/* Mobile Color Selector - Show below image gallery on mobile only */}
+            <div className="lg:hidden">
+              <CarColorSelector
+                currentColor={car.color}
+                onColorChange={handleColorChange}
+                isChanging={isColorChanging}
+                car={{
+                  brand: car.brand,
+                  model: car.model,
+                  variant: car.variant,
+                }}
+              />
+            </div>
+            {/* // Update the Desktop Color Selector section: */}
             {/* Desktop Color Selector - Show in sidebar on desktop only */}
             <div className="hidden lg:block">
-              <div className={`transition-all duration-300 ${isColorChanging ? 'pointer-events-none opacity-75' : ''}`}>
-                <CarColorSelector
-                  currentColor={car.color}
-                  onColorChange={handleColorChange}
-                  car={{
-                    brand: car.brand,
-                    model: car.model,
-                    variant: car.variant
-                  }}
-                />
-              </div>
+              <CarColorSelector
+                currentColor={car.color}
+                onColorChange={handleColorChange}
+                isChanging={isColorChanging}
+                car={{
+                  brand: car.brand,
+                  model: car.model,
+                  variant: car.variant,
+                }}
+              />
             </div>
-
             <AdBanner placement="between_tiles" />
-
             {/* EMI Calculator */}
             <Card>
               <CardHeader>
