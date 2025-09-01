@@ -110,7 +110,7 @@ const Index = () => {
       <Footer />
 
       {/* Debug component - remove in production */}
-      {process.env.NODE_ENV === "development" && <AdDebugger />}
+      {/* {process.env.NODE_ENV === "development" && <AdDebugger />} */}
     </div>
   );
 };
