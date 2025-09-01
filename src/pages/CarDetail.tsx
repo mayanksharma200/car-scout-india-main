@@ -945,7 +945,7 @@ const CarDetail = () => {
 
             {/* // Update the Mobile Color Selector section: */}
             {/* Mobile Color Selector - Show below image gallery on mobile only */}
-            <div className="lg:hidden">
+            {/* <div className="lg:hidden">
               <CarColorSelector
                 currentColor={car.color}
                 onColorChange={handleColorChange}
@@ -956,7 +956,7 @@ const CarDetail = () => {
                   variant: car.variant,
                 }}
               />
-            </div>
+            </div> */}
             {/* // Update the Desktop Color Selector section: */}
             {/* Desktop Color Selector - Show in sidebar on desktop only */}
             <div className="hidden lg:block">
