@@ -449,27 +449,27 @@ const CarDetail = () => {
       <Header />
       <AdBanner placement="below_navigation" />
 
-      <div className="container mx-auto px-4 py-4 md:py-6 lg:py-8">
+      <div className="container mx-auto px-4 py-4 md:py-6 lg:py-8 max-w-7xl overflow-hidden">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-4 md:mb-6 text-sm">
+        <div className="flex items-center gap-2 mb-4 md:mb-6 text-sm max-w-full overflow-hidden">
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
+            className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-muted-foreground">Cars</span>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-medium">
+          <span className="text-muted-foreground flex-shrink-0">/</span>
+          <span className="text-muted-foreground flex-shrink-0">Cars</span>
+          <span className="text-muted-foreground flex-shrink-0">/</span>
+          <span className="font-medium truncate min-w-0">
             {car.brand} {car.model}
           </span>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 max-w-full">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-4 md:space-y-6 lg:space-y-8">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6 lg:space-y-8 min-w-0 max-w-full overflow-hidden">
             {/* Car Header */}
             <div>
               <div className="flex items-center gap-4 mb-4">
@@ -518,7 +518,7 @@ const CarDetail = () => {
             </div>
 
             {/* Image Gallery with Loading Overlay */}
-            <div className="relative">
+            <div className="relative w-full max-w-full overflow-hidden">
               <CarImageGallery
                 images={(() => {
                   // Use dynamic color images if available, otherwise fallback to original
@@ -558,9 +558,9 @@ const CarDetail = () => {
             </div>
 
             {/* Mobile Color Selector - Show below image gallery on mobile only */}
-            <div className="lg:hidden">
+            <div className="lg:hidden w-full max-w-full overflow-hidden">
               <div
-                className={`transition-all duration-300 ${
+                className={`transition-all duration-300 w-full max-w-full ${
                   isColorChanging ? "pointer-events-none opacity-75" : ""
                 }`}
               >
