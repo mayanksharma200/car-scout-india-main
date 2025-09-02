@@ -31,7 +31,7 @@ const CarSelectorModal = ({
   onClose,
   onSelectCar,
   title = "Select a Car",
-  excludeCarId = null,
+  excludeCarIds = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
@@ -119,7 +119,7 @@ const CarSelectorModal = ({
         });
 
         console.log("Transformed cars for comparison:", transformedCars.length);
-        setCars(transformedCars.filter((car) => car.id !== excludeCarId));
+        setCars(transformedCars.filter((car) => !excludeCarIds.includes(car.id)));
       } else {
         console.log("No cars found in database");
         setCars([]);
@@ -133,12 +133,12 @@ const CarSelectorModal = ({
     }
   };
 
-  // Load cars when modal opens
+  // Load cars when modal opens or when excluded cars change
   useEffect(() => {
-    if (isOpen && cars.length === 0) {
+    if (isOpen) {
       loadCarsFromDB();
     }
-  }, [isOpen]);
+  }, [isOpen, excludeCarIds]);
 
   // Filter cars based on search and brand - same logic as your CarListing
   const filteredCars = cars.filter((car) => {
@@ -1504,9 +1504,7 @@ const CompareSection = () => {
           title={
             selectorFor === "car1" ? "Select First Car" : "Select Second Car"
           }
-          excludeCarId={
-            selectorFor === "car1" ? selectedCar2?.id : selectedCar1?.id
-          }
+          excludeCarIds={[selectedCar1?.id, selectedCar2?.id].filter(Boolean)}
         />
       </div>
     </section>

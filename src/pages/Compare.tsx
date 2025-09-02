@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { carAPI } from "@/services/api";
 import { supabase } from "@/integrations/supabase/client";
+import IMAGINImage from "@/components/IMAGINImage";
 
 
 // Car Selector Modal Component using your existing API pattern
@@ -38,7 +39,7 @@ const CarSelectorModal = ({
   onClose,
   onSelectCar,
   title = "Select a Car",
-  excludeCarId = null,
+  excludeCarIds = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
@@ -126,7 +127,7 @@ const CarSelectorModal = ({
         });
 
         console.log("Transformed cars for comparison:", transformedCars.length);
-        setCars(transformedCars.filter((car) => car.id !== excludeCarId));
+        setCars(transformedCars.filter((car) => !excludeCarIds.includes(car.id)));
       } else {
         console.log("No cars found in database");
         setCars([]);
@@ -140,12 +141,12 @@ const CarSelectorModal = ({
     }
   };
 
-  // Load cars when modal opens
+  // Load cars when modal opens or when excluded cars change
   useEffect(() => {
-    if (isOpen && cars.length === 0) {
+    if (isOpen) {
       loadCarsFromDB();
     }
-  }, [isOpen]);
+  }, [isOpen, excludeCarIds]);
 
   // Filter cars based on search and brand - same logic as your CarListing
   const filteredCars = cars.filter((car) => {
@@ -273,13 +274,11 @@ const CarSelectorModal = ({
                   onClick={() => handleSelectCar(car)}
                   className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all group"
                 >
-                  <img
+                  <IMAGINImage
                     src={car.image}
                     alt={`${car.brand} ${car.model}`}
                     className="w-16 h-12 object-cover rounded bg-gray-100"
-                    onError={(e) => {
-                      e.target.src = "/placeholder.svg";
-                    }}
+                    fallback="/placeholder.svg"
                   />
 
                   <div className="flex-1">
@@ -503,10 +502,11 @@ const Compare = () => {
                       >
                         <X className="w-3 h-3" />
                       </button>
-                      <img
+                      <IMAGINImage
                         src={selectedCar1.image}
                         alt={`${selectedCar1.brand} ${selectedCar1.model}`}
                         className="w-full h-20 object-cover rounded mb-2 bg-gray-200"
+                        fallback="/placeholder.svg"
                       />
                       <h4 className="font-bold text-sm">
                         {selectedCar1.brand} {selectedCar1.model}
@@ -555,10 +555,11 @@ const Compare = () => {
                       >
                         <X className="w-3 h-3" />
                       </button>
-                      <img
+                      <IMAGINImage
                         src={selectedCar2.image}
                         alt={`${selectedCar2.brand} ${selectedCar2.model}`}
                         className="w-full h-20 object-cover rounded mb-2 bg-gray-200"
+                        fallback="/placeholder.svg"
                       />
                       <h4 className="font-bold text-sm">
                         {selectedCar2.brand} {selectedCar2.model}
@@ -632,13 +633,11 @@ const Compare = () => {
               {/* Car Headers */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
                 <div className="text-center p-6 border-2 border-blue-200 rounded-lg bg-blue-50">
-                  <img
+                  <IMAGINImage
                     src={selectedCar1.image}
                     alt={`${selectedCar1.brand} ${selectedCar1.model}`}
                     className="w-full h-40 object-cover rounded-lg mb-4 bg-white"
-                    onError={(e) => {
-                      e.target.src = "/placeholder.svg";
-                    }}
+                    fallback="/placeholder.svg"
                   />
                   <h3 className="font-bold text-2xl text-blue-800">
                     {selectedCar1.brand} {selectedCar1.model}
@@ -656,13 +655,11 @@ const Compare = () => {
                 </div>
 
                 <div className="text-center p-6 border-2 border-orange-200 rounded-lg bg-orange-50">
-                  <img
+                  <IMAGINImage
                     src={selectedCar2.image}
                     alt={`${selectedCar2.brand} ${selectedCar2.model}`}
                     className="w-full h-40 object-cover rounded-lg mb-4 bg-white"
-                    onError={(e) => {
-                      e.target.src = "/placeholder.svg";
-                    }}
+                    fallback="/placeholder.svg"
                   />
                   <h3 className="font-bold text-2xl text-orange-800">
                     {selectedCar2.brand} {selectedCar2.model}
@@ -1516,9 +1513,7 @@ const Compare = () => {
           title={
             selectorFor === "car1" ? "Select First Car" : "Select Second Car"
           }
-          excludeCarId={
-            selectorFor === "car1" ? selectedCar2?.id : selectedCar1?.id
-          }
+          excludeCarIds={[selectedCar1?.id, selectedCar2?.id].filter(Boolean)}
         />
       </div>
     </section>
