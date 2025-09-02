@@ -496,7 +496,7 @@ const CompareSection = () => {
                       <IMAGINImage
                         src={selectedCar1.image}
                         alt={`${selectedCar1.brand} ${selectedCar1.model}`}
-                        className="w-full h-20 object-cover rounded mb-2 bg-gray-200"
+                        className="w-full h-20 object-contain rounded mb-2 bg-gray-200"
                         fallback="/placeholder.svg"
                       />
                       <h4 className="font-bold text-sm">
@@ -549,7 +549,7 @@ const CompareSection = () => {
                       <IMAGINImage
                         src={selectedCar2.image}
                         alt={`${selectedCar2.brand} ${selectedCar2.model}`}
-                        className="w-full h-20 object-cover rounded mb-2 bg-gray-200"
+                        className="w-full h-20 object-contain rounded mb-2 bg-gray-200"
                         fallback="/placeholder.svg"
                       />
                       <h4 className="font-bold text-sm">
@@ -627,7 +627,7 @@ const CompareSection = () => {
                   <IMAGINImage
                     src={selectedCar1.image}
                     alt={`${selectedCar1.brand} ${selectedCar1.model}`}
-                    className="w-full h-40 object-cover rounded-lg mb-4 bg-white"
+                    className="w-full h-40 object-contain rounded-lg mb-4 bg-white"
                     fallback="/placeholder.svg"
                   />
                   <h3 className="font-bold text-2xl text-blue-800">
@@ -649,7 +649,7 @@ const CompareSection = () => {
                   <IMAGINImage
                     src={selectedCar2.image}
                     alt={`${selectedCar2.brand} ${selectedCar2.model}`}
-                    className="w-full h-40 object-cover rounded-lg mb-4 bg-white"
+                    className="w-full h-40 object-contain rounded-lg mb-4 bg-white"
                     fallback="/placeholder.svg"
                   />
                   <h3 className="font-bold text-2xl text-orange-800">
