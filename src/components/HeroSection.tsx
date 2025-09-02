@@ -254,16 +254,11 @@ const HeroSection = () => {
     ],
   };
 
-  // Enhanced build search query to include all filters
+  // Enhanced build search query - only include brand/model search terms, not filter values
   const buildSearchQuery = () => {
     const searchTerms = [];
 
-    // Add main brand selection
-    if (selectedBrand) {
-      searchTerms.push(selectedBrand);
-    }
-
-    // Add car type filters
+    // Add car type filters - these can be searched in text
     if (carType === "new") {
       searchTerms.push("new");
     } else if (carType === "certified") {
@@ -272,7 +267,12 @@ const HeroSection = () => {
       searchTerms.push("premium");
     }
 
-    // Add advanced filter brands (avoid duplicates with main brand)
+    // Add main brand selection - brands can be searched in text
+    if (selectedBrand) {
+      searchTerms.push(selectedBrand);
+    }
+
+    // Add advanced filter brands - these can be searched in text
     if (brands.length > 0) {
       brands.forEach((brand) => {
         if (!searchTerms.includes(brand)) {
@@ -281,31 +281,9 @@ const HeroSection = () => {
       });
     }
 
-    // Add fuel types
-    if (fuelTypes.length > 0) {
-      searchTerms.push(...fuelTypes);
-    }
-
-    // Add transmission types
-    if (transmissions.length > 0) {
-      searchTerms.push(...transmissions);
-    }
-
-    // Add body types
-    if (bodyTypes.length > 0) {
-      searchTerms.push(...bodyTypes);
-    }
-
-    // Add seating capacity (convert to searchable terms)
-    // if (seatingOptions.length > 0) {
-    //   seatingOptions.forEach((seating) => {
-    //     if (seating === "8+") {
-    //       searchTerms.push("8 seater", "9 seater");
-    //     } else {
-    //       searchTerms.push(`${seating} seater`);
-    //     }
-    //   });
-    // }
+    // DON'T add fuel types, transmissions, body types, seating to text search
+    // These should only be filtered via their respective database columns
+    // This prevents conflicts between text search and column filtering
 
     return searchTerms.join(" ");
   };
@@ -384,19 +362,33 @@ const HeroSection = () => {
     try {
       const filterParams = buildFilterParams();
       const query = buildSearchQuery();
+      
+      // Check if any filters are applied
+      const hasAnyFilter = 
+        carType || 
+        selectedCity || 
+        selectedBudget || 
+        selectedBrand ||
+        fuelTypes.length > 0 ||
+        transmissions.length > 0 ||
+        bodyTypes.length > 0 ||
+        seatingOptions.length > 0 ||
+        brands.length > 0 ||
+        priceRange[0] !== 5 || priceRange[1] !== 50 ||
+        mileageRange[0] !== 10 || mileageRange[1] !== 30;
 
       // Choose the appropriate endpoint based on whether we have search terms
       let apiUrl = "";
-      if (query.trim()) {
-        // Use search endpoint for text-based searches
+      if (query.trim() || hasAnyFilter) {
+        // Use search endpoint for text-based searches or any filters
         apiUrl = `/api/cars/search?${filterParams.toString()}`;
       } else {
         // Use general cars endpoint with filters
         apiUrl = `/api/cars?${filterParams.toString()}`;
       }
 
-      console.log("Searching with URL:", apiUrl);
-      console.log("Applied filters:", {
+      console.log("🔍 Searching with URL:", apiUrl);
+      console.log("📊 Applied filters:", {
         carType,
         selectedCity,
         selectedBudget,
@@ -409,10 +401,19 @@ const HeroSection = () => {
         seatingOptions,
         brands,
         searchQuery: query,
+        hasAnyFilter,
       });
+      console.log("🌐 Filter params string:", filterParams.toString());
 
       const response = await fetch(apiUrl);
       const result = await response.json();
+
+      console.log("📥 API Response:", {
+        success: result.success,
+        dataLength: result.data ? result.data.length : 0,
+        error: result.error,
+        sampleData: result.data && result.data.length > 0 ? result.data.slice(0, 2) : null
+      });
 
       if (result.success) {
         setSearchResults(result.data);
@@ -507,6 +508,7 @@ const HeroSection = () => {
   };
 
   const handleSearch = () => {
+    // Allow search even if only some filters are selected
     searchCars();
   };
 
