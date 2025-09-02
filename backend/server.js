@@ -574,16 +574,24 @@ app.get("/api/cars/search", async (req, res) => {
     // Apply fuel type filters
     if (fuelTypes) {
       const fuelArray = fuelTypes.split(",").map((f) => f.trim());
+      console.log(`🔥 Filtering by fuel types:`, fuelArray);
+      
       if (fuelArray.length === 1) {
+        // Try exact match first, then case-insensitive if needed
         query = query.eq("fuel_type", fuelArray[0]);
       } else {
+        // For multiple fuel types, use exact matches in array
         query = query.in("fuel_type", fuelArray);
       }
+      
+      console.log(`🔍 Applied fuel type filter for: ${fuelArray.join(', ')}`);
     }
 
     // Apply transmission filters
     if (transmissions) {
       const transmissionArray = transmissions.split(",").map((t) => t.trim());
+      console.log(`⚙️ Filtering by transmissions:`, transmissionArray);
+      
       if (transmissionArray.length === 1) {
         query = query.eq("transmission", transmissionArray[0]);
       } else {
@@ -594,6 +602,8 @@ app.get("/api/cars/search", async (req, res) => {
     // Apply body type filters
     if (bodyTypes) {
       const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
+      console.log(`🚗 Filtering by body types:`, bodyTypeArray);
+      
       if (bodyTypeArray.length === 1) {
         query = query.eq("body_type", bodyTypeArray[0]);
       } else {
@@ -664,7 +674,44 @@ app.get("/api/cars/search", async (req, res) => {
       .order(sortBy, { ascending: sortOrder === "asc" })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
+    // Debug: Let's see what we get from the database before applying filters
+    console.log(`🗃️ Executing database query...`);
+    
+    // First, let's see if there's ANY data in the cars table
+    const { data: allCars, error: allCarsError } = await supabase
+      .from("cars")
+      .select("id, brand, model, variant, fuel_type, transmission, body_type, status")
+      .eq("status", "active")
+      .limit(5);
+      
+    console.log(`📊 Sample cars in database:`, allCars);
+    console.log(`🔢 Total active cars sample:`, allCars ? allCars.length : 0);
+    
+    if (allCars && allCars.length > 0) {
+      console.log(`⛽ Fuel types in sample:`, allCars.map(car => car.fuel_type));
+    }
+
+    // Debug: Let's also test a simple fuel type query to see if it works
+    const { data: simpleFuelTest, error: simpleFuelError } = await supabase
+      .from("cars")
+      .select("id, brand, model, fuel_type")
+      .eq("status", "active")
+      .eq("fuel_type", "Petrol")
+      .limit(3);
+      
+    console.log(`🧪 Simple fuel type test:`, simpleFuelTest);
+    console.log(`🧪 Simple fuel type count:`, simpleFuelTest ? simpleFuelTest.length : 0);
+
     const { data, error, count } = await query;
+
+    console.log(`🔍 Query executed. Results count:`, data ? data.length : 0);
+    console.log(`🔍 Database error:`, error);
+    console.log(`🔍 First few results:`, data ? data.slice(0, 3).map(car => ({
+      id: car.id, 
+      brand: car.brand, 
+      model: car.model, 
+      fuel_type: car.fuel_type
+    })) : []);
 
     if (error) {
       console.error("❌ Database error:", error);
