@@ -14,8 +14,8 @@ interface CarImageParams {
 // API Configuration
 const IMAGIN_CONFIG = {
   baseUrl: "https://cdn.imagin.studio/getimage",
-  customer: "sg-zorbitads",
-  authToken: "i%uPLIZFivd4", // URL encoded token
+  customer: "in-ventesavenues",
+  authToken: "4D^xvkwX#3$#", // URL encoded token
 };
 
 /**
