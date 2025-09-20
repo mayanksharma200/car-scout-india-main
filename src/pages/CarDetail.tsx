@@ -596,6 +596,8 @@ const CarDetail = () => {
                     brand: car.brand,
                     model: car.model,
                     variant: car.variant,
+                    bodyType: car.bodyType,
+                    year: car.year,
                   }}
                 />
               </div>
@@ -979,6 +981,8 @@ const CarDetail = () => {
                   brand: car.brand,
                   model: car.model,
                   variant: car.variant,
+                  bodyType: car.bodyType,
+                  year: car.year,
                 }}
               />
             </div> */}
@@ -993,6 +997,8 @@ const CarDetail = () => {
                   brand: car.brand,
                   model: car.model,
                   variant: car.variant,
+                  bodyType: car.bodyType,
+                  year: car.year,
                 }}
               />
             </div>
