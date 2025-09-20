@@ -7,6 +7,8 @@ interface ColorOption {
   paintId: string;
   paintDescription: string;
   isPopular?: boolean;
+  actualApiPaintId?: string; // For car-specific API paint IDs
+  actualApiDescription?: string; // For car-specific API descriptions
   sprayCanInfo?: {
     sprayCanId: string;
     paintType: string;
@@ -45,6 +47,8 @@ interface CarImageParams {
   powerTrain?: string;
   transmission?: string;
   trim?: string;
+  actualApiPaintId?: string; // For car-specific API paint IDs
+  actualApiDescription?: string; // For car-specific API descriptions
 }
 
 // Paint API interfaces
@@ -125,15 +129,19 @@ export const generateImageUrl = (params: CarImageParams): string => {
   const make = params.make.replace(/\s+/g, '').toLowerCase();
   const modelFamily = params.modelFamily.replace(/\s+/g, '').toLowerCase();
 
+  // Use actual API paint ID and description if available, otherwise use provided ones
+  const paintId = params.actualApiPaintId || params.paintId;
+  const paintDescription = params.actualApiDescription || params.paintDescription;
+
   const queryParams = new URLSearchParams({
     customer: IMAGIN_CONFIG.customer,
     make: make,
     modelFamily: modelFamily,
     modelRange: modelFamily, // Use same as modelFamily for better matching
     modelVariant: params.modelVariant || 'suv',
-    modelYear: '2023', // Default to recent year
-    bodySize: '4', // Medium/large vehicle size
-    countryCode: 'IN', // India country code
+    modelYear: params.modelYear || '2023', // Use provided year or default
+    bodySize: params.bodySize || '4', // Use provided bodySize or default
+    countryCode: params.countryCode || 'IN', // Use provided countryCode or default
     angle: params.angle || '01',
     fileType: params.fileType || 'webp', // WebP for better performance
     width: params.width || '800',
@@ -141,13 +149,14 @@ export const generateImageUrl = (params: CarImageParams): string => {
     zoomLevel: '60', // Good balance for car visibility
     zoomType: 'relative',
     groundPlaneAdjustment: '-0.5', // Slightly lower ground plane
-    paintId: params.paintId,
-    paintDescription: params.paintDescription.replace(/\s+/g, '+'), // URL encode spaces
-    powerTrain: 'petrol', // Default powertrain
-    transmission: 'manual', // Default transmission
-    trim: 'standard', // Default trim level
+    paintId: paintId,
+    paintDescription: paintDescription.replace(/\s+/g, '+'), // URL encode spaces
+    powerTrain: params.powerTrain || 'petrol', // Use provided or default
+    transmission: params.transmission || 'manual', // Use provided or default
+    trim: params.trim || 'standard', // Use provided or default
   });
 
+  console.log(`🎨 Generated URL for ${make} ${modelFamily} with paintId: ${paintId}, description: ${paintDescription}`);
   return `${IMAGIN_CONFIG.baseUrl}?${queryParams.toString()}`;
 };
 
@@ -157,7 +166,9 @@ export const generateImageUrl = (params: CarImageParams): string => {
 export const generateCarImageGallery = (
   car: { brand: string; model: string; bodyType?: string; year?: string | number },
   paintId: string = "1",
-  paintDescription: string = "white"
+  paintDescription: string = "white",
+  actualApiPaintId?: string,
+  actualApiDescription?: string
 ): string[] => {
   if (!car.brand || !car.model) return [];
 
@@ -191,6 +202,8 @@ export const generateCarImageGallery = (
       modelVariant: carSpecs.modelVariant,
       paintId,
       paintDescription,
+      actualApiPaintId,
+      actualApiDescription,
       angle,
       width: '800',
       fileType: 'webp',
@@ -211,7 +224,9 @@ export const generate360CarImages = (
   car: { brand: string; model: string; bodyType?: string; variant?: string; year?: string | number },
   paintId: string = "1",
   paintDescription: string = "white",
-  totalAngles: number = 24
+  totalAngles: number = 24,
+  actualApiPaintId?: string,
+  actualApiDescription?: string
 ): string[] => {
   if (!car.brand || !car.model) return [];
 
@@ -249,6 +264,8 @@ export const generate360CarImages = (
       modelVariant: car.variant || carSpecs.modelVariant,
       paintId,
       paintDescription,
+      actualApiPaintId,
+      actualApiDescription,
       angle: getApiAngle(index),
       width: '800',
       fileType: 'webp',
@@ -292,6 +309,53 @@ export const testImageUrl = async (imageUrl: string): Promise<boolean> => {
     console.error('Error testing image URL:', error);
     return false;
   }
+};
+
+/**
+ * Test which paint IDs are actually available for a specific car
+ */
+export const testCarPaintIds = async (
+  make: string,
+  modelFamily: string,
+  modelVariant: string = 'suv'
+): Promise<{ paintId: string; works: boolean; description: string }[]> => {
+  const testPaintIds = ['1', '2', '3', '4', '5', '6', '7', '8'];
+  const paintDescriptions = ['white', 'black', 'silver', 'blue', 'red', 'green', 'yellow', 'orange'];
+
+  const results = [];
+
+  for (let i = 0; i < testPaintIds.length; i++) {
+    const paintId = testPaintIds[i];
+    const paintDescription = paintDescriptions[i];
+
+    const testUrl = generateImageUrl({
+      make,
+      modelFamily,
+      modelVariant,
+      paintId,
+      paintDescription,
+      angle: '01',
+      width: '200', // Small size for testing
+    });
+
+    try {
+      const response = await fetch(testUrl, { method: 'HEAD' });
+      results.push({
+        paintId,
+        works: response.ok,
+        description: paintDescription
+      });
+    } catch (error) {
+      results.push({
+        paintId,
+        works: false,
+        description: paintDescription
+      });
+    }
+  }
+
+  console.log(`🎨 Paint ID test results for ${make} ${modelFamily}:`, results);
+  return results;
 };
 
 /**
@@ -442,7 +506,78 @@ export const getCarPaintOptions = async (
   }
 ): Promise<ColorOption[]> => {
   try {
-    console.log('🎨 Using static color options for car:', car);
+    console.log('🎨 Getting paint options for car:', car);
+
+    // Map body type to model variant
+    const getModelVariant = (bodyType?: string): string => {
+      if (!bodyType) return 'suv';
+
+      const bodyTypeMap: Record<string, string> = {
+        'hatchback': 'hatchback',
+        'sedan': 'sedan',
+        'suv': 'suv',
+        'crossover': 'suv',
+        'wagon': 'wagon',
+        'coupe': 'coupe',
+        'convertible': 'convertible',
+        'pickup': 'pickup',
+      };
+
+      return bodyTypeMap[bodyType.toLowerCase()] || 'suv';
+    };
+
+    const modelVariant = car.variant || getModelVariant(car.bodyType);
+
+    // Try to get car-specific paints first
+    console.log('🎨 Attempting to get car-specific paints...');
+    const carPaints = await getCarPaints(car.brand, car.model, {
+      modelVariant,
+      modelYear: car.year?.toString() || '2023',
+    });
+
+    if (carPaints?.paintData?.paintCombinations) {
+      console.log('🎨 Found car-specific paints, creating mapped colors...');
+      const availablePaints = [];
+      const combinations = carPaints.paintData.paintCombinations;
+
+      // Get first few paint combinations that have mapped paints
+      let colorIndex = 0;
+      const baseColors = ['white', 'black', 'silver', 'blue', 'red', 'green', 'yellow', 'orange'];
+      const baseHexCodes = ['#FFFFFF', '#000000', '#C0C0C0', '#2563EB', '#DC2626', '#16A34A', '#FDE047', '#FB923C'];
+
+      for (const [paintCombinationId, combination] of Object.entries(combinations)) {
+        if (!combination?.mapped || colorIndex >= 8) break;
+
+        // Get the first paint from this combination
+        const firstPaintCode = Object.keys(combination.mapped)[0];
+        const firstPaint = combination.mapped[firstPaintCode];
+
+        if (firstPaint?.paintDescription) {
+          const color = baseColors[colorIndex];
+          const hexCode = combination.paintSwatch?.primary?.lowLight || baseHexCodes[colorIndex];
+
+          availablePaints.push({
+            id: color,
+            name: color.charAt(0).toUpperCase() + color.slice(1),
+            hexCode: hexCode,
+            paintId: (colorIndex + 1).toString(), // Keep simple 1,2,3... IDs
+            paintDescription: color,
+            isPopular: colorIndex < 4, // First 4 are popular
+            actualApiPaintId: firstPaintCode, // Store the real API paint ID
+            actualApiDescription: firstPaint.paintDescription,
+          });
+
+          colorIndex++;
+        }
+      }
+
+      if (availablePaints.length > 0) {
+        console.log('🎨 Using car-specific mapped paints:', availablePaints);
+        return availablePaints;
+      }
+    }
+
+    console.log('🎨 Fallback to static color options');
     return COLOR_OPTIONS;
   } catch (error) {
     console.error('❌ Error getting car paint options:', error);
