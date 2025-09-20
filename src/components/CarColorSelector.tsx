@@ -193,24 +193,11 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
 
         {/* Current Selected Color */}
         {activeColor && (
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg min-h-[68px]">
+          <div className="flex items-center justify-center p-3 bg-muted/50 rounded-lg min-h-[68px]">
             <div
-              className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white shadow-md flex-shrink-0 transition-colors duration-300"
+              className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-white shadow-md flex-shrink-0 transition-colors duration-300"
               style={{ backgroundColor: activeColor.hexCode }}
             />
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm md:text-base truncate">
-                {activeColor.name}
-              </p>
-              <p className="text-xs md:text-sm text-muted-foreground truncate">
-                {activeColor.paintDescription.replace(/-/g, ' ')}
-              </p>
-            </div>
-            {activeColor.isPopular && (
-              <Badge variant="secondary" className="text-xs flex-shrink-0">
-                Popular
-              </Badge>
-            )}
           </div>
         )}
 
@@ -227,35 +214,34 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
           </div>
 
           {loadingColors ? (
-            <div className="grid grid-cols-5 gap-3 min-h-[100px]">
-              {[...Array(5)].map((_, index) => (
-                <div key={index} className="flex flex-col items-center gap-2">
+            <div className="grid grid-cols-8 gap-3 min-h-[80px] justify-items-center">
+              {[...Array(8)].map((_, index) => (
+                <div key={index} className="flex flex-col items-center">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted animate-pulse" />
-                  <div className="w-8 h-3 bg-muted rounded animate-pulse" />
                 </div>
               ))}
             </div>
           ) : (
             <div
-              className={`grid grid-cols-5 gap-3 min-h-[100px] transition-opacity duration-300 ${
+              className={`grid grid-cols-8 gap-3 min-h-[80px] justify-items-center transition-opacity duration-300 ${
                 isChanging ? 'opacity-50 pointer-events-none' : ''
               }`}
             >
               {colorOptions.map((colorOption) => {
               const isSelected = activeColor?.id === colorOption.id;
               const isCurrentlySelected = selectedColor?.id === colorOption.id && isChanging;
-              
+
               return (
                 <Button
                   key={colorOption.id}
                   variant="ghost"
-                  className={`h-auto p-2 hover:bg-muted/50 transition-all duration-200 ${
+                  className={`h-auto p-1 hover:bg-muted/50 transition-all duration-200 ${
                     isSelected ? 'ring-2 ring-primary bg-muted/30' : ''
                   } ${isChanging ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   onClick={() => !isChanging && handleColorSelect(colorOption)}
                   disabled={isChanging}
                 >
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center">
                     <div className="relative">
                       <div
                         className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 ${
@@ -272,9 +258,6 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border border-white" />
                       )}
                     </div>
-                    <span className="text-xs font-medium text-center leading-tight">
-                      {colorOption.name}
-                    </span>
                   </div>
                 </Button>
               );
@@ -287,7 +270,7 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-2">
           <p className="flex items-center gap-2">
             <span className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0" />
-            <span>Popular colors</span>
+            <span>Popular options</span>
           </p>
           <p className="leading-relaxed">
             Color appearance may vary based on lighting and screen settings

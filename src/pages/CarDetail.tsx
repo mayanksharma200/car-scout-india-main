@@ -306,7 +306,9 @@ const CarDetail = () => {
   const generateCarImages = (
     car: any,
     paintId: string = "1",
-    paintDescription: string = "white"
+    paintDescription: string = "white",
+    actualApiPaintId?: string,
+    actualApiDescription?: string
   ) => {
     if (!car) return [];
 
@@ -315,9 +317,12 @@ const CarDetail = () => {
         brand: car.brand,
         model: car.model,
         bodyType: car.bodyType || car.body_type,
+        year: car.year,
       },
       paintId,
-      paintDescription
+      paintDescription,
+      actualApiPaintId,
+      actualApiDescription
     );
   };
 
@@ -333,13 +338,16 @@ const CarDetail = () => {
 
     if (car) {
       try {
-        // Generate new images with the selected color
+        // Generate new images with the selected color, using actual API paint IDs if available
         const newImages = generateCarImages(
           car,
           colorOption.paintId,
-          colorOption.paintDescription
+          colorOption.paintDescription,
+          colorOption.actualApiPaintId,
+          colorOption.actualApiDescription
         );
         console.log("🖼️ New images with color:", newImages);
+        console.log("🎨 Using actual API paint ID:", colorOption.actualApiPaintId || 'fallback to simple ID');
 
         // Small delay to prevent jarring transitions and allow DOM to stabilize
         await new Promise((resolve) => setTimeout(resolve, 300));
