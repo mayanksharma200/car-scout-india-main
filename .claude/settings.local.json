@@ -10,7 +10,16 @@
       "Bash(npm run:*)",
       "Bash(rg:*)",
       "Bash(taskkill:*)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(cat:*)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(npx supabase:*)",
+      "Bash(timeout:*)",
+      "Bash(start cmd //c \"npm run dev\")",
+      "Bash(python:*)",
+      "Bash(docker:*)",
+      "Bash(pg_dump:*)"
     ],
     "deny": [],
     "ask": []
