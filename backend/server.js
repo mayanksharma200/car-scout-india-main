@@ -2586,7 +2586,8 @@ app.post("/api/auth/create-admin", async (req, res) => {
       password,
       email_confirm: true,
       user_metadata: {
-        full_name: "Admin User",
+        firstName: "Admin",
+        lastName: "User",
       },
     });
 
@@ -2594,8 +2595,12 @@ app.post("/api/auth/create-admin", async (req, res) => {
       throw error;
     }
 
+    // Use service role to bypass RLS policies
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: data.user.id,
+      email: email,
+      first_name: "Admin",
+      last_name: "User",
       role: "admin",
       is_active: true,
       email_verified: true,
