@@ -2635,6 +2635,86 @@ app.post("/api/auth/create-admin", async (req, res) => {
   }
 });
 
+// Supabase token exchange endpoint
+app.post("/api/auth/supabase-token", async (req, res) => {
+  try {
+    const { supabaseUserId, email, userData } = req.body;
+
+    if (!supabaseUserId || !email) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields",
+      });
+    }
+
+    // Check if user profile exists
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", supabaseUserId)
+      .single();
+
+    // If profile doesn't exist, create it
+    if (profileError && profileError.code === "PGRST116") {
+      const firstName = userData?.first_name || userData?.given_name || userData?.name?.split(' ')[0] || '';
+      const lastName = userData?.last_name || userData?.family_name || userData?.name?.split(' ').slice(1).join(' ') || '';
+
+      const { error: createError } = await supabase.from("profiles").insert({
+        id: supabaseUserId,
+        email: email,
+        first_name: firstName,
+        last_name: lastName,
+        role: "user",
+        is_active: true,
+        email_verified: true,
+      });
+
+      if (createError) {
+        console.error("Failed to create profile:", createError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to create user profile",
+        });
+      }
+    }
+
+    // Generate JWT tokens
+    const tokenPayload = {
+      id: supabaseUserId,
+      email: email,
+      role: profile?.role || "user",
+    };
+
+    const accessToken = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: process.env.SESSION_TIMEOUT || "15m",
+    });
+
+    const refreshToken = jwt.sign(
+      { id: supabaseUserId },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: process.env.REFRESH_TIMEOUT || "7d",
+      }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        accessToken,
+        refreshToken,
+        expiresIn: 900, // 15 minutes
+        tokenType: "Bearer",
+      },
+    });
+  } catch (error) {
+    console.error("Error in supabase-token endpoint:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // Backend wishlist endpoints (add to your main server file)
 
 // ===== WISHLIST ROUTES =====
