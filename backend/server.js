@@ -980,6 +980,18 @@ app.get("/api/cars", async (req, res) => {
       sortOrder = "desc",
     } = req.query;
 
+    console.log(`🚗 /api/cars called with params:`, {
+      status,
+      brand,
+      model,
+      minPrice,
+      maxPrice,
+      limit,
+      offset,
+      sortBy,
+      sortOrder
+    });
+
     let query = supabase.from("cars").select("*", { count: "exact" });
 
     query = query.eq("status", status);
@@ -993,6 +1005,20 @@ app.get("/api/cars", async (req, res) => {
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
     const { data, error, count } = await query;
+
+    console.log(`📊 Query results:`, {
+      error,
+      count,
+      dataLength: data?.length || 0,
+      sampleCars: data ? data.slice(0, 3).map(car => ({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        status: car.status,
+        price_min: car.price_min,
+        price_max: car.price_max
+      })) : []
+    });
 
     if (error) throw error;
 

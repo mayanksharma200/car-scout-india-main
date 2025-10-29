@@ -29,13 +29,18 @@ interface Car {
   images?: string[];
   rating: number;
   fuelType: string;
+  fuel_type?: string;
   transmission: string;
-  mileage: number;
+  mileage: number | string;
   seating: number;
+  seating_capacity?: number;
   bodyType: string;
+  body_type?: string;
+  engine_capacity?: string;
   color: string;
   year: number;
   features: string[];
+  specifications?: Record<string, any>;
   isPopular?: boolean;
   isBestSeller?: boolean;
 }
@@ -202,7 +207,7 @@ const CarCard = ({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Fuel</p>
-                <p className="text-sm font-medium">{car.fuelType}</p>
+                <p className="text-sm font-medium">{car.fuelType || "Petrol"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -211,7 +216,9 @@ const CarCard = ({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Mileage</p>
-                <p className="text-sm font-medium">{car.mileage} km/l</p>
+                <p className="text-sm font-medium">
+                  {typeof car.mileage === 'string' ? car.mileage : car.mileage ? `${car.mileage} kmpl` : "N/A"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -220,7 +227,7 @@ const CarCard = ({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Seating</p>
-                <p className="text-sm font-medium">{car.seating} Seater</p>
+                <p className="text-sm font-medium">{car.seating ? `${car.seating} Seater` : "N/A"}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -228,8 +235,8 @@ const CarCard = ({
                 <Zap className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Type</p>
-                <p className="text-sm font-medium">{car.transmission}</p>
+                <p className="text-xs text-muted-foreground">Trans.</p>
+                <p className="text-sm font-medium">{car.transmission || "Manual"}</p>
               </div>
             </div>
           </div>

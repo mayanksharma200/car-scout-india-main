@@ -18,6 +18,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AdminLayout from "@/components/AdminLayout";
+import { BulkCarInsertionUI } from "@/components/BulkCarInsertionUI";
+import { SQLDumpParser } from "@/components/SQLDumpParser";
+import { CSVFileUploader } from "@/components/CSVFileUploader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CarManagement = () => {
   const { toast } = useToast();
@@ -412,6 +416,24 @@ const CarManagement = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Bulk Import Tabs */}
+        <Tabs defaultValue="csv" className="mb-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="csv">Excel / CSV Upload</TabsTrigger>
+            <TabsTrigger value="sql">SQL Dump</TabsTrigger>
+            <TabsTrigger value="json">JSON</TabsTrigger>
+          </TabsList>
+          <TabsContent value="csv">
+            <CSVFileUploader />
+          </TabsContent>
+          <TabsContent value="sql">
+            <SQLDumpParser />
+          </TabsContent>
+          <TabsContent value="json">
+            <BulkCarInsertionUI />
+          </TabsContent>
+        </Tabs>
 
         {/* Cars Table */}
         <Card>

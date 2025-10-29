@@ -270,13 +270,17 @@ const CarListing = () => {
         carImage = car.images[0] as string;
       }
 
+      // Handle null/undefined prices - set a default price if null
+      const carPrice = car.price_min || car.price || 500000; // Default to 5 lakhs if null
+      const carOnRoadPrice = car.price_max || car.onRoadPrice || carPrice + 50000; // Default on-road price
+
       return {
         ...car,
-        price: car.price_min || car.price,
-        onRoadPrice: car.price_max || car.onRoadPrice,
-        fuelType: car.fuel_type || car.fuelType,
-        bodyType: car.body_type || car.bodyType,
-        seating: car.seating_capacity || car.seating,
+        price: carPrice,
+        onRoadPrice: carOnRoadPrice,
+        fuelType: car.fuel_type || car.fuelType || "Petrol",
+        bodyType: car.body_type || car.bodyType || "Sedan",
+        seating: car.seating_capacity || car.seating || 5,
         rating: 4.2 + Math.random() * 0.8,
         image: carImage,
         color: "Pearl White",
@@ -310,14 +314,19 @@ const CarListing = () => {
       let carsData = null;
 
       try {
+        console.log("Attempting to load cars from API...");
         const response = await api.cars.getAll({
           status: "active",
           limit: 500,
         });
 
+        console.log("API Response:", response);
+
         if (response.success && response.data) {
           console.log("Cars loaded from API:", response.data.length, "cars");
           carsData = response.data;
+        } else {
+          console.log("API response unsuccessful or no data:", response);
         }
       } catch (apiError) {
         console.warn(
@@ -328,15 +337,30 @@ const CarListing = () => {
 
       if (!carsData) {
         console.log("Falling back to Supabase direct access...");
-        const { data: supabaseData, error: supabaseError } = await supabase
+        const { data: supabaseData, error: supabaseError, count } = await supabase
           .from("cars")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("status", "active")
           .order("brand", { ascending: true });
 
         if (supabaseError) {
           console.error("Supabase error:", supabaseError);
           throw supabaseError;
+        }
+
+        console.log("Supabase total count:", count);
+        console.log("Supabase data length:", supabaseData?.length);
+        
+        // Log first few cars to debug
+        if (supabaseData && supabaseData.length > 0) {
+          console.log("Sample cars from Supabase:", supabaseData.slice(0, 3).map(car => ({
+            id: car.id,
+            brand: car.brand,
+            model: car.model,
+            status: car.status,
+            price_min: car.price_min,
+            price_max: car.price_max
+          })));
         }
 
         carsData = supabaseData;
@@ -354,13 +378,17 @@ const CarListing = () => {
             carImage = car.images[0] as string;
           }
 
+          // Handle null/undefined prices - set a default price if null
+          const carPrice = car.price_min || car.price || 500000; // Default to 5 lakhs if null
+          const carOnRoadPrice = car.price_max || car.onRoadPrice || carPrice + 50000; // Default on-road price
+
           return {
             ...car,
-            price: car.price_min || car.price,
-            onRoadPrice: car.price_max || car.onRoadPrice,
-            fuelType: car.fuel_type || car.fuelType,
-            bodyType: car.body_type || car.bodyType,
-            seating: car.seating_capacity || car.seating,
+            price: carPrice,
+            onRoadPrice: carOnRoadPrice,
+            fuelType: car.fuel_type || car.fuelType || "Petrol",
+            bodyType: car.body_type || car.bodyType || "Sedan",
+            seating: car.seating_capacity || car.seating || 5,
             rating: 4.2 + Math.random() * 0.8,
             image: carImage,
             color: "Pearl White",
@@ -463,7 +491,24 @@ const CarListing = () => {
     console.log("Applying filters:", filters);
     console.log("Total cars before filtering:", cars.length);
 
-    let filteredCars = cars.filter((car) => {
+    // Debug: Check if cars have valid data
+    if (cars.length > 0) {
+      console.log("Sample car data before filtering:", cars.slice(0, 2).map(car => ({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        price: car.price,
+        price_min: car.price_min,
+        price_max: car.price_max,
+        fuelType: car.fuelType,
+        fuel_type: car.fuel_type,
+        year: car.year,
+        bodyType: car.bodyType,
+        body_type: car.body_type
+      })));
+    }
+
+    let filteredCars = cars.filter((car, index) => {
       const searchMatch =
         searchQuery === "" ||
         car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -502,6 +547,40 @@ const CarListing = () => {
       const featuresMatch =
         filters.features.length === 0 ||
         filters.features.every((feature) => car.features.includes(feature));
+
+      // Debug first few cars that fail filtering
+      if (index < 5 && !(
+        searchMatch &&
+        priceMatch &&
+        brandMatch &&
+        fuelMatch &&
+        transmissionMatch &&
+        bodyTypeMatch &&
+        colorMatch &&
+        yearMatch &&
+        seatingMatch &&
+        featuresMatch
+      )) {
+        console.log(`Car ${index} filtered out:`, {
+          id: car.id,
+          brand: car.brand,
+          model: car.model,
+          searchMatch,
+          priceMatch,
+          brandMatch,
+          fuelMatch,
+          transmissionMatch,
+          bodyTypeMatch,
+          colorMatch,
+          yearMatch,
+          seatingMatch,
+          featuresMatch,
+          price: car.price,
+          priceRange: filters.priceRange,
+          fuelType: car.fuelType,
+          fuelTypes: filters.fuelTypes
+        });
+      }
 
       return (
         searchMatch &&
