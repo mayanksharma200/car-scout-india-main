@@ -74,7 +74,52 @@ BEGIN
     specifications,
     features,
     status,
-    api_source
+    api_source,
+    -- City-specific pricing
+    mumbai_price,
+    bangalore_price,
+    delhi_price,
+    pune_price,
+    hyderabad_price,
+    chennai_price,
+    kolkata_price,
+    ahmedabad_price,
+    -- Colors
+    colors,
+    color_codes,
+    -- Warranty information
+    warranty_years,
+    warranty_km,
+    battery_warranty_years,
+    battery_warranty_km,
+    -- Price breakdown
+    ex_showroom_price,
+    rto_charges,
+    insurance_cost,
+    -- Safety features
+    airbags,
+    ncap_rating,
+    abs,
+    esc,
+    -- Comfort features
+    sunroof,
+    ac_type,
+    cruise_control,
+    -- Engine details
+    engine_type,
+    max_power,
+    max_torque,
+    top_speed,
+    acceleration,
+    -- Dimensions
+    length_mm,
+    width_mm,
+    height_mm,
+    wheelbase_mm,
+    ground_clearance_mm,
+    bootspace_litres,
+    -- Description
+    description
   ) VALUES (
     car_data->>'external_id',
     car_brand,
@@ -92,7 +137,52 @@ BEGIN
     COALESCE(car_data->'specifications', '{}'::jsonb),
     COALESCE(car_data->'features', '[]'::jsonb),
     COALESCE(car_data->>'status', 'active'),
-    car_data->>'api_source'
+    car_data->>'api_source',
+    -- City-specific pricing
+    car_data->>'mumbai_price',
+    car_data->>'bangalore_price',
+    car_data->>'delhi_price',
+    car_data->>'pune_price',
+    car_data->>'hyderabad_price',
+    car_data->>'chennai_price',
+    car_data->>'kolkata_price',
+    car_data->>'ahmedabad_price',
+    -- Colors
+    car_data->>'colors',
+    car_data->>'color_codes',
+    -- Warranty information
+    (car_data->>'warranty_years')::INTEGER,
+    (car_data->>'warranty_km')::INTEGER,
+    (car_data->>'battery_warranty_years')::INTEGER,
+    (car_data->>'battery_warranty_km')::INTEGER,
+    -- Price breakdown
+    car_data->>'ex_showroom_price',
+    car_data->>'rto_charges',
+    car_data->>'insurance_cost',
+    -- Safety features
+    car_data->>'airbags',
+    car_data->>'ncap_rating',
+    (car_data->>'abs')::BOOLEAN,
+    (car_data->>'esc')::BOOLEAN,
+    -- Comfort features
+    car_data->>'sunroof',
+    car_data->>'ac_type',
+    (car_data->>'cruise_control')::BOOLEAN,
+    -- Engine details
+    car_data->>'engine_type',
+    car_data->>'max_power',
+    car_data->>'max_torque',
+    car_data->>'top_speed',
+    car_data->>'acceleration',
+    -- Dimensions
+    car_data->>'length_mm',
+    car_data->>'width_mm',
+    car_data->>'height_mm',
+    car_data->>'wheelbase_mm',
+    car_data->>'ground_clearance_mm',
+    car_data->>'bootspace_litres',
+    -- Description
+    car_data->>'description'
   )
   RETURNING id INTO new_car_id;
 
