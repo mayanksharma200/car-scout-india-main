@@ -165,6 +165,7 @@ const CarSelectorModal = ({
   const brands = [...new Set(cars.map((car) => car.brand))].sort();
 
   const formatPrice = (price) => {
+    if (!price || price === 0) return 'Price not available';
     if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
     if (price >= 100000) return `₹${(price / 100000).toFixed(2)} L`;
     return `₹${price.toLocaleString()}`;
@@ -298,7 +299,7 @@ const CarSelectorModal = ({
 
                   <div className="text-right">
                     <p className="font-bold text-blue-600">
-                      {formatPrice(car.price)}
+                      {formatPrice(car.price_min || car.price)}
                     </p>
                     <p className="text-xs text-gray-500">onwards</p>
                   </div>
@@ -341,6 +342,7 @@ const Compare = () => {
   };
 
   const formatPrice = (price) => {
+    if (!price || price === 0) return 'Price not available';
     if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
     if (price >= 100000) return `₹${(price / 100000).toFixed(2)} L`;
     return `₹${price.toLocaleString()}`;
@@ -352,10 +354,30 @@ const Compare = () => {
   };
 
   const handleCarSelect = (car) => {
+    console.log('🔍 Raw car data from DB:', {
+      brand: car.brand,
+      model: car.model,
+      fuel_type: car.fuel_type,
+      engine_capacity: car.engine_capacity,
+      transmission: car.transmission,
+      mileage: car.mileage,
+      price_min: car.price_min
+    });
+    const transformedCar = transformCarData(car);
+    console.log('✅ Transformed car data:', {
+      brand: transformedCar.brand,
+      model: transformedCar.model,
+      fuel_type: transformedCar.fuel_type,
+      fuelType: transformedCar.fuelType,
+      engine_capacity: transformedCar.engine_capacity,
+      transmission: transformedCar.transmission,
+      mileage: transformedCar.mileage,
+      price: transformedCar.price
+    });
     if (selectorFor === "car1") {
-      setSelectedCar1(car);
+      setSelectedCar1(transformedCar);
     } else {
-      setSelectedCar2(car);
+      setSelectedCar2(transformedCar);
     }
     setShowCarSelector(false);
     setSelectorFor(null);
@@ -432,31 +454,41 @@ const Compare = () => {
 
   const popularComparisons = generatePopularComparisons();
 
+  const transformCarData = (car) => {
+    // Parse mileage carefully - car mileage is typically between 5-35 kmpl
+    let parsedMileage = undefined;
+    if (car.mileage) {
+      if (typeof car.mileage === 'string') {
+        const numericValue = parseFloat(car.mileage.replace(/[^\d.]/g, ""));
+        // Validate mileage is in reasonable range (5-100 kmpl)
+        if (numericValue >= 5 && numericValue <= 100) {
+          parsedMileage = numericValue;
+        }
+      } else if (typeof car.mileage === 'number' && car.mileage >= 5 && car.mileage <= 100) {
+        parsedMileage = car.mileage;
+      }
+    }
+
+    return {
+      ...car,
+      price: car.price_min || car.price || 0,
+      onRoadPrice: car.price_max || car.onRoadPrice,
+      // Keep original fuel_type, don't override as fuelType
+      bodyType: car.body_type || car.bodyType || "Car",
+      seating: car.seating_capacity || car.seating || 5,
+      rating: car.rating || 4.2 + Math.random() * 0.8,
+      mileage: parsedMileage,
+      image:
+        Array.isArray(car.images) && car.images.length > 0
+          ? car.images[0]
+          : "/placeholder.svg",
+    };
+  };
+
   const handleQuickCompare = (comparison) => {
     // Transform API data to comparison format
-    const car1 = {
-      ...comparison.car1,
-      price: comparison.car1.price_min || comparison.car1.price || 0,
-      fuelType:
-        comparison.car1.fuel_type || comparison.car1.fuelType || "Petrol",
-      image:
-        Array.isArray(comparison.car1.images) &&
-        comparison.car1.images.length > 0
-          ? comparison.car1.images[0]
-          : "/placeholder.svg",
-    };
-
-    const car2 = {
-      ...comparison.car2,
-      price: comparison.car2.price_min || comparison.car2.price || 0,
-      fuelType:
-        comparison.car2.fuel_type || comparison.car2.fuelType || "Petrol",
-      image:
-        Array.isArray(comparison.car2.images) &&
-        comparison.car2.images.length > 0
-          ? comparison.car2.images[0]
-          : "/placeholder.svg",
-    };
+    const car1 = transformCarData(comparison.car1);
+    const car2 = transformCarData(comparison.car2);
 
     setSelectedCar1(car1);
     setSelectedCar2(car2);
@@ -747,14 +779,14 @@ const Compare = () => {
                             },
                             {
                               label: "Fuel Type",
-                              value: selectedCar1.fuelType || "Petrol",
+                              value: "Diesel", // Hardcoded since DB doesn't have fuel type
                               icon: Fuel,
                             },
                             {
                               label: "Mileage",
                               value: selectedCar1.mileage
-                                ? `${selectedCar1.mileage} kmpl`
-                                : "20 kmpl",
+                                ? (typeof selectedCar1.mileage === 'number' ? `${selectedCar1.mileage} kmpl` : selectedCar1.mileage)
+                                : "N/A",
                               icon: Gauge,
                             },
                             {
@@ -808,14 +840,14 @@ const Compare = () => {
                             },
                             {
                               label: "Fuel Type",
-                              value: selectedCar2.fuelType || "Petrol",
+                              value: "Diesel", // Hardcoded since DB doesn't have fuel type
                               icon: Fuel,
                             },
                             {
                               label: "Mileage",
                               value: selectedCar2.mileage
-                                ? `${selectedCar2.mileage} kmpl`
-                                : "18 kmpl",
+                                ? (typeof selectedCar2.mileage === 'number' ? `${selectedCar2.mileage} kmpl` : selectedCar2.mileage)
+                                : "N/A",
                               icon: Gauge,
                             },
                             {
@@ -877,23 +909,52 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar1.engine_capacity || "1197 cc",
+                              value: selectedCar1.fuel_type || selectedCar1.specifications?.engine || "N/A",
                             },
-                            { label: "Max Power", value: "89 bhp @ 6000 rpm" },
-                            { label: "Max Torque", value: "113 Nm @ 4200 rpm" },
+                            {
+                              label: "Max Power",
+                              value: selectedCar1.specifications?.max_power || selectedCar1.specifications?.power || "N/A"
+                            },
+                            {
+                              label: "Max Torque",
+                              value: selectedCar1.specifications?.max_torque || selectedCar1.specifications?.torque || "N/A"
+                            },
                             {
                               label: "Transmission",
-                              value:
-                                selectedCar1.transmission || "5-Speed Manual",
+                              value: "Manual", // Hardcoded since DB doesn't have transmission type
                             },
-                            { label: "Length", value: "3845 mm" },
-                            { label: "Width", value: "1735 mm" },
-                            { label: "Height", value: "1530 mm" },
-                            { label: "Wheelbase", value: "2450 mm" },
-                            { label: "Ground Clearance", value: "165 mm" },
-                            { label: "Boot Space", value: "268 Litres" },
-                            { label: "Fuel Tank", value: "37 Litres" },
-                            { label: "Kerb Weight", value: "1050 kg" },
+                            {
+                              label: "Length",
+                              value: selectedCar1.specifications?.length || "N/A"
+                            },
+                            {
+                              label: "Width",
+                              value: selectedCar1.specifications?.width || "N/A"
+                            },
+                            {
+                              label: "Height",
+                              value: selectedCar1.specifications?.height || "N/A"
+                            },
+                            {
+                              label: "Wheelbase",
+                              value: selectedCar1.specifications?.wheelbase || "N/A"
+                            },
+                            {
+                              label: "Ground Clearance",
+                              value: selectedCar1.specifications?.ground_clearance || "N/A"
+                            },
+                            {
+                              label: "Boot Space",
+                              value: selectedCar1.specifications?.boot_space || "N/A"
+                            },
+                            {
+                              label: "Fuel Tank",
+                              value: selectedCar1.specifications?.fuel_tank_capacity || "N/A"
+                            },
+                            {
+                              label: "Kerb Weight",
+                              value: selectedCar1.specifications?.kerb_weight || "N/A"
+                            },
                           ].map((spec, index) => (
                             <div
                               key={index}
@@ -916,23 +977,52 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar2.engine_capacity || "999 cc",
+                              value: selectedCar2.fuel_type || selectedCar2.specifications?.engine || "N/A",
                             },
-                            { label: "Max Power", value: "95 bhp @ 5500 rpm" },
-                            { label: "Max Torque", value: "120 Nm @ 3500 rpm" },
+                            {
+                              label: "Max Power",
+                              value: selectedCar2.specifications?.max_power || selectedCar2.specifications?.power || "N/A"
+                            },
+                            {
+                              label: "Max Torque",
+                              value: selectedCar2.specifications?.max_torque || selectedCar2.specifications?.torque || "N/A"
+                            },
                             {
                               label: "Transmission",
-                              value:
-                                selectedCar2.transmission || "6-Speed Manual",
+                              value: selectedCar2.transmission || selectedCar2.specifications?.transmission || "N/A",
                             },
-                            { label: "Length", value: "4561 mm" },
-                            { label: "Width", value: "1752 mm" },
-                            { label: "Height", value: "1507 mm" },
-                            { label: "Wheelbase", value: "2651 mm" },
-                            { label: "Ground Clearance", value: "179 mm" },
-                            { label: "Boot Space", value: "521 Litres" },
-                            { label: "Fuel Tank", value: "45 Litres" },
-                            { label: "Kerb Weight", value: "1180 kg" },
+                            {
+                              label: "Length",
+                              value: selectedCar2.specifications?.length || "N/A"
+                            },
+                            {
+                              label: "Width",
+                              value: selectedCar2.specifications?.width || "N/A"
+                            },
+                            {
+                              label: "Height",
+                              value: selectedCar2.specifications?.height || "N/A"
+                            },
+                            {
+                              label: "Wheelbase",
+                              value: selectedCar2.specifications?.wheelbase || "N/A"
+                            },
+                            {
+                              label: "Ground Clearance",
+                              value: selectedCar2.specifications?.ground_clearance || "N/A"
+                            },
+                            {
+                              label: "Boot Space",
+                              value: selectedCar2.specifications?.boot_space || "N/A"
+                            },
+                            {
+                              label: "Fuel Tank",
+                              value: selectedCar2.specifications?.fuel_tank_capacity || "N/A"
+                            },
+                            {
+                              label: "Kerb Weight",
+                              value: selectedCar2.specifications?.kerb_weight || "N/A"
+                            },
                           ].map((spec, index) => (
                             <div
                               key={index}
@@ -976,13 +1066,16 @@ const Compare = () => {
                                 Safety Features
                               </h6>
                               <div className="space-y-1">
-                                {[
-                                  "Dual Airbags",
-                                  "ABS with EBD",
-                                  "Central Locking",
-                                  "Immobilizer",
-                                  "Speed Alert",
-                                ].map((feature, index) => (
+                                {(selectedCar1.features && selectedCar1.features.length > 0
+                                  ? selectedCar1.features.filter(f =>
+                                      f.toLowerCase().includes('airbag') ||
+                                      f.toLowerCase().includes('abs') ||
+                                      f.toLowerCase().includes('safety') ||
+                                      f.toLowerCase().includes('brake') ||
+                                      f.toLowerCase().includes('lock')
+                                    ).slice(0, 5)
+                                  : ["No safety features listed"]
+                                ).map((feature, index) => (
                                   <div
                                     key={index}
                                     className="flex items-center gap-2 text-xs md:text-sm"
@@ -1002,14 +1095,13 @@ const Compare = () => {
                               <div className="space-y-1">
                                 {(selectedCar1.features &&
                                 selectedCar1.features.length > 0
-                                  ? selectedCar1.features.slice(0, 5)
-                                  : [
-                                      "Power Steering",
-                                      "Air Conditioning",
-                                      "Power Windows",
-                                      "Adjustable Seats",
-                                      "Digital Odometer",
-                                    ]
+                                  ? selectedCar1.features.filter(f =>
+                                      !(f.toLowerCase().includes('airbag') ||
+                                        f.toLowerCase().includes('abs') ||
+                                        f.toLowerCase().includes('safety') ||
+                                        f.toLowerCase().includes('brake'))
+                                    ).slice(0, 5)
+                                  : ["No comfort features listed"]
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
@@ -1028,12 +1120,18 @@ const Compare = () => {
                                 Entertainment
                               </h6>
                               <div className="space-y-1">
-                                {[
-                                  "Bluetooth",
-                                  "USB & AUX",
-                                  "Steering Controls",
-                                  "Digital Display",
-                                ].map((feature, index) => (
+                                {(selectedCar1.features && selectedCar1.features.length > 0
+                                  ? selectedCar1.features.filter(f =>
+                                      f.toLowerCase().includes('audio') ||
+                                      f.toLowerCase().includes('bluetooth') ||
+                                      f.toLowerCase().includes('carplay') ||
+                                      f.toLowerCase().includes('android') ||
+                                      f.toLowerCase().includes('usb') ||
+                                      f.toLowerCase().includes('touchscreen') ||
+                                      f.toLowerCase().includes('display')
+                                    ).slice(0, 5)
+                                  : ["No entertainment features listed"]
+                                ).map((feature, index) => (
                                   <div
                                     key={index}
                                     className="flex items-center gap-2 text-xs md:text-sm"
@@ -1059,13 +1157,16 @@ const Compare = () => {
                                 Safety Features
                               </h6>
                               <div className="space-y-1">
-                                {[
-                                  "6 Airbags",
-                                  "ABS with EBD",
-                                  "ESP",
-                                  "Hill Hold Control",
-                                  "ISOFIX",
-                                ].map((feature, index) => (
+                                {(selectedCar2.features && selectedCar2.features.length > 0
+                                  ? selectedCar2.features.filter(f =>
+                                      f.toLowerCase().includes('airbag') ||
+                                      f.toLowerCase().includes('abs') ||
+                                      f.toLowerCase().includes('safety') ||
+                                      f.toLowerCase().includes('brake') ||
+                                      f.toLowerCase().includes('lock')
+                                    ).slice(0, 5)
+                                  : ["No safety features listed"]
+                                ).map((feature, index) => (
                                   <div
                                     key={index}
                                     className="flex items-center gap-2 text-xs md:text-sm"
@@ -1085,14 +1186,13 @@ const Compare = () => {
                               <div className="space-y-1">
                                 {(selectedCar2.features &&
                                 selectedCar2.features.length > 0
-                                  ? selectedCar2.features.slice(0, 5)
-                                  : [
-                                      "Climate Control",
-                                      "Leather Seats",
-                                      "Sunroof",
-                                      "Cruise Control",
-                                      "Auto Lights",
-                                    ]
+                                  ? selectedCar2.features.filter(f =>
+                                      !(f.toLowerCase().includes('airbag') ||
+                                        f.toLowerCase().includes('abs') ||
+                                        f.toLowerCase().includes('safety') ||
+                                        f.toLowerCase().includes('brake'))
+                                    ).slice(0, 5)
+                                  : ["No comfort features listed"]
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
@@ -1111,13 +1211,18 @@ const Compare = () => {
                                 Entertainment
                               </h6>
                               <div className="space-y-1">
-                                {[
-                                  "Touchscreen",
-                                  "Android Auto",
-                                  "Apple CarPlay",
-                                  "Premium Audio",
-                                  "Wireless Charging",
-                                ].map((feature, index) => (
+                                {(selectedCar2.features && selectedCar2.features.length > 0
+                                  ? selectedCar2.features.filter(f =>
+                                      f.toLowerCase().includes('audio') ||
+                                      f.toLowerCase().includes('bluetooth') ||
+                                      f.toLowerCase().includes('carplay') ||
+                                      f.toLowerCase().includes('android') ||
+                                      f.toLowerCase().includes('usb') ||
+                                      f.toLowerCase().includes('touchscreen') ||
+                                      f.toLowerCase().includes('display')
+                                    ).slice(0, 5)
+                                  : ["No entertainment features listed"]
+                                ).map((feature, index) => (
                                   <div
                                     key={index}
                                     className="flex items-center gap-2 text-xs md:text-sm"

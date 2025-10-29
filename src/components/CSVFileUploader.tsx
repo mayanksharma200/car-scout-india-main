@@ -48,11 +48,24 @@ export const CSVFileUploader = () => {
       let model = row[2]?.trim();
       let version = row[3]?.trim();
       let notes = row[4]?.trim();
+      let columnOffset = 0; // Track if columns are shifted
 
-      // Check if columns are shifted and URL is in the wrong column
-      // If make or model contains a URL, extract data from the URL instead
-      if (make && make.includes('carwale.com')) {
+      // Check if the URL is in column 0 (expected position)
+      if (sourceUrl && sourceUrl.includes('carwale.com')) {
+        const urlMatch = sourceUrl.match(/carwale\.com\/([^-]+)-cars\/([^\/]+)\/([^\/]+)/);
+        if (urlMatch) {
+          // URL is in the correct position, use it to extract data
+          make = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1);
+          model = urlMatch[2].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          version = urlMatch[3].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          columnOffset = 0; // No offset needed
+          console.log(`Row ${index}: Extracted from URL (col 0) - Brand: ${make}, Model: ${model}, Variant: ${version}`);
+        }
+      }
+      // Check if columns are shifted and URL is in the brand column
+      else if (make && make.includes('carwale.com')) {
         sourceUrl = make;
+        columnOffset = 1; // Columns are shifted by 1
         // Extract brand and model from CarWale URL pattern:
         // https://www.carwale.com/{brand}-cars/{model}/{variant}/
         const urlMatch = sourceUrl.match(/carwale\.com\/([^-]+)-cars\/([^\/]+)\/([^\/]+)/);
@@ -60,19 +73,20 @@ export const CSVFileUploader = () => {
           make = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1); // Capitalize brand
           model = urlMatch[2].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           version = urlMatch[3].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          console.log(`Row ${index}: Extracted from URL - Brand: ${make}, Model: ${model}, Variant: ${version}`);
+          console.log(`Row ${index}: Extracted from URL (col 1) - Brand: ${make}, Model: ${model}, Variant: ${version}`);
         } else {
           console.log(`Row ${index}: Skipping - Could not parse CarWale URL`);
           return null;
         }
       } else if (model && model.includes('carwale.com')) {
         sourceUrl = model;
+        columnOffset = 2; // Columns are shifted by 2
         const urlMatch = sourceUrl.match(/carwale\.com\/([^-]+)-cars\/([^\/]+)\/([^\/]+)/);
         if (urlMatch) {
           make = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1);
           model = urlMatch[2].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           version = urlMatch[3].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          console.log(`Row ${index}: Extracted from URL - Brand: ${make}, Model: ${model}, Variant: ${version}`);
+          console.log(`Row ${index}: Extracted from URL (col 2) - Brand: ${make}, Model: ${model}, Variant: ${version}`);
         } else {
           console.log(`Row ${index}: Skipping - Could not parse CarWale URL`);
           return null;
@@ -84,12 +98,39 @@ export const CSVFileUploader = () => {
         return null;
       }
 
-      const price = row[6]?.trim() || row[8]?.trim(); // Price or Key Price
-      const mileage = row[9]?.trim();
-      const engine = row[10]?.trim();
-      const transmission = row[11]?.trim();
-      const fuelType = row[12]?.trim();
-      const seating = row[13]?.trim();
+      // Adjust column indices based on offset
+      // ACTUAL Excel structure (discovered from debug logs):
+      // Column 9: PRICE (not mileage!)
+      // Column 10: MILEAGE (not engine!)
+      // Column 11: ENGINE (not transmission!)
+      // Column 12: TRANSMISSION (not fuel type!)
+      // Column 13: FUEL TYPE
+      const price = row[6 + columnOffset]?.trim() || row[9 + columnOffset]?.trim(); // Price or Column 9
+      const mileage = row[10 + columnOffset]?.trim();      // Row 10: Mileage (ARAI)
+      const engine = row[11 + columnOffset]?.trim();       // Row 11: Engine
+      const transmission = row[12 + columnOffset]?.trim(); // Row 12: Transmission
+      const fuelType = row[13 + columnOffset]?.trim();     // Row 13: Fuel Type
+      const seating = row[14 + columnOffset]?.trim();      // Row 14: Seating
+
+      // Debug logging - Show RAW column values
+      if (index <= 5) {
+        console.log(`\n📊 Row ${index} CORRECTED reading:`, {
+          columnOffset,
+          'Column 9 (Price)': row[9 + columnOffset],
+          'Column 10 (Mileage)': row[10 + columnOffset],
+          'Column 11 (Engine)': row[11 + columnOffset],
+          'Column 12 (Transmission)': row[12 + columnOffset],
+          'Column 13 (Fuel Type)': row[13 + columnOffset],
+          'Column 14 (Seating)': row[14 + columnOffset]
+        });
+        console.log(`📦 Row ${index} Variables assigned:`, {
+          'price': price,
+          'mileage': mileage,
+          'engine': engine,
+          'transmission': transmission,
+          'fuelType': fuelType
+        });
+      }
 
       // Use centralized validation to check if this entry should be skipped
       // Skip URL checking since we're extracting from URLs
@@ -131,13 +172,13 @@ export const CSVFileUploader = () => {
         variant: version || undefined,
         price_min: priceNum,
         price_max: priceNum,
-        fuel_type: fuelType || undefined,
-        transmission: transmission || undefined,
-        engine_capacity: engine || undefined,
-        mileage: mileage || undefined,
-        body_type: 'Car', // Default
+        fuel_type: fuelType || undefined,         // Row 12: Fuel Type (Petrol/Diesel/CNG)
+        transmission: transmission || undefined,   // Row 11: Transmission (Manual/Automatic)
+        engine_capacity: engine || undefined,      // Row 10: Engine (1199 cc, 1497 cc)
+        mileage: mileage || undefined,             // Row 9: Mileage (18.2 kmpl, 22 kmpl)
+        body_type: 'Car',
         seating_capacity: seatingCapacity,
-        images: [], // Skip images as requested
+        images: [],
         specifications: {
           engine: engine || undefined,
           transmission: transmission || undefined,
@@ -148,6 +189,20 @@ export const CSVFileUploader = () => {
         status: 'active',
         api_source: 'csv_import'
       };
+
+      // DETAILED DEBUG LOGGING - Log what we're about to send to database
+      if (index <= 5) {
+        console.log(`\n🔍 Row ${index} - FINAL carData object being sent to DB:`, {
+          brand: carData.brand,
+          model: carData.model,
+          variant: carData.variant,
+          'fuel_type (should be Petrol/Diesel)': carData.fuel_type,
+          'transmission (should be Manual/Automatic)': carData.transmission,
+          'engine_capacity (should be 1199 cc)': carData.engine_capacity,
+          'mileage (should be 18.2 kmpl)': carData.mileage,
+          'price_min (should be number)': carData.price_min
+        });
+      }
 
       return carData;
     } catch (err) {

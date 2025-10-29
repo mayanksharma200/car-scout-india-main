@@ -117,6 +117,17 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
   try {
     console.log(`🚗 Processing ${carsData.length} cars for bulk insertion...`);
 
+    // DEBUG: Log first car data being sent to see exact values
+    if (carsData.length > 0) {
+      console.log('🔍 FIRST CAR DATA BEING SENT TO SUPABASE:', {
+        fuel_type: carsData[0].fuel_type,
+        transmission: carsData[0].transmission,
+        engine_capacity: carsData[0].engine_capacity,
+        mileage: carsData[0].mileage,
+        price_min: carsData[0].price_min
+      });
+    }
+
     // Call the PostgreSQL bulk upsert function
     const { data, error } = await supabase.rpc('bulk_upsert_cars', {
       cars_data: carsData
