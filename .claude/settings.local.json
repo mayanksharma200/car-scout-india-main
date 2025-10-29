@@ -19,7 +19,11 @@
       "Bash(start cmd //c \"npm run dev\")",
       "Bash(python:*)",
       "Bash(docker:*)",
-      "Bash(pg_dump:*)"
+      "Bash(pg_dump:*)",
+      "Read(//Users/mayanksharma/**)",
+      "Bash(npx tsx --version)",
+      "Bash(npx tsx:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

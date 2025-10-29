@@ -1,0 +1,105 @@
+[
+  {
+    "brand": "BMW",
+    "model": "3 Series",
+    "variant": "330i Sport",
+    "price_min": 4230000,
+    "price_max": 4859555,
+    "fuel_type": "Petrol",
+    "transmission": "Automatic (Torque Converter)",
+    "engine_capacity": "1998 cc",
+    "mileage": "16.13 kmpl",
+    "body_type": "Sedan",
+    "seating_capacity": 5,
+    "images": ["https://imgd.aeplcdn.com/664x374/cw/ec/37067/BMW-3-Series-Exterior-167583.jpg?wm=0&q=85"],
+    "specifications": {
+      "engine": "1998 cc, 4 Cylinders Inline, DOHC",
+      "engine_type": "B48 Turbocharged I4",
+      "max_power": "255 bhp @ 5000 rpm",
+      "max_torque": "400 Nm @ 1550 rpm"
+    },
+    "features": ["ABS", "Airbags", "Climate Control", "Cruise Control"],
+    "status": "active"
+  },
+  {
+    "brand": "BMW",
+    "model": "3 Series",
+    "variant": "320d Sport",
+    "price_min": 4280000,
+    "price_max": 5023930,
+    "fuel_type": "Diesel",
+    "transmission": "Automatic (Torque Converter)",
+    "engine_capacity": "1995 cc",
+    "mileage": "20.37 kmpl",
+    "body_type": "Sedan",
+    "seating_capacity": 5,
+    "images": ["https://imgd.aeplcdn.com/664x374/cw/ec/37067/BMW-3-Series-Exterior-167583.jpg?wm=0&q=85"],
+    "specifications": {
+      "engine": "1995 cc, 4 Cylinders Inline, DOHC",
+      "engine_type": "B47 Turbocharged I4",
+      "max_power": "188 bhp @ 4000 rpm",
+      "max_torque": "400 Nm @ 1750 rpm"
+    },
+    "features": ["ABS", "Airbags", "Climate Control", "Cruise Control"],
+    "status": "active"
+  },
+  {
+    "brand": "BMW",
+    "model": "3 Series",
+    "variant": "320d Luxury Edition",
+    "price_min": 4690000,
+    "price_max": 5501255,
+    "fuel_type": "Diesel",
+    "transmission": "Automatic (Torque Converter)",
+    "engine_capacity": "1995 cc",
+    "mileage": "20.37 kmpl",
+    "body_type": "Sedan",
+    "seating_capacity": 5,
+    "images": ["https://imgd.aeplcdn.com/664x374/cw/ec/37067/BMW-3-Series-Exterior-167583.jpg?wm=0&q=85"],
+    "specifications": {
+      "engine": "1995 cc, 4 Cylinders Inline, DOHC",
+      "engine_type": "B47 Turbocharged I4"
+    },
+    "features": ["ABS", "Airbags", "Climate Control", "Leather Seats"],
+    "status": "active"
+  },
+  {
+    "brand": "BMW",
+    "model": "3 Series",
+    "variant": "320d Luxury Line",
+    "price_min": 4829000,
+    "price_max": 5663805,
+    "fuel_type": "Diesel",
+    "transmission": "Automatic (Torque Converter)",
+    "engine_capacity": "1995 cc",
+    "mileage": "20.37 kmpl",
+    "body_type": "Sedan",
+    "seating_capacity": 5,
+    "images": ["https://imgd.aeplcdn.com/664x374/cw/ec/37067/BMW-3-Series-Exterior-167583.jpg?wm=0&q=85"],
+    "specifications": {
+      "engine": "1995 cc, 4 Cylinders Inline, DOHC"
+    },
+    "features": ["ABS", "ESP", "Climate Control", "Premium Audio"],
+    "status": "active"
+  },
+  {
+    "brand": "BMW",
+    "model": "3 Series",
+    "variant": "330i M Sport",
+    "price_min": 4928000,
+    "price_max": 5656805,
+    "fuel_type": "Petrol",
+    "transmission": "Automatic (Torque Converter)",
+    "engine_capacity": "1998 cc",
+    "mileage": "16.13 kmpl",
+    "body_type": "Sedan",
+    "seating_capacity": 5,
+    "images": ["https://imgd.aeplcdn.com/664x374/cw/ec/37067/BMW-3-Series-Exterior-167583.jpg?wm=0&q=85"],
+    "specifications": {
+      "engine": "1998 cc, 4 Cylinders Inline, DOHC",
+      "max_power": "255 bhp @ 5000 rpm"
+    },
+    "features": ["M Sport Package", "Digital Cockpit", "Premium Audio"],
+    "status": "active"
+  }
+]

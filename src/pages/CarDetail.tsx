@@ -667,7 +667,7 @@ const CarDetail = () => {
                           <div>
                             <p className="font-medium">Fuel Type</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.fuelType}
+                              {car.fuelType || car.fuel_type || "N/A"}
                             </p>
                           </div>
                         </div>
@@ -678,7 +678,7 @@ const CarDetail = () => {
                           <div>
                             <p className="font-medium">Transmission</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.transmission}
+                              {car.transmission || "N/A"}
                             </p>
                           </div>
                         </div>
@@ -687,9 +687,9 @@ const CarDetail = () => {
                             <Gauge className="w-5 h-5 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium">Mileage</p>
+                            <p className="font-medium">Mileage (ARAI)</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.mileage} km/l
+                              {typeof car.mileage === 'string' ? car.mileage : car.mileage ? `${car.mileage} kmpl` : "N/A"}
                             </p>
                           </div>
                         </div>
@@ -702,7 +702,7 @@ const CarDetail = () => {
                           <div>
                             <p className="font-medium">Seating Capacity</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.seating} Seater
+                              {car.seating || car.seating_capacity ? `${car.seating || car.seating_capacity} Seater` : "N/A"}
                             </p>
                           </div>
                         </div>
@@ -713,7 +713,7 @@ const CarDetail = () => {
                           <div>
                             <p className="font-medium">Body Type</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.bodyType}
+                              {car.bodyType || car.body_type || "N/A"}
                             </p>
                           </div>
                         </div>
@@ -724,7 +724,7 @@ const CarDetail = () => {
                           <div>
                             <p className="font-medium">Model Year</p>
                             <p className="text-sm text-muted-foreground">
-                              {car.year}
+                              {car.year || "2024"}
                             </p>
                           </div>
                         </div>
@@ -752,29 +752,29 @@ const CarDetail = () => {
                               Engine Capacity
                             </span>
                             <span className="font-medium">
-                              {car.engine_capacity || "1.2L"}
+                              {car.engine_capacity || car.specifications?.engine || "N/A"}
                             </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">
                               Fuel Type
                             </span>
-                            <span className="font-medium">{car.fuelType}</span>
+                            <span className="font-medium">{car.fuelType || car.fuel_type || "N/A"}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">
                               Transmission
                             </span>
                             <span className="font-medium">
-                              {car.transmission}
+                              {car.transmission || "N/A"}
                             </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">
-                              Mileage
+                              Mileage (ARAI)
                             </span>
                             <span className="font-medium">
-                              {car.mileage} km/l
+                              {typeof car.mileage === 'string' ? car.mileage : car.mileage ? `${car.mileage} kmpl` : "N/A"}
                             </span>
                           </div>
                         </div>
@@ -792,24 +792,24 @@ const CarDetail = () => {
                               Seating Capacity
                             </span>
                             <span className="font-medium">
-                              {car.seating} Seater
+                              {car.seating || car.seating_capacity || "N/A"} {(car.seating || car.seating_capacity) ? "Seater" : ""}
                             </span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">
                               Body Type
                             </span>
-                            <span className="font-medium">{car.bodyType}</span>
+                            <span className="font-medium">{car.bodyType || car.body_type || "N/A"}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">Color</span>
-                            <span className="font-medium">{car.color}</span>
+                            <span className="font-medium">{car.color || "N/A"}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-muted-foreground">
                               Model Year
                             </span>
-                            <span className="font-medium">{car.year}</span>
+                            <span className="font-medium">{car.year || "2024"}</span>
                           </div>
                         </div>
                       </div>
