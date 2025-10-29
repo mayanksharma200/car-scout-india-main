@@ -157,6 +157,7 @@ const CarSelectorModal = ({
   const brands = [...new Set(cars.map((car) => car.brand))].sort();
 
   const formatPrice = (price) => {
+    if (!price || price === 0) return 'Price not available';
     if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
     if (price >= 100000) return `₹${(price / 100000).toFixed(2)} L`;
     return `₹${price.toLocaleString()}`;
@@ -336,6 +337,7 @@ const CompareSection = () => {
   };
 
   const formatPrice = (price) => {
+    if (!price || price === 0) return 'Price not available';
     if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`;
     if (price >= 100000) return `₹${(price / 100000).toFixed(2)} L`;
     return `₹${price.toLocaleString()}`;
