@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Database, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { bulkInsertCars, CarData, BulkInsertResult, parsePrice } from '@/utils/bulkCarInsertion';
+import { shouldSkipCarEntry } from '@/utils/carDataValidation';
 import { Badge } from '@/components/ui/badge';
 
 export const SQLDumpParser = () => {
@@ -53,8 +54,12 @@ export const SQLDumpParser = () => {
         keySeating      // 13
       ] = values;
 
-      // Skip header rows or empty rows
-      if (!make || !model || make === 'Make' || make === '' || notes === 'discontinued') {
+      // Use centralized validation to check if this entry should be skipped
+      const skipCheck = shouldSkipCarEntry(make, model, notes);
+      if (skipCheck.skip) {
+        if (skipCheck.reason) {
+          console.log(`Skipping SQL row - ${skipCheck.reason}`);
+        }
         return null;
       }
 
