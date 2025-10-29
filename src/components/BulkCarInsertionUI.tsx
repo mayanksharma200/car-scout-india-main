@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Upload, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { bulkInsertCars, CarData, BulkInsertResult } from '@/utils/bulkCarInsertion';
+import { validateCarData } from '@/utils/carDataValidation';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -61,16 +62,20 @@ export const BulkCarInsertionUI = () => {
         return { valid: false, errors };
       }
 
-      // Validate each car object
+      // Validate each car object using centralized validation
       parsed.forEach((car, index) => {
-        if (!car.brand) errors.push(`Car ${index + 1}: Missing required field "brand"`);
-        if (!car.model) errors.push(`Car ${index + 1}: Missing required field "model"`);
+        // Basic type checks
         if (car.price_min && typeof car.price_min !== 'number') {
           errors.push(`Car ${index + 1}: "price_min" must be a number`);
         }
         if (car.seating_capacity && typeof car.seating_capacity !== 'number') {
           errors.push(`Car ${index + 1}: "seating_capacity" must be a number`);
         }
+
+        // Use centralized validation for brand/model/variant/prices
+        const validation = validateCarData(car, index);
+        errors.push(...validation.errors);
+        // Note: warnings are not blocking, but could be displayed to user
       });
 
       return { valid: errors.length === 0, errors, data: parsed };

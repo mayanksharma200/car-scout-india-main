@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Upload, CheckCircle2, XCircle, AlertCircle, Loader2, FileSpreadsheet } from 'lucide-react';
 import { bulkInsertCars, CarData, BulkInsertResult, parsePrice } from '@/utils/bulkCarInsertion';
+import { shouldSkipCarEntry, INVALID_CAR_NAMES } from '@/utils/carDataValidation';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
@@ -38,14 +39,51 @@ export const CSVFileUploader = () => {
   const parseCSVRow = (row: string[], index: number): CarData | null => {
     try {
       // Skip if not enough columns or empty row
-      if (row.length < 14 || !row[1] || !row[2]) {
+      if (row.length < 2) {
         return null;
       }
 
-      const make = row[1]?.trim();
-      const model = row[2]?.trim();
-      const version = row[3]?.trim();
-      const notes = row[4]?.trim();
+      let sourceUrl = row[0]?.trim();
+      let make = row[1]?.trim();
+      let model = row[2]?.trim();
+      let version = row[3]?.trim();
+      let notes = row[4]?.trim();
+
+      // Check if columns are shifted and URL is in the wrong column
+      // If make or model contains a URL, extract data from the URL instead
+      if (make && make.includes('carwale.com')) {
+        sourceUrl = make;
+        // Extract brand and model from CarWale URL pattern:
+        // https://www.carwale.com/{brand}-cars/{model}/{variant}/
+        const urlMatch = sourceUrl.match(/carwale\.com\/([^-]+)-cars\/([^\/]+)\/([^\/]+)/);
+        if (urlMatch) {
+          make = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1); // Capitalize brand
+          model = urlMatch[2].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          version = urlMatch[3].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          console.log(`Row ${index}: Extracted from URL - Brand: ${make}, Model: ${model}, Variant: ${version}`);
+        } else {
+          console.log(`Row ${index}: Skipping - Could not parse CarWale URL`);
+          return null;
+        }
+      } else if (model && model.includes('carwale.com')) {
+        sourceUrl = model;
+        const urlMatch = sourceUrl.match(/carwale\.com\/([^-]+)-cars\/([^\/]+)\/([^\/]+)/);
+        if (urlMatch) {
+          make = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1);
+          model = urlMatch[2].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          version = urlMatch[3].replace(/-/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          console.log(`Row ${index}: Extracted from URL - Brand: ${make}, Model: ${model}, Variant: ${version}`);
+        } else {
+          console.log(`Row ${index}: Skipping - Could not parse CarWale URL`);
+          return null;
+        }
+      }
+
+      // If we still don't have make or model, skip
+      if (!make || !model) {
+        return null;
+      }
+
       const price = row[6]?.trim() || row[8]?.trim(); // Price or Key Price
       const mileage = row[9]?.trim();
       const engine = row[10]?.trim();
@@ -53,17 +91,21 @@ export const CSVFileUploader = () => {
       const fuelType = row[12]?.trim();
       const seating = row[13]?.trim();
 
-      // Skip header rows, empty rows, or discontinued cars
-      if (
-        !make ||
-        !model ||
-        make === 'Make' ||
-        make === '' ||
-        notes === 'discontinued' ||
-        make.includes('INDIA CAR DATABASE') ||
-        make.includes('Compiled in Excel') ||
-        make.includes('This is a SAMPLE')
-      ) {
+      // Use centralized validation to check if this entry should be skipped
+      // Skip URL checking since we're extracting from URLs
+      const skipCheck = {
+        skip: false,
+        reason: undefined
+      };
+
+      // Only check for invalid names, not URLs
+      if (INVALID_CAR_NAMES.includes(make) || INVALID_CAR_NAMES.includes(model)) {
+        console.log(`Row ${index}: Skipping - Invalid brand or model name`);
+        return null;
+      }
+
+      if (notes?.toLowerCase().includes('discontinued')) {
+        console.log(`Row ${index}: Skipping - Car is discontinued`);
         return null;
       }
 
