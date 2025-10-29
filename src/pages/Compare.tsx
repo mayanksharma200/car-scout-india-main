@@ -909,7 +909,7 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar1.fuel_type || selectedCar1.specifications?.engine || "N/A",
+                              value: selectedCar1.engine_capacity || selectedCar1.specifications?.engine || "N/A",
                             },
                             {
                               label: "Max Power",
@@ -921,7 +921,7 @@ const Compare = () => {
                             },
                             {
                               label: "Transmission",
-                              value: "Manual", // Hardcoded since DB doesn't have transmission type
+                              value: selectedCar1.transmission || selectedCar1.specifications?.transmission || "N/A",
                             },
                             {
                               label: "Length",
@@ -977,7 +977,7 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar2.fuel_type || selectedCar2.specifications?.engine || "N/A",
+                              value: selectedCar2.engine_capacity || selectedCar2.specifications?.engine || "N/A",
                             },
                             {
                               label: "Max Power",
