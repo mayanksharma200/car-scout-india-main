@@ -21,6 +21,60 @@ export interface CarData {
   features?: string[];
   status?: string;
   api_source?: string;
+
+  // City-specific pricing
+  mumbai_price?: string;
+  bangalore_price?: string;
+  delhi_price?: string;
+  pune_price?: string;
+  hyderabad_price?: string;
+  chennai_price?: string;
+  kolkata_price?: string;
+  ahmedabad_price?: string;
+
+  // Colors
+  colors?: string;
+  color_codes?: string;
+
+  // Warranty information
+  warranty_years?: number;
+  warranty_km?: number;
+  battery_warranty_years?: number;
+  battery_warranty_km?: number;
+
+  // Price breakdown
+  ex_showroom_price?: string;
+  rto_charges?: string;
+  insurance_cost?: string;
+
+  // Safety features
+  airbags?: string;
+  ncap_rating?: string;
+  abs?: boolean;
+  esc?: boolean;
+
+  // Comfort features
+  sunroof?: string;
+  ac_type?: string;
+  cruise_control?: boolean;
+
+  // Engine details
+  engine_type?: string;
+  max_power?: string;
+  max_torque?: string;
+  top_speed?: string;
+  acceleration?: string;
+
+  // Dimensions
+  length_mm?: string;
+  width_mm?: string;
+  height_mm?: string;
+  wheelbase_mm?: string;
+  ground_clearance_mm?: string;
+  bootspace_litres?: string;
+
+  // Description
+  description?: string;
 }
 
 /**
@@ -119,13 +173,24 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
 
     // DEBUG: Log first car data being sent to see exact values
     if (carsData.length > 0) {
-      console.log('🔍 FIRST CAR DATA BEING SENT TO SUPABASE:', {
+      console.log('🔍 FIRST CAR DATA BEING SENT TO SUPABASE - Basic fields:', {
         fuel_type: carsData[0].fuel_type,
         transmission: carsData[0].transmission,
         engine_capacity: carsData[0].engine_capacity,
         mileage: carsData[0].mileage,
         price_min: carsData[0].price_min
       });
+      console.log('🔍 DEDICATED COLUMNS IN CAR DATA:', {
+        mumbai_price: carsData[0].mumbai_price,
+        bangalore_price: carsData[0].bangalore_price,
+        delhi_price: carsData[0].delhi_price,
+        colors: carsData[0].colors,
+        airbags: carsData[0].airbags,
+        sunroof: carsData[0].sunroof,
+        warranty_years: carsData[0].warranty_years
+      });
+      console.log('🔍 FULL FIRST CAR OBJECT KEYS:', Object.keys(carsData[0]));
+      console.log('🔍 FULL FIRST CAR DATA:', JSON.stringify(carsData[0], null, 2));
     }
 
     // Call the PostgreSQL bulk upsert function

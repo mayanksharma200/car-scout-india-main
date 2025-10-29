@@ -23,7 +23,8 @@
       "Read(//Users/mayanksharma/**)",
       "Bash(npx tsx --version)",
       "Bash(npx tsx:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
