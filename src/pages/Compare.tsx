@@ -909,51 +909,51 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar1.engine_capacity || selectedCar1.specifications?.engine || "N/A",
+                              value: selectedCar1.engine_capacity || selectedCar1.specifications?.['Engine Capacity'] || selectedCar1.specifications?.engine || "N/A",
                             },
                             {
                               label: "Max Power",
-                              value: selectedCar1.specifications?.max_power || selectedCar1.specifications?.power || "N/A"
+                              value: selectedCar1.specifications?.['Max Power'] || selectedCar1.specifications?.max_power || selectedCar1.specifications?.power || "N/A"
                             },
                             {
                               label: "Max Torque",
-                              value: selectedCar1.specifications?.max_torque || selectedCar1.specifications?.torque || "N/A"
+                              value: selectedCar1.specifications?.['Max Torque'] || selectedCar1.specifications?.max_torque || selectedCar1.specifications?.torque || "N/A"
                             },
                             {
                               label: "Transmission",
-                              value: selectedCar1.transmission || selectedCar1.specifications?.transmission || "N/A",
+                              value: selectedCar1.transmission || selectedCar1.specifications?.['Transmission'] || selectedCar1.specifications?.transmission || "N/A",
                             },
                             {
                               label: "Length",
-                              value: selectedCar1.specifications?.length || "N/A"
+                              value: selectedCar1.specifications?.['Length'] || selectedCar1.specifications?.length || "N/A"
                             },
                             {
                               label: "Width",
-                              value: selectedCar1.specifications?.width || "N/A"
+                              value: selectedCar1.specifications?.['Width'] || selectedCar1.specifications?.width || "N/A"
                             },
                             {
                               label: "Height",
-                              value: selectedCar1.specifications?.height || "N/A"
+                              value: selectedCar1.specifications?.['Height'] || selectedCar1.specifications?.height || "N/A"
                             },
                             {
                               label: "Wheelbase",
-                              value: selectedCar1.specifications?.wheelbase || "N/A"
+                              value: selectedCar1.specifications?.['Wheelbase'] || selectedCar1.specifications?.wheelbase || "N/A"
                             },
                             {
                               label: "Ground Clearance",
-                              value: selectedCar1.specifications?.ground_clearance || "N/A"
+                              value: selectedCar1.specifications?.['Ground Clearance'] || selectedCar1.specifications?.ground_clearance || "N/A"
                             },
                             {
                               label: "Boot Space",
-                              value: selectedCar1.specifications?.boot_space || "N/A"
+                              value: selectedCar1.specifications?.['Boot Space'] || selectedCar1.specifications?.boot_space || "N/A"
                             },
                             {
                               label: "Fuel Tank",
-                              value: selectedCar1.specifications?.fuel_tank_capacity || "N/A"
+                              value: selectedCar1.specifications?.['Fuel Tank Capacity'] || selectedCar1.specifications?.fuel_tank_capacity || "N/A"
                             },
                             {
                               label: "Kerb Weight",
-                              value: selectedCar1.specifications?.kerb_weight || "N/A"
+                              value: selectedCar1.specifications?.['Kerb Weight'] || selectedCar1.specifications?.kerb_weight || "N/A"
                             },
                           ].map((spec, index) => (
                             <div
@@ -977,51 +977,51 @@ const Compare = () => {
                           {[
                             {
                               label: "Engine Capacity",
-                              value: selectedCar2.engine_capacity || selectedCar2.specifications?.engine || "N/A",
+                              value: selectedCar2.engine_capacity || selectedCar2.specifications?.['Engine Capacity'] || selectedCar2.specifications?.engine || "N/A",
                             },
                             {
                               label: "Max Power",
-                              value: selectedCar2.specifications?.max_power || selectedCar2.specifications?.power || "N/A"
+                              value: selectedCar2.specifications?.['Max Power'] || selectedCar2.specifications?.max_power || selectedCar2.specifications?.power || "N/A"
                             },
                             {
                               label: "Max Torque",
-                              value: selectedCar2.specifications?.max_torque || selectedCar2.specifications?.torque || "N/A"
+                              value: selectedCar2.specifications?.['Max Torque'] || selectedCar2.specifications?.max_torque || selectedCar2.specifications?.torque || "N/A"
                             },
                             {
                               label: "Transmission",
-                              value: selectedCar2.transmission || selectedCar2.specifications?.transmission || "N/A",
+                              value: selectedCar2.transmission || selectedCar2.specifications?.['Transmission'] || selectedCar2.specifications?.transmission || "N/A",
                             },
                             {
                               label: "Length",
-                              value: selectedCar2.specifications?.length || "N/A"
+                              value: selectedCar2.specifications?.['Length'] || selectedCar2.specifications?.length || "N/A"
                             },
                             {
                               label: "Width",
-                              value: selectedCar2.specifications?.width || "N/A"
+                              value: selectedCar2.specifications?.['Width'] || selectedCar2.specifications?.width || "N/A"
                             },
                             {
                               label: "Height",
-                              value: selectedCar2.specifications?.height || "N/A"
+                              value: selectedCar2.specifications?.['Height'] || selectedCar2.specifications?.height || "N/A"
                             },
                             {
                               label: "Wheelbase",
-                              value: selectedCar2.specifications?.wheelbase || "N/A"
+                              value: selectedCar2.specifications?.['Wheelbase'] || selectedCar2.specifications?.wheelbase || "N/A"
                             },
                             {
                               label: "Ground Clearance",
-                              value: selectedCar2.specifications?.ground_clearance || "N/A"
+                              value: selectedCar2.specifications?.['Ground Clearance'] || selectedCar2.specifications?.ground_clearance || "N/A"
                             },
                             {
                               label: "Boot Space",
-                              value: selectedCar2.specifications?.boot_space || "N/A"
+                              value: selectedCar2.specifications?.['Boot Space'] || selectedCar2.specifications?.boot_space || "N/A"
                             },
                             {
                               label: "Fuel Tank",
-                              value: selectedCar2.specifications?.fuel_tank_capacity || "N/A"
+                              value: selectedCar2.specifications?.['Fuel Tank Capacity'] || selectedCar2.specifications?.fuel_tank_capacity || "N/A"
                             },
                             {
                               label: "Kerb Weight",
-                              value: selectedCar2.specifications?.kerb_weight || "N/A"
+                              value: selectedCar2.specifications?.['Kerb Weight'] || selectedCar2.specifications?.kerb_weight || "N/A"
                             },
                           ].map((spec, index) => (
                             <div
