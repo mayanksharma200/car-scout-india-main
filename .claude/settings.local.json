@@ -24,7 +24,8 @@
       "Bash(npx tsx --version)",
       "Bash(npx tsx:*)",
       "Bash(npm install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx tsc --noEmit)"
     ],
     "deny": [],
     "ask": []

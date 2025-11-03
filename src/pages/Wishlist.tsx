@@ -39,6 +39,7 @@ interface WishlistCar {
     seating: number;
     rating: number;
     image: string;
+    images?: string[];
   };
 }
 
@@ -279,16 +280,49 @@ const Wishlist = () => {
   };
 
   const handleSelectCar = (carId: string) => {
-    setSelectedCars((prev) =>
-      prev.includes(carId)
-        ? prev.filter((id) => id !== carId)
-        : [...prev, carId]
-    );
+    setSelectedCars((prev) => {
+      if (prev.includes(carId)) {
+        // Deselect the car
+        return prev.filter((id) => id !== carId);
+      } else {
+        // Select the car (no limit for general selection)
+        return [...prev, carId];
+      }
+    });
   };
 
   const handleViewDetails = (car: WishlistCar["car"]) => {
     const slug = getCarSlugFromCar(car);
     navigate(`/cars/${slug}`);
+  };
+
+  const handleCompareSelected = () => {
+    if (selectedCars.length !== 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Selection",
+        description: "Please select exactly 2 cars to compare.",
+      });
+      return;
+    }
+
+    // Navigate to compare page with selected cars
+    navigate(`/compare?cars=${selectedCars.join(",")}`);
+  };
+
+  const handleCompareAll = () => {
+    if (savedCars.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Not Enough Cars",
+        description: "You need at least 2 cars in your wishlist to compare.",
+      });
+      return;
+    }
+
+    // Auto-select first 2 cars and navigate
+    const firstTwoCars = savedCars.slice(0, 2).map((item) => item.car.id);
+    navigate(`/compare?cars=${firstTwoCars.join(",")}`);
   };
 
   const formatPrice = (price: number) => {
@@ -398,12 +432,15 @@ const Wishlist = () => {
             <div className="flex items-center gap-3">
               <Badge variant="secondary">{selectedCars.length} selected</Badge>
               <div className="flex gap-2">
-                <Link to={`/compare?cars=${selectedCars.join(",")}`}>
-                  <Button variant="outline" size="sm">
-                    <GitCompare className="w-4 h-4 mr-2" />
-                    Compare
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCompareSelected}
+                  disabled={selectedCars.length !== 2}
+                >
+                  <GitCompare className="w-4 h-4 mr-2" />
+                  Compare {selectedCars.length !== 2 && `(Select 2)`}
+                </Button>
                 <Button variant="outline" size="sm">
                   <Share2 className="w-4 h-4 mr-2" />
                   Share
@@ -474,16 +511,15 @@ const Wishlist = () => {
                   <div className="flex items-center gap-4">
                     <h3 className="font-medium">Quick Actions:</h3>
                     <div className="flex gap-2">
-                      <Link
-                        to={`/compare?cars=${savedCars
-                          .map((item) => item.car.id)
-                          .join(",")}`}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCompareAll}
+                        disabled={savedCars.length < 2}
                       >
-                        <Button variant="outline" size="sm">
-                          <GitCompare className="w-4 h-4 mr-2" />
-                          Compare All
-                        </Button>
-                      </Link>
+                        <GitCompare className="w-4 h-4 mr-2" />
+                        Compare All
+                      </Button>
                       <Button variant="outline" size="sm">
                         <Calculator className="w-4 h-4 mr-2" />
                         Calculate EMI

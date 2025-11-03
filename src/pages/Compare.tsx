@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { carAPI } from "@/services/api";
 import { supabase } from "@/integrations/supabase/client";
 import IMAGINImage from "@/components/IMAGINImage";
+import { useLocation } from "react-router-dom";
 
 
 // Car Selector Modal Component using your existing API pattern
@@ -322,9 +323,66 @@ const Compare = () => {
   const [selectorFor, setSelectorFor] = useState(null);
   const [showComparison, setShowComparison] = useState(false);
   const [popularCars, setPopularCars] = useState([]);
+  const location = useLocation();
+
   useEffect(() => {
     loadPopularCars();
+    loadCarsFromUrl();
   }, []);
+
+  const loadCarsFromUrl = async () => {
+    const searchParams = new URLSearchParams(location.search);
+    const carsParam = searchParams.get('cars');
+
+    if (carsParam) {
+      const carIds = carsParam.split(',');
+
+      if (carIds.length === 2) {
+        try {
+          // Load both cars from the database
+          const [car1Data, car2Data] = await Promise.all([
+            loadCarById(carIds[0]),
+            loadCarById(carIds[1])
+          ]);
+
+          if (car1Data && car2Data) {
+            setSelectedCar1(transformCarData(car1Data));
+            setSelectedCar2(transformCarData(car2Data));
+            setShowComparison(true);
+          }
+        } catch (error) {
+          console.error('Error loading cars from URL:', error);
+        }
+      }
+    }
+  };
+
+  const loadCarById = async (carId) => {
+    try {
+      // Try API first
+      const response = await carAPI.getById(carId);
+      if (response.success && response.data) {
+        return response.data;
+      }
+    } catch (apiError) {
+      console.warn('API not available, trying Supabase:', apiError);
+    }
+
+    // Fallback to Supabase
+    try {
+      const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .eq('id', carId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error loading car:', error);
+      return null;
+    }
+  };
 
   const loadPopularCars = async () => {
     try {
