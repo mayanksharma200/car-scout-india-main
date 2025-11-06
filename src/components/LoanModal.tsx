@@ -27,6 +27,8 @@ interface LoanModalProps {
   loanAmount?: number;
   emiAmount?: number;
   modalType: "preapproval" | "compare";
+  carId?: string;
+  carName?: string;
 }
 
 const LoanModal = ({
@@ -34,6 +36,8 @@ const LoanModal = ({
   loanAmount,
   emiAmount,
   modalType,
+  carId,
+  carName,
 }: LoanModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -92,6 +96,11 @@ const LoanModal = ({
         status: "new",
       };
 
+      // Add car ID if available (interested_car_id already exists in schema)
+      if (carId) {
+        leadData.interested_car_id = carId;
+      }
+
       // Add optional fields only if they exist in the schema
       // Try to add new fields, fall back gracefully if columns don't exist
       if (formData.employmentType) {
@@ -117,7 +126,7 @@ const LoanModal = ({
         if (error.message.includes("column") && error.message.includes("does not exist")) {
           console.warn("Some columns don't exist, saving with basic fields only:", error.message);
 
-          const basicData = {
+          const basicData: any = {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
@@ -125,6 +134,11 @@ const LoanModal = ({
             source: config.source,
             status: "new",
           };
+
+          // Include car ID even in fallback
+          if (carId) {
+            basicData.interested_car_id = carId;
+          }
 
           const { error: retryError } = await supabase.from("leads").insert(basicData);
           if (retryError) throw retryError;
@@ -198,9 +212,17 @@ const LoanModal = ({
           <p className="text-sm text-muted-foreground">{config.description}</p>
         </DialogHeader>
 
-        {/* Display calculated amounts if available */}
-        {(loanAmount || emiAmount) && (
+        {/* Display car and calculated amounts if available */}
+        {(carName || loanAmount || emiAmount) && (
           <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+            {carName && (
+              <div className="flex justify-between text-sm">
+                <span>Interested Car:</span>
+                <span className="font-semibold text-primary">
+                  {carName}
+                </span>
+              </div>
+            )}
             {loanAmount && (
               <div className="flex justify-between text-sm">
                 <span>Loan Amount:</span>

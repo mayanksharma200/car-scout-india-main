@@ -3,8 +3,11 @@
 ## Problem
 The loan application form was failing with error: "Could not find the 'emi_amount' column of 'leads' in the schema cache"
 
+Additionally, the form wasn't capturing which car the user was interested in.
+
 ## Solution
-Added missing columns to the `leads` table to support loan application functionality.
+1. Added missing columns to the `leads` table to support loan application functionality
+2. Updated LoanModal component to accept and save car information (`carId` and `carName` props)
 
 ## Migration File
 `20250106_add_loan_fields_to_leads.sql`
@@ -77,3 +80,37 @@ AND column_name IN ('employment_type', 'monthly_income', 'loan_amount', 'emi_amo
 ```
 
 You should see all 5 columns listed.
+
+## Using LoanModal with Car Information
+
+The `LoanModal` component now accepts optional `carId` and `carName` props to track which car the user is interested in:
+
+### Example Usage:
+
+```tsx
+import LoanModal from "@/components/LoanModal";
+
+// On a car detail page or car listing
+<LoanModal
+  loanAmount={800000}
+  emiAmount={16801}
+  modalType="preapproval"
+  carId={car.id}  // Pass the car ID
+  carName={`${car.brand} ${car.model} ${car.variant}`}  // Pass the car display name
+>
+  <Button>Get Pre-Approved Loan</Button>
+</LoanModal>
+```
+
+### Props:
+- `carId` (optional): The UUID of the car from the database. Will be saved to `interested_car_id` column
+- `carName` (optional): Display name of the car (e.g., "Maruti Suzuki Swift VXi"). Shown in the modal header
+- `loanAmount` (optional): Calculated loan amount
+- `emiAmount` (optional): Calculated EMI amount
+- `modalType`: Either "preapproval" or "compare"
+
+### Benefits:
+- Tracks which specific car the customer is interested in
+- Shows car name in the loan form for better context
+- Links leads directly to cars in the database
+- Helps sales team follow up with relevant car information
