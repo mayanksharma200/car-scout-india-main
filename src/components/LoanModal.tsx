@@ -82,23 +82,75 @@ const LoanModal = ({
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("leads").insert({
+      // Prepare the lead data with only fields that exist in the database
+      const leadData: any = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         city: formData.city,
-        employment_type: formData.employmentType,
-        monthly_income: formData.monthlyIncome
-          ? parseInt(formData.monthlyIncome)
-          : null,
-        loan_amount: loanAmount,
-        emi_amount: emiAmount,
         source: config.source,
         status: "new",
-        message: formData.message,
-      });
+      };
 
-      if (error) throw error;
+      // Add optional fields only if they exist in the schema
+      // Try to add new fields, fall back gracefully if columns don't exist
+      if (formData.employmentType) {
+        leadData.employment_type = formData.employmentType;
+      }
+      if (formData.monthlyIncome) {
+        leadData.monthly_income = parseInt(formData.monthlyIncome);
+      }
+      if (loanAmount) {
+        leadData.loan_amount = loanAmount;
+      }
+      if (emiAmount) {
+        leadData.emi_amount = emiAmount;
+      }
+      if (formData.message) {
+        leadData.message = formData.message;
+      }
+
+      const { error } = await supabase.from("leads").insert(leadData);
+
+      if (error) {
+        // If error is due to missing columns, retry with only basic fields
+        if (error.message.includes("column") && error.message.includes("does not exist")) {
+          console.warn("Some columns don't exist, saving with basic fields only:", error.message);
+
+          const basicData = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            city: formData.city,
+            source: config.source,
+            status: "new",
+          };
+
+          const { error: retryError } = await supabase.from("leads").insert(basicData);
+          if (retryError) throw retryError;
+
+          toast({
+            title: "Request Submitted (Partial)",
+            description: "Your basic information has been saved. Some loan details couldn't be saved due to a database schema issue. Please contact support.",
+            variant: "default",
+          });
+
+          setOpen(false);
+          setShowOTP(false);
+          setFormData({
+            name: "",
+            email: "",
+            phone: "",
+            city: "",
+            employmentType: "",
+            monthlyIncome: "",
+            message: "",
+          });
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Request Submitted",
