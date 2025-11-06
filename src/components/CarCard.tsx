@@ -87,7 +87,7 @@ const CarCard = ({
   return (
     <>
       <Card
-        className="group relative overflow-hidden bg-card hover:shadow-xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border-0 shadow-lg animate-fade-in hover:shadow-primary/10"
+        className="group relative overflow-hidden bg-card hover:shadow-xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border-0 shadow-lg animate-fade-in hover:shadow-primary/10 flex flex-col"
         onClick={handleCardClick}
       >
         {/* Gradient border effect */}
@@ -180,83 +180,85 @@ const CarCard = ({
           </div>
         </div>
 
-        <CardContent className="relative z-10 p-6">
-          {/* Brand and Model */}
-          <div className="mb-4">
-            <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">
-              {car.brand} {car.model}
-            </h3>
-            <p className="text-sm text-muted-foreground font-medium">
-              {car.variant}
-            </p>
+        <CardContent className="relative z-10 p-6 flex flex-col h-full">
+          <div className="flex-1">
+            {/* Brand and Model */}
+            <div className="mb-4">
+              <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">
+                {car.brand} {car.model}
+              </h3>
+              <p className="text-sm text-muted-foreground font-medium">
+                {car.variant}
+              </p>
+            </div>
+
+            {/* Rating and Reviews */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 fill-accent text-accent" />
+                <span className="font-medium">{car.rating.toFixed(2)}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">|</span>
+              <span className="text-sm text-muted-foreground">142 Reviews</span>
+            </div>
+
+            {/* Key Specs */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Fuel className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Fuel</p>
+                  <p className="text-sm font-medium">{car.fuelType || "Petrol"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Gauge className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Mileage</p>
+                  <p className="text-sm font-medium">
+                    {typeof car.mileage === 'string' ? car.mileage : car.mileage ? `${car.mileage} kmpl` : "N/A"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Seating</p>
+                  <p className="text-sm font-medium">{car.seating ? `${car.seating} Seater` : "N/A"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Trans.</p>
+                  <p className="text-sm font-medium">{car.transmission || "Manual"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Price */}
+            <div className="mb-4">
+              {/* Exact Price (from Excel column J) */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm text-muted-foreground font-medium">Price:</span>
+                <span className="text-xl font-bold text-primary">
+                  {car.exactPrice || 'N/A'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Rating and Reviews */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-accent text-accent" />
-              <span className="font-medium">{car.rating.toFixed(2)}</span>
-            </div>
-            <span className="text-sm text-muted-foreground">|</span>
-            <span className="text-sm text-muted-foreground">142 Reviews</span>
-          </div>
-
-          {/* Key Specs */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Fuel className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Fuel</p>
-                <p className="text-sm font-medium">{car.fuelType || "Petrol"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Gauge className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Mileage</p>
-                <p className="text-sm font-medium">
-                  {typeof car.mileage === 'string' ? car.mileage : car.mileage ? `${car.mileage} kmpl` : "N/A"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Seating</p>
-                <p className="text-sm font-medium">{car.seating ? `${car.seating} Seater` : "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Zap className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Trans.</p>
-                <p className="text-sm font-medium">{car.transmission || "Manual"}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Price */}
-          <div className="mb-4">
-            {/* Exact Price (from Excel column J) */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-muted-foreground font-medium">Price:</span>
-              <span className="text-xl font-bold text-primary">
-                {car.exactPrice || 'N/A'}
-              </span>
-            </div>
-          </div>
-
-          {/* Action Button */}
+          {/* Action Button - Always at bottom */}
           <Button
-            className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 mt-auto"
             onClick={handleCardClick}
           >
             <span>View Details</span>

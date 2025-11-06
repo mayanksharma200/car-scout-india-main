@@ -247,7 +247,7 @@ const FeaturedCars = () => {
                 return (
                   <div
                     key={car.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 animate-fade-in hover-scale"
+                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 animate-fade-in hover-scale flex flex-col"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
                     {/* Image with badges */}
@@ -296,120 +296,122 @@ const FeaturedCars = () => {
                     </div>
 
                     {/* Content */}
-                    <div className="p-4">
-                      {/* Title and Rating */}
-                      <div className="mb-3">
-                        <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                          {transformedCar.brand} {transformedCar.model}
-                        </h3>
-                        {transformedCar.variant && (
-                          <p className="text-gray-600 text-sm mb-2">
-                            {transformedCar.variant}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center">
-                            <span className="text-orange-400 text-sm">★</span>
-                            <span className="text-sm font-medium text-gray-900 ml-1">
-                              {transformedCar.rating.toFixed(2)}
+                    <div className="p-4 flex flex-col h-full">
+                      <div className="flex-1">
+                        {/* Title and Rating */}
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                            {transformedCar.brand} {transformedCar.model}
+                          </h3>
+                          {transformedCar.variant && (
+                            <p className="text-gray-600 text-sm mb-2">
+                              {transformedCar.variant}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center">
+                              <span className="text-orange-400 text-sm">★</span>
+                              <span className="text-sm font-medium text-gray-900 ml-1">
+                                {transformedCar.rating.toFixed(2)}
+                              </span>
+                            </div>
+                            <span className="text-gray-400 text-sm">
+                              | 142 Reviews
                             </span>
                           </div>
-                          <span className="text-gray-400 text-sm">
-                            | 142 Reviews
-                          </span>
+                        </div>
+
+                        {/* Specifications with icons */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                              <svg
+                                className="w-4 h-4 text-blue-600"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M19 7h-1V6a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-5h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM8 6h8v1H8V6zm8 12H8v-4h8v4zm2-6h-1V8H7v4H6V9h12v3z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Fuel</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transformedCar.fuelType}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                              <svg
+                                className="w-4 h-4 text-blue-600"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Mileage</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transformedCar.mileage} km/l
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                              <svg
+                                className="w-4 h-4 text-blue-600"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Seating</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transformedCar.seating} Seater
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                              <svg
+                                className="w-4 h-4 text-blue-600"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Type</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transformedCar.transmission}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mb-4">
+                          {/* Exact Price (from Excel column J) */}
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-gray-600 font-medium">Price:</span>
+                            <span className="text-xl font-bold text-blue-600">
+                              {transformedCar.exactPrice || 'N/A'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Specifications with icons */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-blue-600"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M19 7h-1V6a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-5h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM8 6h8v1H8V6zm8 12H8v-4h8v4zm2-6h-1V8H7v4H6V9h12v3z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Fuel</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {transformedCar.fuelType}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-blue-600"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Mileage</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {transformedCar.mileage} km/l
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-blue-600"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Seating</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {transformedCar.seating} Seater
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <svg
-                              className="w-4 h-4 text-blue-600"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Type</p>
-                            <p className="text-sm font-medium text-gray-900">
-                              {transformedCar.transmission}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Price */}
-                      <div className="mb-4">
-                        {/* Exact Price (from Excel column J) */}
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-sm text-gray-600 font-medium">Price:</span>
-                          <span className="text-xl font-bold text-blue-600">
-                            {transformedCar.exactPrice || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action button */}
+                      {/* Action button - Always at bottom */}
                       <button
                         onClick={() => handleViewDetails(transformedCar)}
-                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2 mt-auto"
                       >
                         View Details
                         <svg
