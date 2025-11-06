@@ -372,7 +372,7 @@ const CarListing = () => {
       }
 
       if (carsData && carsData.length > 0) {
-        const transformedCars = carsData.map((car) => {
+        const transformedCars = carsData.map((car, index) => {
           let carImage = "/placeholder.svg";
           if (
             Array.isArray(car.images) &&
@@ -386,7 +386,20 @@ const CarListing = () => {
           const carPrice = car.price_min || car.price || 500000; // Default to 5 lakhs if null
           const carOnRoadPrice = car.price_max || car.onRoadPrice || carPrice + 50000; // Default on-road price
 
-          return {
+          // Debug logging for first few cars
+          if (index < 3) {
+            console.log(`🚗 Transforming car ${index}:`, {
+              brand: car.brand,
+              model: car.model,
+              variant: car.variant,
+              'RAW exact_price from DB': car.exact_price,
+              'RAW delhi_price from DB': car.delhi_price,
+              'typeof exact_price': typeof car.exact_price,
+              'typeof delhi_price': typeof car.delhi_price
+            });
+          }
+
+          const transformed = {
             ...car,
             price: carPrice,
             exactPrice: car.exact_price || null,  // Base price from Excel
@@ -406,6 +419,17 @@ const CarListing = () => {
             isPopular: Math.random() > 0.7,
             isBestSeller: Math.random() > 0.8,
           };
+
+          if (index < 3) {
+            console.log(`✅ Transformed car ${index}:`, {
+              brand: transformed.brand,
+              model: transformed.model,
+              exactPrice: transformed.exactPrice,
+              delhiPrice: transformed.delhiPrice
+            });
+          }
+
+          return transformed;
         });
 
         console.log("Transformed cars:", transformedCars.length);

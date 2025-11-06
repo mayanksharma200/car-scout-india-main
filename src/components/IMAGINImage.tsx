@@ -77,7 +77,7 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
 
   const handleImageLoad = () => {
     const loadTime = Date.now() - loadStartTime;
-    console.log(`✅ Successfully loaded IMAGIN image in ${loadTime}ms: ${imageSrc}`);
+    // console.log(`✅ Successfully loaded IMAGIN image in ${loadTime}ms: ${imageSrc}`);
     
     // Clean up timer if it exists
     const timerId = (setImageSrc as any)._timerId;
@@ -147,12 +147,12 @@ const IMAGINImage: React.FC<IMAGINImageProps> = ({
         onLoad={handleImageLoad}
         onError={handleImageError}
         referrerPolicy="no-referrer"
-        fetchpriority="high" // Use high priority for faster loading (lowercase for React)
+        fetchPriority="high" // Use high priority for faster loading
         decoding="async" // Enable async decoding for better performance
-        style={{ 
+        style={{
           display: 'block', // Always show image, let browser handle loading
           backgroundColor: '#f3f4f6', // Light gray background while loading
-          imageRendering: 'optimizeSpeed', // Optimize for speed over quality
+          imageRendering: 'auto' as const, // Optimize rendering
           transition: 'opacity 0.2s ease-in-out' // Smooth fade-in
         }}
       />
