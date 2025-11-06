@@ -94,55 +94,87 @@ export const CSVFileUploader = () => {
         }
       }
 
-      // If we still don't have make or model, skip
+      // If we still don't have make or model from URL parsing, use direct column values
       if (!make || !model) {
-        return null;
+        // Try reading brand/model directly from columns (for non-URL data)
+        make = row[2]?.trim(); // Column C (index 2): Make
+        model = row[3]?.trim(); // Column D (index 3): Model
+        version = row[4]?.trim(); // Column E (index 4): Version
+        columnOffset = 0; // No offset when reading directly
+
+        if (!make || !model) {
+          console.log(`Row ${index}: Skipping - No brand/model found`);
+          return null;
+        }
+        console.log(`Row ${index}: Using direct columns - Brand: ${make}, Model: ${model}, Variant: ${version}`);
       }
 
       // Adjust column indices based on offset
-      // ACTUAL Excel structure from Teoalida database:
-      // Column H (index 7): Image URL
-      // Column I (index 8): (empty or other data)
-      // Column J (index 9): PRICE (base price "₹ 50.88 Lakh") ← THIS IS EXACT_PRICE
-      // Column K (index 10): On-road price Delhi
-      // Column L (index 11): PRICE (key_price - alternative display price)
-      // Column M (index 12): MILEAGE (ARAI)
-      // Column N (index 13): ENGINE
-      // Column O (index 14): TRANSMISSION
-      // Column P (index 15): FUEL TYPE
-      // Column Q (index 16): SEATING
-      const exactPrice = row[9 + columnOffset]?.trim(); // Column J (index 9): Base "Price" from Excel
-      const onRoadPriceDelhi = row[10 + columnOffset]?.trim(); // Column K (index 10): On-road Delhi
-      const price = exactPrice || row[11 + columnOffset]?.trim(); // Fallback to Column L (index 11)
-      const mileage = row[12 + columnOffset]?.trim();      // Column M (index 12): Mileage (ARAI)
-      const engine = row[13 + columnOffset]?.trim();       // Column N (index 13): Engine
-      const transmission = row[14 + columnOffset]?.trim(); // Column O (index 14): Transmission
-      const fuelType = row[15 + columnOffset]?.trim();     // Column P (index 15): Fuel Type
-      const seating = row[16 + columnOffset]?.trim();      // Column Q (index 16): Seating
+      // CORRECTED Excel structure from actual data:
+      // Column 7 (index 7): Image URL
+      // Column 8 (index 8): PRICE (base price "₹ 50.88 Lakh") ← THIS IS EXACT_PRICE
+      // Column 9 (index 9): On-road price Delhi
+      // Column 10 (index 10): PRICE (key_price - alternative display price)
+      // Column 11 (index 11): MILEAGE (ARAI)
+      // Column 12 (index 12): ENGINE
+      // Column 13 (index 13): TRANSMISSION
+      // Column 14 (index 14): FUEL TYPE
+      // Column 15 (index 15): SEATING
+      // Log columnOffset for debugging
+      if (index <= 5) {
+        console.log(`Row ${index}: columnOffset = ${columnOffset}`);
+      }
+
+      const exactPrice = row[8]?.trim(); // Column 8: Base "Price" from Excel (NO offset)
+      const onRoadPriceDelhi = row[9]?.trim(); // Column 9: On-road Delhi (NO offset)
+      const price = exactPrice || row[10]?.trim(); // Fallback to Column 10 (NO offset)
+      const mileage = row[11]?.trim();      // Column 11: Mileage (ARAI) (NO offset)
+      const engine = row[12]?.trim();       // Column 12: Engine (NO offset)
+      const transmission = row[13]?.trim(); // Column 13: Transmission (NO offset)
+      const fuelType = row[14]?.trim();     // Column 14: Fuel Type (NO offset)
+      const seating = row[15]?.trim();      // Column 15: Seating (NO offset)
 
       // Debug logging - Show RAW column values
       if (index <= 5) {
-        console.log(`\n📊 Row ${index} CORRECTED reading:`, {
-          columnOffset,
-          'Column 6': row[6 + columnOffset],
-          'Column 7': row[7 + columnOffset],
-          'Column 8': row[8 + columnOffset],
-          'Column 9 (Price?)': row[9 + columnOffset],
-          'Column 10': row[10 + columnOffset],
-          'Column 11': row[11 + columnOffset],
-          'Column 12': row[12 + columnOffset],
-          'Column 13': row[13 + columnOffset],
-          'Column 14': row[14 + columnOffset],
-          'Column 15': row[15 + columnOffset]
+        console.log(`\n📊 Row ${index} RAW COLUMNS (first 20):`, {
+          'Col 0': row[0],
+          'Col 1': row[1],
+          'Col 2': row[2],
+          'Col 3': row[3],
+          'Col 4': row[4],
+          'Col 5': row[5],
+          'Col 6': row[6],
+          'Col 7': row[7],
+          'Col 8': row[8],
+          'Col 9': row[9],
+          'Col 10': row[10],
+          'Col 11': row[11],
+          'Col 12': row[12],
+          'Col 13': row[13],
+          'Col 14': row[14],
+          'Col 15': row[15],
+          'Col 16': row[16],
+          'Col 17': row[17],
+          'Col 18': row[18],
+          'Col 19': row[19],
+          columnOffset
         });
-        console.log(`📦 Row ${index} Variables assigned:`, {
-          'exactPrice': exactPrice,
-          'onRoadPriceDelhi': onRoadPriceDelhi,
-          'price': price,
-          'mileage': mileage,
-          'engine': engine,
-          'transmission': transmission,
-          'fuelType': fuelType
+        console.log(`📦 Row ${index} FINAL Variables:`, {
+          brand: make,
+          model,
+          variant: version,
+          exactPrice: exactPrice,
+          exactPriceCol: 9 + columnOffset,
+          onRoadPriceDelhi: onRoadPriceDelhi,
+          onRoadCol: 10 + columnOffset,
+          mileage: mileage,
+          mileageCol: 12 + columnOffset,
+          engine: engine,
+          engineCol: 13 + columnOffset,
+          transmission: transmission,
+          transmissionCol: 14 + columnOffset,
+          fuelType: fuelType,
+          fuelTypeCol: 15 + columnOffset
         });
       }
 

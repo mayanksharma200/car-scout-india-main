@@ -397,19 +397,11 @@ const FeaturedCars = () => {
 
                       {/* Price */}
                       <div className="mb-4">
-                        {/* Exact Price (from Excel column 6) */}
-                        <div className="flex items-baseline gap-2 mb-1">
-                          <span className="text-sm text-gray-600 font-medium">Price:</span>
-                          <span className="text-base font-semibold text-gray-900">
-                            {transformedCar.exactPrice || 'N/A'}
-                          </span>
-                        </div>
-
-                        {/* On-road price Delhi */}
+                        {/* Exact Price (from Excel column J) */}
                         <div className="flex items-baseline gap-2">
-                          <span className="text-sm text-gray-600">On-road Delhi:</span>
+                          <span className="text-sm text-gray-600 font-medium">Price:</span>
                           <span className="text-xl font-bold text-blue-600">
-                            {transformedCar.delhiPrice || 'N/A'}
+                            {transformedCar.exactPrice || 'N/A'}
                           </span>
                         </div>
                       </div>

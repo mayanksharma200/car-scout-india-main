@@ -246,18 +246,10 @@ const CarCard = ({
           {/* Price */}
           <div className="mb-4">
             {/* Exact Price (from Excel column J) */}
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-xs text-muted-foreground font-medium">Price:</span>
-              <span className="text-sm font-semibold">
-                {car.exactPrice || 'N/A'}
-              </span>
-            </div>
-
-            {/* On-road price Delhi */}
             <div className="flex items-baseline gap-2">
-              <span className="text-xs text-muted-foreground">On-road Delhi:</span>
+              <span className="text-sm text-muted-foreground font-medium">Price:</span>
               <span className="text-xl font-bold text-primary">
-                {car.delhiPrice || 'N/A'}
+                {car.exactPrice || 'N/A'}
               </span>
             </div>
           </div>
