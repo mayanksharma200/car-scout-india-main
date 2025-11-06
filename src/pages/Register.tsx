@@ -27,6 +27,8 @@ const Register = () => {
     agreeToTerms: false,
     newsletter: false,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Redirect if already logged in
   useEffect(() => {
@@ -35,29 +37,162 @@ const Register = () => {
     }
   }, [user, loading, navigate]);
 
+  // Validation functions
+  const validateField = (field: string, value: string | boolean): string => {
+    switch (field) {
+      case "firstName":
+      case "lastName":
+        if (typeof value === "string") {
+          if (!value.trim()) {
+            return `${field === "firstName" ? "First" : "Last"} name is required`;
+          }
+          if (value.trim().length < 2) {
+            return `${field === "firstName" ? "First" : "Last"} name must be at least 2 characters`;
+          }
+          if (!/^[a-zA-Z\s'-]+$/.test(value)) {
+            return "Name can only contain letters, spaces, hyphens, and apostrophes";
+          }
+        }
+        break;
+
+      case "email":
+        if (typeof value === "string") {
+          if (!value.trim()) {
+            return "Email is required";
+          }
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            return "Please enter a valid email address";
+          }
+        }
+        break;
+
+      case "phone":
+        if (typeof value === "string") {
+          if (!value.trim()) {
+            return "Phone number is required";
+          }
+          // Indian phone number validation (10 digits, optionally starting with +91)
+          const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
+          const cleanedPhone = value.replace(/[\s-]/g, "");
+          if (!phoneRegex.test(cleanedPhone)) {
+            return "Please enter a valid Indian phone number (10 digits)";
+          }
+        }
+        break;
+
+      case "password":
+        if (typeof value === "string") {
+          if (!value) {
+            return "Password is required";
+          }
+          if (value.length < 8) {
+            return "Password must be at least 8 characters long";
+          }
+          if (!/(?=.*[a-z])/.test(value)) {
+            return "Password must contain at least one lowercase letter";
+          }
+          if (!/(?=.*[A-Z])/.test(value)) {
+            return "Password must contain at least one uppercase letter";
+          }
+          if (!/(?=.*\d)/.test(value)) {
+            return "Password must contain at least one number";
+          }
+          if (!/(?=.*[@$!%*?&#])/.test(value)) {
+            return "Password must contain at least one special character (@$!%*?&#)";
+          }
+        }
+        break;
+
+      case "confirmPassword":
+        if (typeof value === "string") {
+          if (!value) {
+            return "Please confirm your password";
+          }
+          if (value !== formData.password) {
+            return "Passwords do not match";
+          }
+        }
+        break;
+
+      case "agreeToTerms":
+        if (typeof value === "boolean" && !value) {
+          return "You must agree to the terms and conditions";
+        }
+        break;
+    }
+    return "";
+  };
+
   const handleInputChange = (field: string, value: string | boolean) => {
+    // Special handling for phone field - only allow numbers, +, spaces, and hyphens
+    if (field === "phone" && typeof value === "string") {
+      // Only allow digits, +, spaces, and hyphens
+      const sanitizedValue = value.replace(/[^\d+\s-]/g, "");
+      value = sanitizedValue;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+
+    // Validate field on change if it has been touched
+    if (touched[field]) {
+      const error = validateField(field, value);
+      setErrors((prev) => ({
+        ...prev,
+        [field]: error,
+      }));
+    }
+
+    // Special case: if password changes, revalidate confirmPassword
+    if (field === "password" && touched.confirmPassword) {
+      const confirmError = validateField("confirmPassword", formData.confirmPassword);
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: confirmError,
+      }));
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({
+      ...prev,
+      [field]: true,
+    }));
+
+    const error = validateField(field, formData[field as keyof typeof formData]);
+    setErrors((prev) => ({
+      ...prev,
+      [field]: error,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match. Please check and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Mark all fields as touched
+    const allFields = ["firstName", "lastName", "email", "phone", "password", "confirmPassword", "agreeToTerms"];
+    const touchedFields = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
+    setTouched(touchedFields);
 
-    if (formData.password.length < 6) {
+    // Validate all fields
+    const newErrors: Record<string, string> = {};
+    allFields.forEach((field) => {
+      const error = validateField(field, formData[field as keyof typeof formData]);
+      if (error) {
+        newErrors[field] = error;
+      }
+    });
+
+    setErrors(newErrors);
+
+    // Check if there are any errors
+    if (Object.keys(newErrors).length > 0) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: "Validation Error",
+        description: "Please fix all errors before submitting.",
         variant: "destructive",
       });
       return;
@@ -211,10 +346,14 @@ const Register = () => {
                       onChange={(e) =>
                         handleInputChange("firstName", e.target.value)
                       }
-                      className="pl-10"
+                      onBlur={() => handleBlur("firstName")}
+                      className={`pl-10 ${errors.firstName && touched.firstName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       required
                     />
                   </div>
+                  {errors.firstName && touched.firstName && (
+                    <p className="text-xs text-red-500">{errors.firstName}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
@@ -225,8 +364,13 @@ const Register = () => {
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
+                    onBlur={() => handleBlur("lastName")}
+                    className={errors.lastName && touched.lastName ? "border-red-500 focus-visible:ring-red-500" : ""}
                     required
                   />
+                  {errors.lastName && touched.lastName && (
+                    <p className="text-xs text-red-500">{errors.lastName}</p>
+                  )}
                 </div>
               </div>
 
@@ -241,10 +385,14 @@ const Register = () => {
                     placeholder="Enter your email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
-                    className="pl-10"
+                    onBlur={() => handleBlur("email")}
+                    className={`pl-10 ${errors.email && touched.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     required
                   />
                 </div>
+                {errors.email && touched.email && (
+                  <p className="text-xs text-red-500">{errors.email}</p>
+                )}
               </div>
 
               {/* Phone */}
@@ -254,13 +402,19 @@ const Register = () => {
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     id="phone"
-                    placeholder="Enter your phone number"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="10-digit phone number"
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
-                    className="pl-10"
+                    onBlur={() => handleBlur("phone")}
+                    className={`pl-10 ${errors.phone && touched.phone ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     required
                   />
                 </div>
+                {errors.phone && touched.phone && (
+                  <p className="text-xs text-red-500">{errors.phone}</p>
+                )}
               </div>
 
               {/* Password */}
@@ -271,12 +425,13 @@ const Register = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
+                    placeholder="Create a strong password"
                     value={formData.password}
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className="pl-10 pr-10"
+                    onBlur={() => handleBlur("password")}
+                    className={`pl-10 pr-10 ${errors.password && touched.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     required
                   />
                   <Button
@@ -293,6 +448,14 @@ const Register = () => {
                     )}
                   </Button>
                 </div>
+                {errors.password && touched.password && (
+                  <p className="text-xs text-red-500">{errors.password}</p>
+                )}
+                {!errors.password && formData.password && (
+                  <p className="text-xs text-muted-foreground">
+                    Must contain: 8+ chars, uppercase, lowercase, number, special char
+                  </p>
+                )}
               </div>
 
               {/* Confirm Password */}
@@ -308,7 +471,8 @@ const Register = () => {
                     onChange={(e) =>
                       handleInputChange("confirmPassword", e.target.value)
                     }
-                    className="pl-10 pr-10"
+                    onBlur={() => handleBlur("confirmPassword")}
+                    className={`pl-10 pr-10 ${errors.confirmPassword && touched.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     required
                   />
                   <Button
@@ -325,32 +489,43 @@ const Register = () => {
                     )}
                   </Button>
                 </div>
+                {errors.confirmPassword && touched.confirmPassword && (
+                  <p className="text-xs text-red-500">{errors.confirmPassword}</p>
+                )}
               </div>
 
               {/* Terms & Newsletter */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={formData.agreeToTerms}
-                    onCheckedChange={(checked) =>
-                      handleInputChange("agreeToTerms", checked as boolean)
-                    }
-                    required
-                  />
-                  <Label htmlFor="terms" className="text-sm">
-                    I agree to the{" "}
-                    <Link to="/terms" className="text-primary hover:underline">
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      to="/privacy"
-                      className="text-primary hover:underline"
-                    >
-                      Privacy Policy
-                    </Link>
-                  </Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="terms"
+                      checked={formData.agreeToTerms}
+                      onCheckedChange={(checked) => {
+                        handleInputChange("agreeToTerms", checked as boolean);
+                        if (touched.agreeToTerms) {
+                          handleBlur("agreeToTerms");
+                        }
+                      }}
+                      required
+                    />
+                    <Label htmlFor="terms" className="text-sm">
+                      I agree to the{" "}
+                      <Link to="/terms" className="text-primary hover:underline">
+                        Terms & Conditions
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        to="/privacy"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </Label>
+                  </div>
+                  {errors.agreeToTerms && touched.agreeToTerms && (
+                    <p className="text-xs text-red-500">{errors.agreeToTerms}</p>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
