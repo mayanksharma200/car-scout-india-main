@@ -277,7 +277,9 @@ const CarListing = () => {
       return {
         ...car,
         price: carPrice,
+        exactPrice: car.exact_price || null,  // Base price from Excel
         onRoadPrice: carOnRoadPrice,
+        delhiPrice: car.delhi_price || null,  // On-road price Delhi
         fuelType: car.fuel_type || car.fuelType || "Petrol",
         bodyType: car.body_type || car.bodyType || "Sedan",
         seating: car.seating_capacity || car.seating || 5,
@@ -359,7 +361,9 @@ const CarListing = () => {
             model: car.model,
             status: car.status,
             price_min: car.price_min,
-            price_max: car.price_max
+            price_max: car.price_max,
+            exact_price: car.exact_price,
+            delhi_price: car.delhi_price
           })));
         }
 
@@ -385,7 +389,9 @@ const CarListing = () => {
           return {
             ...car,
             price: carPrice,
+            exactPrice: car.exact_price || null,  // Base price from Excel
             onRoadPrice: carOnRoadPrice,
+            delhiPrice: car.delhi_price || null,  // On-road price Delhi
             fuelType: car.fuel_type || car.fuelType || "Petrol",
             bodyType: car.body_type || car.bodyType || "Sedan",
             seating: car.seating_capacity || car.seating || 5,

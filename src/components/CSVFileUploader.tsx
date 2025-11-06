@@ -100,31 +100,44 @@ export const CSVFileUploader = () => {
       }
 
       // Adjust column indices based on offset
-      // ACTUAL Excel structure (discovered from debug logs):
-      // Column 9: PRICE (not mileage!)
-      // Column 10: MILEAGE (not engine!)
-      // Column 11: ENGINE (not transmission!)
-      // Column 12: TRANSMISSION (not fuel type!)
-      // Column 13: FUEL TYPE
-      const price = row[6 + columnOffset]?.trim() || row[9 + columnOffset]?.trim(); // Price or Column 9
-      const mileage = row[10 + columnOffset]?.trim();      // Row 10: Mileage (ARAI)
-      const engine = row[11 + columnOffset]?.trim();       // Row 11: Engine
-      const transmission = row[12 + columnOffset]?.trim(); // Row 12: Transmission
-      const fuelType = row[13 + columnOffset]?.trim();     // Row 13: Fuel Type
-      const seating = row[14 + columnOffset]?.trim();      // Row 14: Seating
+      // ACTUAL Excel structure from Teoalida database:
+      // Column H (index 7): Image URL
+      // Column I (index 8): (empty or other data)
+      // Column J (index 9): PRICE (base price "₹ 50.88 Lakh") ← THIS IS EXACT_PRICE
+      // Column K (index 10): On-road price Delhi
+      // Column L (index 11): PRICE (key_price - alternative display price)
+      // Column M (index 12): MILEAGE (ARAI)
+      // Column N (index 13): ENGINE
+      // Column O (index 14): TRANSMISSION
+      // Column P (index 15): FUEL TYPE
+      // Column Q (index 16): SEATING
+      const exactPrice = row[9 + columnOffset]?.trim(); // Column J (index 9): Base "Price" from Excel
+      const onRoadPriceDelhi = row[10 + columnOffset]?.trim(); // Column K (index 10): On-road Delhi
+      const price = exactPrice || row[11 + columnOffset]?.trim(); // Fallback to Column L (index 11)
+      const mileage = row[12 + columnOffset]?.trim();      // Column M (index 12): Mileage (ARAI)
+      const engine = row[13 + columnOffset]?.trim();       // Column N (index 13): Engine
+      const transmission = row[14 + columnOffset]?.trim(); // Column O (index 14): Transmission
+      const fuelType = row[15 + columnOffset]?.trim();     // Column P (index 15): Fuel Type
+      const seating = row[16 + columnOffset]?.trim();      // Column Q (index 16): Seating
 
       // Debug logging - Show RAW column values
       if (index <= 5) {
         console.log(`\n📊 Row ${index} CORRECTED reading:`, {
           columnOffset,
-          'Column 9 (Price)': row[9 + columnOffset],
-          'Column 10 (Mileage)': row[10 + columnOffset],
-          'Column 11 (Engine)': row[11 + columnOffset],
-          'Column 12 (Transmission)': row[12 + columnOffset],
-          'Column 13 (Fuel Type)': row[13 + columnOffset],
-          'Column 14 (Seating)': row[14 + columnOffset]
+          'Column 6': row[6 + columnOffset],
+          'Column 7': row[7 + columnOffset],
+          'Column 8': row[8 + columnOffset],
+          'Column 9 (Price?)': row[9 + columnOffset],
+          'Column 10': row[10 + columnOffset],
+          'Column 11': row[11 + columnOffset],
+          'Column 12': row[12 + columnOffset],
+          'Column 13': row[13 + columnOffset],
+          'Column 14': row[14 + columnOffset],
+          'Column 15': row[15 + columnOffset]
         });
         console.log(`📦 Row ${index} Variables assigned:`, {
+          'exactPrice': exactPrice,
+          'onRoadPriceDelhi': onRoadPriceDelhi,
           'price': price,
           'mileage': mileage,
           'engine': engine,
@@ -194,6 +207,7 @@ export const CSVFileUploader = () => {
         variant: version || undefined,
         price_min: priceNum,
         price_max: priceNum,
+        exact_price: exactPrice || undefined,      // Column 6: Base "Price" from Excel
         fuel_type: fuelType || undefined,         // Row 12: Fuel Type (Petrol/Diesel/CNG)
         transmission: transmission || undefined,   // Row 11: Transmission (Manual/Automatic)
         engine_capacity: engine || undefined,      // Row 10: Engine (1199 cc, 1497 cc)
@@ -213,6 +227,7 @@ export const CSVFileUploader = () => {
           brand: carData.brand,
           model: carData.model,
           variant: carData.variant,
+          'exact_price (should be "₹ XX.XX Lakh")': carData.exact_price,
           'fuel_type (should be Petrol/Diesel)': carData.fuel_type,
           'transmission (should be Manual/Automatic)': carData.transmission,
           'engine_capacity (should be 1199 cc)': carData.engine_capacity,
@@ -761,6 +776,9 @@ export const CSVFileUploader = () => {
               const batteryWarrantyYears = getValue(allColumnData['Battery Warranty (Years)']) || getValue(allColumnData['Column_221']) || getValue(row[221]);
               const batteryWarrantyKm = getValue(allColumnData['Battery Warranty (Kilometres)']) || getValue(allColumnData['Column_222']) || getValue(row[222]);
 
+              // Price values - Column J (index 9) from Excel
+              const exactPrice = getValue(allColumnData['Price']) || getValue(allColumnData['Column_9']) || getValue(row[9]);
+
               // Price breakdown
               const exShowroomPrice = getValue(allColumnData['Ex-Showroom price']) || getValue(allColumnData['Column_225']) || getValue(row[225]);
               const rtoCharges = getValue(allColumnData['RTO']) || getValue(allColumnData['Column_226']) || getValue(row[226]);
@@ -811,6 +829,7 @@ export const CSVFileUploader = () => {
 
               // Add extracted fields to carData (they will be in BOTH dedicated columns AND specifications)
               Object.assign(carData, {
+                exact_price: exactPrice,
                 mumbai_price: mumbaiPrice,
                 bangalore_price: bangalorePrice,
                 delhi_price: delhiPrice,

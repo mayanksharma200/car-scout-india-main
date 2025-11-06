@@ -43,6 +43,7 @@ export interface CarData {
   battery_warranty_km?: number;
 
   // Price breakdown
+  exact_price?: string;  // Base price from Excel column 6
   ex_showroom_price?: string;
   rto_charges?: string;
   insurance_cost?: string;

@@ -24,7 +24,9 @@ interface Car {
   model: string;
   variant: string;
   price: number;
+  exactPrice?: string | null;  // Base price from Excel column 6
   onRoadPrice?: number;
+  delhiPrice?: string | null;  // On-road price Delhi
   image?: string;
   images?: string[];
   rating: number;
@@ -243,19 +245,21 @@ const CarCard = ({
 
           {/* Price */}
           <div className="mb-4">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-primary">
-                {formatPrice(car.price)}
+            {/* Exact Price (from Excel column J) */}
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-xs text-muted-foreground font-medium">Price:</span>
+              <span className="text-sm font-semibold">
+                {car.exactPrice || 'N/A'}
               </span>
-              {car.onRoadPrice && (
-                <span className="text-sm text-muted-foreground">onwards</span>
-              )}
             </div>
-            {car.onRoadPrice && (
-              <p className="text-xs text-muted-foreground">
-                On-road price: {formatPrice(car.onRoadPrice)}
-              </p>
-            )}
+
+            {/* On-road price Delhi */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-xs text-muted-foreground">On-road Delhi:</span>
+              <span className="text-xl font-bold text-primary">
+                {car.delhiPrice || 'N/A'}
+              </span>
+            </div>
           </div>
 
           {/* Action Button */}

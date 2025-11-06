@@ -219,7 +219,9 @@ const FeaturedCars = () => {
                   model: car.model || "Unknown",
                   variant: car.variant || "",
                   price: car.price_min || 0,
+                  exactPrice: car.exact_price || null,  // Add exact_price field
                   onRoadPrice: car.price_max || car.price_min || 0,
+                  delhiPrice: car.delhi_price || null,  // On-road price Delhi
                   fuelType: car.fuel_type || "Petrol",
                   transmission: car.transmission || "Manual",
                   mileage: parseFloat(
@@ -395,16 +397,21 @@ const FeaturedCars = () => {
 
                       {/* Price */}
                       <div className="mb-4">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xl font-bold text-blue-600">
-                            ₹{(transformedCar.price / 100000).toFixed(2)} L
+                        {/* Exact Price (from Excel column 6) */}
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-sm text-gray-600 font-medium">Price:</span>
+                          <span className="text-base font-semibold text-gray-900">
+                            {transformedCar.exactPrice || 'N/A'}
                           </span>
-                          <span className="text-sm text-gray-500">onwards</span>
                         </div>
-                        <p className="text-xs text-gray-500">
-                          On-road price: ₹
-                          {(transformedCar.onRoadPrice / 100000).toFixed(2)} L
-                        </p>
+
+                        {/* On-road price Delhi */}
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm text-gray-600">On-road Delhi:</span>
+                          <span className="text-xl font-bold text-blue-600">
+                            {transformedCar.delhiPrice || 'N/A'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Action button */}

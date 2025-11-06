@@ -75,6 +75,8 @@ BEGIN
     features,
     status,
     api_source,
+    -- Base price
+    exact_price,
     -- City-specific pricing
     mumbai_price,
     bangalore_price,
@@ -138,6 +140,8 @@ BEGIN
     COALESCE(car_data->'features', '[]'::jsonb),
     COALESCE(car_data->>'status', 'active'),
     car_data->>'api_source',
+    -- Base price
+    car_data->>'exact_price',
     -- City-specific pricing
     car_data->>'mumbai_price',
     car_data->>'bangalore_price',
