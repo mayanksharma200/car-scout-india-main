@@ -660,7 +660,26 @@ const CarListing = () => {
 
   const filteredAndSortedCars = getFilteredAndSortedCars();
 
-  const brands = [...new Set(cars.map((car) => car.brand))].sort();
+  // All brands from BrandGrid - always show these in the filter
+  const allBrands = [
+    "Maruti Suzuki",
+    "Hyundai",
+    "Tata",
+    "Mahindra",
+    "Kia",
+    "Honda",
+    "Toyota",
+    "Renault",
+    "Audi",
+    "BMW",
+    "MG",
+    "Nissan",
+    "Skoda",
+    "Volkswagen",
+  ].sort();
+
+  // Use allBrands instead of extracting from cars
+  const brands = allBrands;
   const bodyTypes = [
     ...new Set(cars.map((car) => car.bodyType).filter(Boolean)),
   ].sort();
