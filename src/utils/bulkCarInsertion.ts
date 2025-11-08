@@ -79,21 +79,32 @@ export interface CarData {
 }
 
 /**
+ * Interface for changed field tracking
+ */
+export interface ChangedField {
+  field: string;
+  old_value: string;
+  new_value: string;
+}
+
+/**
  * Result interface for bulk operations
  */
 export interface BulkInsertResult {
   success: boolean;
   total_processed: number;
   inserted_count: number;
+  updated_count?: number;
   skipped_count: number;
   error_count: number;
   details: Array<{
-    action: 'INSERTED' | 'SKIPPED' | 'ERROR';
+    action: 'INSERTED' | 'UPDATED' | 'SKIPPED' | 'ERROR';
     car_id?: string;
     brand: string;
     model: string;
     variant?: string;
     message: string;
+    changed_fields?: ChangedField[];
   }>;
   error?: any;
 }
@@ -234,6 +245,86 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
       success: false,
       total_processed: 0,
       inserted_count: 0,
+      skipped_count: 0,
+      error_count: carsData.length,
+      details: [],
+      error: err
+    };
+  }
+};
+
+/**
+ * Bulk inserts multiple cars with update tracking and change detection
+ * This version will UPDATE existing cars if fields have changed
+ */
+export const bulkInsertCarsWithTracking = async (carsData: CarData[]): Promise<BulkInsertResult> => {
+  try {
+    console.log(`🚗 Processing ${carsData.length} cars for bulk insertion with update tracking...`);
+
+    // DEBUG: Log first car data being sent to see exact values
+    if (carsData.length > 0) {
+      console.log('🔍 FIRST CAR DATA BEING SENT TO SUPABASE - Basic fields:', {
+        fuel_type: carsData[0].fuel_type,
+        transmission: carsData[0].transmission,
+        engine_capacity: carsData[0].engine_capacity,
+        mileage: carsData[0].mileage,
+        price_min: carsData[0].price_min
+      });
+      console.log('🔍 DEDICATED COLUMNS IN CAR DATA:', {
+        mumbai_price: carsData[0].mumbai_price,
+        bangalore_price: carsData[0].bangalore_price,
+        delhi_price: carsData[0].delhi_price,
+        colors: carsData[0].colors,
+        airbags: carsData[0].airbags,
+        sunroof: carsData[0].sunroof,
+        warranty_years: carsData[0].warranty_years
+      });
+    }
+
+    // Call the PostgreSQL bulk upsert function WITH TRACKING
+    const { data, error } = await supabase.rpc('bulk_upsert_cars_with_tracking', {
+      cars_data: carsData
+    });
+
+    if (error) {
+      console.error('❌ Error during bulk insert with tracking:', error);
+      return {
+        success: false,
+        total_processed: 0,
+        inserted_count: 0,
+        updated_count: 0,
+        skipped_count: 0,
+        error_count: carsData.length,
+        details: [],
+        error
+      };
+    }
+
+    const result = data[0];
+
+    console.log('\n📊 Bulk Insert with Tracking Results:');
+    console.log(`   Total Processed: ${result.total_processed}`);
+    console.log(`   ✅ Inserted: ${result.inserted_count}`);
+    console.log(`   🔄 Updated: ${result.updated_count}`);
+    console.log(`   ⏭️  Skipped: ${result.skipped_count}`);
+    console.log(`   ❌ Errors: ${result.error_count}`);
+
+    return {
+      success: true,
+      total_processed: result.total_processed,
+      inserted_count: result.inserted_count,
+      updated_count: result.updated_count,
+      skipped_count: result.skipped_count,
+      error_count: result.error_count,
+      details: result.details
+    };
+  } catch (err) {
+    console.error('❌ Unexpected error during bulk insert with tracking:', err);
+    return {
+      success: false,
+      total_processed: 0,
+      inserted_count: 0,
+      updated_count: 0,
       skipped_count: 0,
       error_count: carsData.length,
       details: [],

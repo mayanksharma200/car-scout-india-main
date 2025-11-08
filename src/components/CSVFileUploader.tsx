@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Upload, CheckCircle2, XCircle, AlertCircle, Loader2, FileSpreadsheet, Download } from 'lucide-react';
-import { bulkInsertCars, CarData, BulkInsertResult, parsePrice } from '@/utils/bulkCarInsertion';
+import { Upload, CheckCircle2, XCircle, AlertCircle, Loader2, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
+import { bulkInsertCarsWithTracking, CarData, BulkInsertResult, parsePrice } from '@/utils/bulkCarInsertion';
 import { shouldSkipCarEntry, INVALID_CAR_NAMES } from '@/utils/carDataValidation';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -632,10 +632,10 @@ export const CSVFileUploader = () => {
         return;
       }
 
-      console.log(`Parsed ${cars.length} cars, importing...`);
+      console.log(`Parsed ${cars.length} cars, importing with update tracking...`);
 
-      // Import cars with duplicate checking
-      const importResult = await bulkInsertCars(cars);
+      // Import cars with duplicate checking and update tracking
+      const importResult = await bulkInsertCarsWithTracking(cars);
       setResult(importResult);
 
       if (importResult.success && importResult.inserted_count > 0) {
@@ -972,10 +972,11 @@ export const CSVFileUploader = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5" />
-          Excel / CSV File Import
+          Excel / CSV File Import with Smart Update
         </CardTitle>
         <CardDescription>
-          Upload an Excel (.xlsx) or CSV file with car data. The system will automatically detect duplicates and skip existing cars based on Brand + Model + Variant.
+          Upload an Excel (.xlsx) or CSV file with car data. The system will automatically detect duplicates based on Brand + Model + Variant.
+          If a car exists but has changed fields (price, specifications, etc.), it will UPDATE the record and show you what changed.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1100,7 +1101,7 @@ export const CSVFileUploader = () => {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold">{result.total_processed}</div>
@@ -1115,8 +1116,14 @@ export const CSVFileUploader = () => {
               </Card>
               <Card>
                 <CardContent className="pt-6">
+                  <div className="text-2xl font-bold text-blue-600">{result.updated_count || 0}</div>
+                  <p className="text-xs text-muted-foreground">Updated</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
                   <div className="text-2xl font-bold text-yellow-600">{result.skipped_count}</div>
-                  <p className="text-xs text-muted-foreground">Duplicates</p>
+                  <p className="text-xs text-muted-foreground">Skipped</p>
                 </CardContent>
               </Card>
               <Card>
@@ -1148,6 +1155,37 @@ export const CSVFileUploader = () => {
                       ... and {result.inserted_count - 10} more
                     </p>
                   )}
+                </div>
+              </div>
+            )}
+
+            {result.updated_count && result.updated_count > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                  Successfully Updated ({result.updated_count})
+                </h4>
+                <div className="space-y-2 max-h-96 overflow-y-auto bg-blue-50 p-3 rounded">
+                  {result.details
+                    .filter(d => d.action === 'UPDATED')
+                    .map((detail, index) => (
+                      <div key={index} className="border-b border-blue-200 pb-2 last:border-b-0">
+                        <div className="text-sm font-semibold text-blue-900">
+                          {detail.brand} {detail.model} {detail.variant || ''}
+                        </div>
+                        {detail.changed_fields && detail.changed_fields.length > 0 && (
+                          <div className="mt-1 ml-4 space-y-1">
+                            {detail.changed_fields.map((change, idx) => (
+                              <div key={idx} className="text-xs text-blue-800">
+                                <span className="font-medium">{change.field}:</span>{' '}
+                                <span className="line-through text-red-600">{change.old_value}</span>{' '}
+                                → <span className="text-green-600 font-medium">{change.new_value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
@@ -1193,11 +1231,13 @@ export const CSVFileUploader = () => {
               <li>Click "Choose File" and select your Excel (.xlsx) or CSV file</li>
               <li>The file will be automatically parsed and validated</li>
               <li>Click "Download JSON" to download the raw data in JSON format</li>
-              <li>Click "Import Cars" to insert cars into the database</li>
-              <li>Duplicate cars (same Brand + Model + Variant) will be automatically skipped</li>
+              <li>Click "Import Cars" to insert or update cars in the database</li>
+              <li>The system will automatically detect duplicates based on Brand + Model + Variant</li>
+              <li>If a car exists but has changed fields, it will be UPDATED (not skipped)</li>
+              <li>After import, you'll see a detailed report of what was inserted, updated, or skipped</li>
             </ol>
             <p className="mt-2"><strong>Supported formats:</strong> Excel (.xlsx, .xls), CSV (.csv, .txt)</p>
-            <p className="mt-2"><strong>JSON Download:</strong> All columns and their respective row data will be exported as JSON with proper structure.</p>
+            <p className="mt-2"><strong>Smart Update Feature:</strong> When a car exists in the database, the system compares all fields (price, fuel type, transmission, city prices, specifications, etc.). If any field has changed, the car is updated and you'll see exactly which fields were modified.</p>
           </AlertDescription>
         </Alert>
       </CardContent>
