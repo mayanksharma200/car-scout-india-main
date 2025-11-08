@@ -12,6 +12,8 @@ import { Link } from "react-router-dom";
 import Carlist360Logo from "@/assets/360carlistbg.png";
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
+  
   return (
     <footer className="bg-muted/50 border-t border-border mt-16">
       <div className="container mx-auto px-4 py-12 animate-fade-in">
@@ -225,7 +227,7 @@ const Footer = () => {
 
             {/* Copyright */}
             <div className="text-muted-foreground text-sm">
-              © 2024 Carlist360. All rights reserved.
+              © {currentYear} Carlist360. All rights reserved.
             </div>
           </div>
 
