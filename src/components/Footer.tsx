@@ -9,7 +9,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import AutoPulsesLogo from "@/assets/autoscope-logo.png";
+import AutoPulsesLogo from "@/assets/360carlistbg.png";
 
 const Footer = () => {
   return (
@@ -23,7 +23,7 @@ const Footer = () => {
               <img
                 src={AutoPulsesLogo}
                 alt="AutoPulses"
-                className="w-20 h-20 object-contain"
+                className="w-48 h-48 object-contain"
               />
               <h3 className="text-xl font-bold text-foreground">AutoPulses</h3>
             </div>
