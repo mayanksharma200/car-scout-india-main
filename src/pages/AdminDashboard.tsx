@@ -238,7 +238,7 @@ const AdminDashboard = () => {
                 {sidebarOpen && <span>Content Management</span>}
               </Link>
             </li>
-            <li>
+            {/* <li>
               <Link
                 to="/admin/analytics"
                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-foreground"
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
                 <TrendingUp className="w-5 h-5" />
                 {sidebarOpen && <span>Analytics</span>}
               </Link>
-            </li>
+            </li> */}
           </ul>
         </nav>
 

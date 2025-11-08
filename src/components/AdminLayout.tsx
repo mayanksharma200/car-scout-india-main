@@ -35,7 +35,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "Lead Management", href: "/admin/leads", icon: Users },
     { name: "Content Management", href: "/admin/content", icon: FileText },
     { name: "API Settings", href: "/admin/api-settings", icon: Globe },
-    { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
+    // { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
   ];
 
   const isActive = (href: string) => {
