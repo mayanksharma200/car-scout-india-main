@@ -80,7 +80,7 @@ const PrivacyPolicy = () => {
                 If you have any questions about this Privacy Policy, please
                 contact us at:
               </p>
-              <p>Email: privacy@AutoPulses.com</p>
+              <p>Email: privacy@Carlist360.com</p>
               <p>Phone: +91 1800-123-4567</p>
             </section>
           </div>

@@ -89,7 +89,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
             {sidebarOpen && (
               <div>
-                <h2 className="font-bold text-foreground">AutoPulses</h2>
+                <h2 className="font-bold text-foreground">Carlist360</h2>
                 <p className="text-xs text-muted-foreground">Admin Portal</p>
               </div>
             )}
@@ -152,7 +152,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   {user?.email ? user.email.split("@")[0] : "Admin User"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {user?.email || "admin@AutoPulses.com"}
+                  {user?.email || "admin@Carlist360.com"}
                 </p>
                 <p className="text-xs text-primary font-medium capitalize">
                   {user?.role || "Administrator"}

@@ -12,8 +12,8 @@ const TOKEN_CONFIG = {
   accessTokenExpiry: "15m",
   refreshTokenExpiry: "7d",
   secret: process.env.JWT_SECRET || "your-super-secret-key",
-  issuer: "AutoPulses-api",
-  audience: "AutoPulses-users",
+  issuer: "Carlist360-api",
+  audience: "Carlist360-users",
 };
 
 // Enhanced token generation

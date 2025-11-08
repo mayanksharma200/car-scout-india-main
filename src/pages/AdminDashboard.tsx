@@ -167,7 +167,7 @@ const AdminDashboard = () => {
             </div>
             {sidebarOpen && (
               <div>
-                <h2 className="font-bold text-foreground">AutoPulses</h2>
+                <h2 className="font-bold text-foreground">Carlist360</h2>
                 <p className="text-xs text-muted-foreground">Admin Portal</p>
               </div>
             )}
@@ -235,7 +235,7 @@ const AdminDashboard = () => {
               <div className="flex-1">
                 <p className="text-sm font-medium">Admin User</p>
                 <p className="text-xs text-muted-foreground">
-                  admin@AutoPulses.com
+                  admin@Carlist360.com
                 </p>
               </div>
             )}

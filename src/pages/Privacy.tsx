@@ -36,7 +36,7 @@ const Privacy = () => {
       className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
     >
       <ArrowLeft className="w-4 h-4" />
-      Back to AutoPulses
+      Back to Carlist360
     </button>
   </div>
 
@@ -228,10 +228,10 @@ const Privacy = () => {
             <p className="text-muted-foreground mt-4">
               To exercise these rights, please contact us at{" "}
               <a
-                href="mailto:privacy@autopulses.in"
+                href="mailto:privacy@Carlist360.in"
                 className="text-primary hover:underline"
               >
-                privacy@autopulses.in
+                privacy@Carlist360.in
               </a>
             </p>
           </section>
@@ -279,7 +279,7 @@ const Privacy = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Mail className="w-4 h-4 text-primary" />
-                <span>privacy@autopulses.in</span>
+                <span>privacy@Carlist360.in</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary" />
@@ -288,7 +288,7 @@ const Privacy = () => {
               <div className="flex items-center gap-3 text-muted-foreground">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span>
-                  AutoPulses India Pvt Ltd, Mumbai, Maharashtra, India
+                  Carlist360 India Pvt Ltd, Mumbai, Maharashtra, India
                 </span>
               </div>
             </div>

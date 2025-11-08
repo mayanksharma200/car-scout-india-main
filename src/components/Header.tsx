@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUserAuth } from "@/contexts/UserAuthContext";
 import ProfileModal from "@/components/ProfileModal";
-import AutoPulsesLogo from "@/assets/360carlistbg.png";
+import Carlist360Logo from "@/assets/360carlistbg.png";
 
 const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -276,8 +276,8 @@ const Header = () => {
           {/* Logo */}
           <a href="/" className="flex items-center">
             <img
-              src={`${AutoPulsesLogo}?v=${Date.now()}`}
-              alt="AutoPulses"
+              src={`${Carlist360Logo}?v=${Date.now()}`}
+              alt="Carlist360"
               className="w-20 h-20 md:w-20 md:h-20 object-contain hover:scale-105 transition-transform"
             />
           </a>

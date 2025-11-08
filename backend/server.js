@@ -46,8 +46,8 @@ const TOKEN_CONFIG = {
     (IS_DEVELOPMENT
       ? "dev-refresh-secret-32-chars-min-123"
       : "your-refresh-secret-key-change-in-production"),
-  issuer: "AutoPulses-api",
-  audience: "AutoPulses-users",
+  issuer: "Carlist360-api",
+  audience: "Carlist360-users",
 };
 
 // CORS configuration based on environment
@@ -2522,7 +2522,7 @@ app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
 if (IS_DEVELOPMENT) {
   app.post("/api/auth/create-test-user", async (req, res) => {
     try {
-      const testEmail = "test@AutoPulses.com";
+      const testEmail = "test@Carlist360.com";
       const testPassword = "test123456";
 
       // Delete existing test user if exists
@@ -3180,7 +3180,7 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
     const response = await fetch(smsUrl, {
       method: 'GET',
       headers: {
-        'User-Agent': 'AutoPulses-SMS-Service/1.0',
+        'User-Agent': 'Carlist360-SMS-Service/1.0',
         'Accept': 'text/xml, application/xml, text/plain'
       }
     });

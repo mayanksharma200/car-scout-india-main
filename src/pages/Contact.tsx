@@ -54,7 +54,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-lg font-semibold">
-                    support@AutoPulses.com
+                    support@Carlist360.com
                   </p>
                   <p className="text-muted-foreground">
                     We'll respond within 24 hours
@@ -71,7 +71,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-lg font-semibold">
-                    AutoPulses Headquarters
+                    Carlist360 Headquarters
                   </p>
                   <p className="text-muted-foreground">
                     123 Business Park,

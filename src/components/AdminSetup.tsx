@@ -110,7 +110,7 @@ const AdminSetup = () => {
               <Input
                 id="admin-email"
                 type="email"
-                placeholder="admin@AutoPulses.com"
+                placeholder="admin@Carlist360.com"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, email: e.target.value }))

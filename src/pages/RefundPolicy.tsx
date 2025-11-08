@@ -27,7 +27,7 @@ const RefundPolicy = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">General Policy</h2>
               <p className="mb-4">
-                AutoPulses is primarily an information and comparison platform
+                Carlist360 is primarily an information and comparison platform
                 for automobiles. As we do not directly sell vehicles, this
                 refund policy applies to any premium services or subscriptions
                 offered on our platform.
@@ -37,7 +37,7 @@ const RefundPolicy = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">Premium Services</h2>
               <p className="mb-4">
-                If you have purchased any premium services from AutoPulses, you
+                If you have purchased any premium services from Carlist360, you
                 may be eligible for a refund under the following conditions:
               </p>
               <ul className="list-disc pl-6 space-y-2">
@@ -81,7 +81,7 @@ const RefundPolicy = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">Vehicle Purchases</h2>
               <p className="mb-4">
-                AutoPulses does not directly facilitate vehicle sales. Any
+                Carlist360 does not directly facilitate vehicle sales. Any
                 vehicle purchase transactions are between you and the respective
                 dealer/seller. Refund policies for vehicle purchases are
                 governed by the dealer's terms and conditions.
@@ -95,7 +95,7 @@ const RefundPolicy = () => {
               <p className="mb-4">
                 For loan applications and insurance policies initiated through
                 our platform, refund policies are governed by the respective
-                financial institutions. AutoPulses facilitates these services
+                financial institutions. Carlist360 facilitates these services
                 but does not control their refund terms.
               </p>
             </section>
@@ -106,7 +106,7 @@ const RefundPolicy = () => {
                 For refund requests or questions about this policy, please
                 contact us:
               </p>
-              <p>Email: refunds@AutoPulses.com</p>
+              <p>Email: refunds@Carlist360.com</p>
               <p>Phone: +91 1800-123-4567</p>
               <p>Hours: Monday-Friday, 9:00 AM - 6:00 PM IST</p>
             </section>

@@ -29,7 +29,7 @@ const TermsConditions = () => {
                 Acceptance of Terms
               </h2>
               <p className="mb-4">
-                By accessing and using AutoPulses's services, you accept and
+                By accessing and using Carlist360's services, you accept and
                 agree to be bound by the terms and provision of this agreement.
               </p>
             </section>
@@ -38,7 +38,7 @@ const TermsConditions = () => {
               <h2 className="text-2xl font-semibold mb-4">Use License</h2>
               <p className="mb-4">
                 Permission is granted to temporarily download one copy of the
-                materials on AutoPulses's website for personal, non-commercial
+                materials on Carlist360's website for personal, non-commercial
                 transitory viewing only.
               </p>
               <p className="mb-4">
@@ -50,8 +50,8 @@ const TermsConditions = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">Disclaimer</h2>
               <p className="mb-4">
-                The materials on AutoPulses's website are provided on an 'as is'
-                basis. AutoPulses makes no warranties, expressed or implied, and
+                The materials on Carlist360's website are provided on an 'as is'
+                basis. Carlist360 makes no warranties, expressed or implied, and
                 hereby disclaims and negates all other warranties.
               </p>
             </section>
@@ -59,10 +59,10 @@ const TermsConditions = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-4">Limitations</h2>
               <p className="mb-4">
-                In no event shall AutoPulses or its suppliers be liable for any
+                In no event shall Carlist360 or its suppliers be liable for any
                 damages (including, without limitation, damages for loss of data
                 or profit, or due to business interruption) arising out of the
-                use or inability to use the materials on AutoPulses's website.
+                use or inability to use the materials on Carlist360's website.
               </p>
             </section>
 
@@ -115,7 +115,7 @@ const TermsConditions = () => {
                 If you have any questions about these Terms and Conditions,
                 please contact us at:
               </p>
-              <p>Email: legal@AutoPulses.com</p>
+              <p>Email: legal@Carlist360.com</p>
               <p>Phone: +91 1800-123-4567</p>
             </section>
           </div>

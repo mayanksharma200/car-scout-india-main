@@ -317,7 +317,7 @@ const Register = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-primary-foreground">
-                AutoPulses
+                Carlist360
               </h1>
               <p className="text-sm text-primary-foreground/70">India</p>
             </div>
@@ -328,7 +328,7 @@ const Register = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Account</CardTitle>
             <p className="text-muted-foreground">
-              Join AutoPulses to save cars and get personalized recommendations
+              Join Carlist360 to save cars and get personalized recommendations
             </p>
           </CardHeader>
           <CardContent>

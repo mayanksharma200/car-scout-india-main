@@ -9,7 +9,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import AutoPulsesLogo from "@/assets/360carlistbg.png";
+import Carlist360Logo from "@/assets/360carlistbg.png";
 
 const Footer = () => {
   return (
@@ -21,11 +21,11 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img
-                src={AutoPulsesLogo}
-                alt="AutoPulses"
+                src={Carlist360Logo}
+                alt="Carlist360"
                 className="w-48 h-48 object-contain"
               />
-              <h3 className="text-xl font-bold text-foreground">AutoPulses</h3>
+              {/* <h3 className="text-xl font-bold text-foreground">Carlist360</h3> */}
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
               India's premier car marketplace. Find your perfect car with
@@ -171,7 +171,7 @@ const Footer = () => {
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground text-sm">
-                  support@AutoPulses.com
+                  support@Carlist360.com
                 </span>
               </div>
               <div className="flex items-start gap-2">
@@ -225,7 +225,7 @@ const Footer = () => {
 
             {/* Copyright */}
             <div className="text-muted-foreground text-sm">
-              © 2024 AutoPulses. All rights reserved.
+              © 2024 Carlist360. All rights reserved.
             </div>
           </div>
 

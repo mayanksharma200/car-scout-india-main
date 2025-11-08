@@ -163,8 +163,8 @@ const FeaturedCars = () => {
 
     if (navigator.share) {
       navigator.share({
-        title: `${car.brand} ${car.model} - AutoPulses India`,
-        text: `Check out this ${car.brand} ${car.model} on AutoPulses India`,
+        title: `${car.brand} ${car.model} - Carlist360 India`,
+        text: `Check out this ${car.brand} ${car.model} on Carlist360 India`,
         url: url,
       });
     } else {

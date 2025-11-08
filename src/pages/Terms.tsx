@@ -35,7 +35,7 @@ const Terms = () => {
               className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to AutoPulses
+              Back to Carlist360
             </button>
           </div>
 
@@ -50,7 +50,7 @@ const Terms = () => {
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-4">
               Please read these terms and conditions carefully before using our
-              services. By accessing AutoPulses, you agree to be bound by these
+              services. By accessing Carlist360, you agree to be bound by these
               terms.
             </p>
             <p className="text-sm text-muted-foreground">
@@ -76,7 +76,7 @@ const Terms = () => {
             </div>
 
             <p className="text-muted-foreground">
-              By accessing and using the AutoPulses platform ("Service"), you
+              By accessing and using the Carlist360 platform ("Service"), you
               accept and agree to be bound by these Terms & Conditions
               ("Terms"). If you do not agree to these Terms, please do not use
               our Service.
@@ -197,7 +197,7 @@ const Terms = () => {
             <h3 className="text-lg font-medium text-foreground">Our Content</h3>
             <p className="text-muted-foreground mb-4">
               The Service and its original content, features, and functionality
-              are and will remain the exclusive property of AutoPulses India Pvt
+              are and will remain the exclusive property of Carlist360 India Pvt
               Ltd and its licensors. The Service is protected by copyright,
               trademark, and other laws.
             </p>
@@ -320,7 +320,7 @@ const Terms = () => {
               Limitation of Liability
             </h3>
             <p className="text-muted-foreground mb-4">
-              To the fullest extent permitted by applicable law, AutoPulses
+              To the fullest extent permitted by applicable law, Carlist360
               India Pvt Ltd shall not be liable for any indirect, incidental,
               special, consequential, or punitive damages, including without
               limitation, loss of profits, data, use, goodwill, or other
@@ -331,7 +331,7 @@ const Terms = () => {
               Indemnification
             </h3>
             <p className="text-muted-foreground">
-              You agree to defend, indemnify, and hold harmless AutoPulses India
+              You agree to defend, indemnify, and hold harmless Carlist360 India
               Pvt Ltd and its licensors, employees, contractors, agents,
               officers and directors, from and against any and all claims,
               damages, obligations, losses, liabilities, costs or debt, and
@@ -434,7 +434,7 @@ const Terms = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <FileText className="w-4 h-4 text-primary" />
-                <span>legal@autopulses.in</span>
+                <span>legal@Carlist360.in</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <FileText className="w-4 h-4 text-primary" />
@@ -442,7 +442,7 @@ const Terms = () => {
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <FileText className="w-4 h-4 text-primary" />
-                <span>AutoPulses India Pvt Ltd</span>
+                <span>Carlist360 India Pvt Ltd</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <FileText className="w-4 h-4 text-primary" />

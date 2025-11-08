@@ -30,7 +30,7 @@ const Disclaimer = () => {
               </h2>
               <p className="mb-4">
                 The information on this website is provided on an "as-is" basis.
-                To the fullest extent permitted by law, AutoPulses excludes all
+                To the fullest extent permitted by law, Carlist360 excludes all
                 representations, warranties, obligations, and liabilities
                 arising out of or in connection with the information provided.
               </p>
@@ -49,7 +49,7 @@ const Disclaimer = () => {
               </h2>
               <p className="mb-4">
                 All vehicle specifications, features, prices, and availability
-                information is provided by manufacturers and dealers. AutoPulses
+                information is provided by manufacturers and dealers. Carlist360
                 is not responsible for:
               </p>
               <ul className="list-disc pl-6 space-y-2">
@@ -70,7 +70,7 @@ const Disclaimer = () => {
               </h2>
               <p className="mb-4">
                 Our website may contain links to third-party websites or
-                services that are not owned or controlled by AutoPulses. We have
+                services that are not owned or controlled by Carlist360. We have
                 no control over, and assume no responsibility for the content,
                 privacy policies, or practices of any third-party websites or
                 services.
@@ -82,7 +82,7 @@ const Disclaimer = () => {
                 Financial Services
               </h2>
               <p className="mb-4">
-                AutoPulses facilitates connections with financial institutions
+                Carlist360 facilitates connections with financial institutions
                 for loans and insurance. We are not responsible for:
               </p>
               <ul className="list-disc pl-6 space-y-2">
@@ -100,7 +100,7 @@ const Disclaimer = () => {
                 Limitation of Liability
               </h2>
               <p className="mb-4">
-                In no event will AutoPulses, its directors, employees, partners,
+                In no event will Carlist360, its directors, employees, partners,
                 agents, suppliers, or affiliates be liable for any indirect,
                 incidental, special, consequential, or punitive damages,
                 including without limitation, loss of profits, data, use,
@@ -125,7 +125,7 @@ const Disclaimer = () => {
               <h2 className="text-2xl font-semibold mb-4">Trademark Notice</h2>
               <p className="mb-4">
                 All trademarks, logos, and brand names mentioned on this website
-                are the property of their respective owners. AutoPulses does not
+                are the property of their respective owners. Carlist360 does not
                 claim any ownership or affiliation with these brands unless
                 explicitly stated.
               </p>
@@ -139,7 +139,7 @@ const Disclaimer = () => {
                 If you have any questions about this disclaimer, please contact
                 us at:
               </p>
-              <p>Email: legal@AutoPulses.com</p>
+              <p>Email: legal@Carlist360.com</p>
               <p>Phone: +91 1800-123-4567</p>
             </section>
           </div>

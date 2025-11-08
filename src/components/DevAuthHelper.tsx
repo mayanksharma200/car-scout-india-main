@@ -65,7 +65,7 @@ const DevAuthHelper = () => {
   const signInTestUser = async () => {
     setSigningIn(true);
     try {
-      const { error } = await signIn("test@AutoPulses.com", "test123456");
+      const { error } = await signIn("test@Carlist360.com", "test123456");
 
       if (error) {
         throw error;
@@ -126,7 +126,7 @@ const DevAuthHelper = () => {
               {signingIn ? "Signing In..." : "Sign In Test User"}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Email: test@AutoPulses.com
+              Email: test@Carlist360.com
               <br />
               Password: test123456
             </p>
