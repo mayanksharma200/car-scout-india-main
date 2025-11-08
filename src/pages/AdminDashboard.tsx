@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   BarChart3,
   Car,
@@ -30,6 +30,31 @@ const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const liveStats = useStats();
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // Prevent auto-scroll on page load
+  useEffect(() => {
+    // Disable scroll restoration
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    // Force scroll to top immediately
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+
+    // Force scroll to top after a small delay to override any child component scrolls
+    const timeoutId = setTimeout(() => {
+      if (mainContentRef.current) {
+        mainContentRef.current.scrollTop = 0;
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) return `₹${(price / 10000000).toFixed(1)}Cr`;
@@ -254,9 +279,9 @@ const AdminDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div ref={mainContentRef} className="flex-1 flex flex-col overflow-auto">
         {/* Header */}
-        <header className="bg-background border-b border-border p-4 flex items-center justify-between">
+        <header className="bg-background border-b border-border p-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -285,7 +310,7 @@ const AdminDashboard = () => {
         </header>
 
         {/* Dashboard Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="p-6">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, index) => (

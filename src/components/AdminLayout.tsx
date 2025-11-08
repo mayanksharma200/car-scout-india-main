@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdminLayoutProps {
@@ -26,7 +26,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useTokenAuth();
+  const { adminUser, logout } = useAdminAuth();
   const { toast } = useToast();
 
   const navigation = [
@@ -144,18 +144,18 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              {getUserInitials(user?.email)}
+              {getUserInitials(adminUser?.email)}
             </div>
             {sidebarOpen && (
               <div className="flex-1">
                 <p className="text-sm font-medium">
-                  {user?.email ? user.email.split("@")[0] : "Admin User"}
+                  {adminUser?.email ? adminUser.email.split("@")[0] : "Admin User"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {user?.email || "admin@Carlist360.com"}
+                  {adminUser?.email || "admin@Carlist360.com"}
                 </p>
                 <p className="text-xs text-primary font-medium capitalize">
-                  {user?.role || "Administrator"}
+                  {adminUser?.role || "Administrator"}
                 </p>
               </div>
             )}

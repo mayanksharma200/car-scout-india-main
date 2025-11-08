@@ -131,17 +131,23 @@ const CarImageGallery = ({
     setIsZoomed(false);
   };
 
-  // Auto-scroll thumbnails
+  // Auto-scroll thumbnails (only scroll within thumbnail container, not page)
   useEffect(() => {
     if (thumbnailRef.current) {
       const thumbnail = thumbnailRef.current.children[
         currentIndex
       ] as HTMLElement;
       if (thumbnail) {
-        thumbnail.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-          inline: "center",
+        // Use scrollLeft instead of scrollIntoView to avoid page scrolling
+        const container = thumbnailRef.current;
+        const thumbnailLeft = thumbnail.offsetLeft;
+        const thumbnailWidth = thumbnail.offsetWidth;
+        const containerWidth = container.offsetWidth;
+        const scrollPosition = thumbnailLeft - (containerWidth / 2) + (thumbnailWidth / 2);
+
+        container.scrollTo({
+          left: scrollPosition,
+          behavior: "smooth"
         });
       }
     }

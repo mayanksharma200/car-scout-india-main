@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface APIConfig {
   apiKey: string;
@@ -62,7 +62,7 @@ const APISettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [usingFallback, setUsingFallback] = useState(false);
-  const { getAuthHeaders, isAuthenticated } = useTokenAuth();
+  const { getAuthHeaders, isAuthenticated } = useAdminAuth();
 
   const backendUrl =
     import.meta.env.VITE_API_URL || "http://localhost:3001/api";

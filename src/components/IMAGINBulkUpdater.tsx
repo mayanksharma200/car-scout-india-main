@@ -233,7 +233,7 @@ const IMAGINBulkUpdater = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2">
               {results.slice(-10).reverse().map((car, index) => (
                 <div key={car.car_id} className="flex items-center justify-between p-2 bg-green-50 rounded">
                   <div>
@@ -272,7 +272,7 @@ const IMAGINBulkUpdater = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2">
               {errors.slice(-10).reverse().map((car, index) => (
                 <div key={car.car_id} className="flex items-center justify-between p-2 bg-red-50 rounded">
                   <div>
