@@ -64,8 +64,14 @@ const CarListing = () => {
   >({});
   const [wishlistBatchLoading, setWishlistBatchLoading] = useState(false);
 
+  // Infinite scroll states
+  const [displayedCars, setDisplayedCars] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const CARS_PER_PAGE = 12;
+
   const api = useAuthenticatedApi();
-  const { toast } = useToast();
+  const { toast} = useToast();
   const { isAuthenticated } = useUserAuth();
 
   const [filters, setFilters] = useState({
@@ -660,6 +666,39 @@ const CarListing = () => {
 
   const filteredAndSortedCars = getFilteredAndSortedCars();
 
+  // Update displayed cars when filtered cars or page changes
+  useEffect(() => {
+    const endIndex = page * CARS_PER_PAGE;
+    setDisplayedCars(filteredAndSortedCars.slice(0, endIndex));
+  }, [filteredAndSortedCars, page]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      // Check if user has scrolled near the bottom
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const bottomPosition = document.documentElement.offsetHeight - 800; // Trigger 800px before bottom
+
+      if (scrollPosition >= bottomPosition && !isLoadingMore && displayedCars.length < filteredAndSortedCars.length) {
+        setIsLoadingMore(true);
+
+        // Add a small delay for better UX
+        setTimeout(() => {
+          setPage(prev => prev + 1);
+          setIsLoadingMore(false);
+        }, 300);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isLoadingMore, displayedCars.length, filteredAndSortedCars.length]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, sortBy, searchQuery]);
+
   // All brands from BrandGrid - always show these in the filter
   const allBrands = [
     "Maruti Suzuki",
@@ -1227,34 +1266,51 @@ const CarListing = () => {
                 </div>
               </div>
             ) : (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6"
-                    : "space-y-4"
-                }
-              >
-                {filteredAndSortedCars.map((car, index) => (
-                  <React.Fragment key={car.id}>
-                    <CarCard
-                      car={car}
-                      isWishlisted={wishlistStatus[car.id] || false}
-                      onToggleWishlist={() => toggleWishlist(car.id)}
-                      wishlistLoading={wishlistLoading[car.id] || false}
-                    />
-                    {/* Insert ads every 6 cars in grid view, every 4 in mobile */}
-                    {(index + 1) % (viewMode === "grid" ? 6 : 4) === 0 && (
-                      <div
-                        className={viewMode === "grid" ? "col-span-full" : ""}
-                      >
-                        <div className="my-4">
-                          <AdBanner placement="below_results" />
+              <>
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6"
+                      : "space-y-4"
+                  }
+                >
+                  {displayedCars.map((car, index) => (
+                    <React.Fragment key={car.id}>
+                      <CarCard
+                        car={car}
+                        isWishlisted={wishlistStatus[car.id] || false}
+                        onToggleWishlist={() => toggleWishlist(car.id)}
+                        wishlistLoading={wishlistLoading[car.id] || false}
+                      />
+                      {/* Insert ads every 6 cars in grid view, every 4 in mobile */}
+                      {(index + 1) % (viewMode === "grid" ? 6 : 4) === 0 && (
+                        <div
+                          className={viewMode === "grid" ? "col-span-full" : ""}
+                        >
+                          <div className="my-4">
+                            <AdBanner placement="below_results" />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                {/* Loading indicator for infinite scroll */}
+                {isLoadingMore && (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-muted-foreground">Loading more cars...</span>
+                  </div>
+                )}
+
+                {/* End of results indicator */}
+                {displayedCars.length >= filteredAndSortedCars.length && filteredAndSortedCars.length > CARS_PER_PAGE && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>You've reached the end of the results ({filteredAndSortedCars.length} cars total)</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
