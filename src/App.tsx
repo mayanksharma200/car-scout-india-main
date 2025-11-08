@@ -116,11 +116,11 @@ const App = () => {
               <Route path="/contact" element={<Contact />} />
               <Route path="/ad-test" element={<AdTestPage />} />
 
-              {/* Admin Routes - Wrapped with separate TokenAuthProvider for admin authentication */}
+              {/* Admin Routes - Wrapped with separate AdminAuthProvider for admin authentication with cookies */}
               <Route
                 path="/admin/*"
                 element={
-                  <TokenAuthProvider>
+                  <AdminAuthProvider>
                     <Routes>
                       {/* Admin Login - No guard needed */}
                       <Route path="login" element={<AdminLogin />} />
@@ -171,7 +171,7 @@ const App = () => {
                         }
                       />
                     </Routes>
-                  </TokenAuthProvider>
+                  </AdminAuthProvider>
                 }
               />
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, Loader2 } from "lucide-react";
 
@@ -9,7 +9,7 @@ interface AdminRouteGuardProps {
 }
 
 const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
-  const { user, isAuthenticated, loading } = useTokenAuth();
+  const { adminUser, isAuthenticated, loading } = useAdminAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
@@ -27,14 +27,14 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
   }
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated || !user) {
-    console.log("🔐 Not authenticated, redirecting to login");
+  if (!isAuthenticated || !adminUser) {
+    console.log("🔐 Admin not authenticated, redirecting to login");
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   // Show access denied if not admin (extra safety check)
-  if (user.role !== "admin") {
-    console.log("🚫 Access denied - user role:", user.role);
+  if (adminUser.role !== "admin") {
+    console.log("🚫 Access denied - user role:", adminUser.role);
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
@@ -50,7 +50,7 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
               contact an administrator if you believe this is an error.
             </p>
             <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
-              Current role: {user.role} | Required: admin
+              Current role: {adminUser.role} | Required: admin
             </div>
             <div className="pt-4 space-x-4">
               <button
@@ -73,7 +73,7 @@ const AdminRouteGuard: React.FC<AdminRouteGuardProps> = ({ children }) => {
   }
 
   // Render admin content for authorized users
-  console.log("✅ Admin access granted for user:", user.email);
+  console.log("✅ Admin access granted for user:", adminUser.email);
   return <>{children}</>;
 };
 

@@ -127,39 +127,26 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
       const loginResult = await loginResponse.json();
 
+      console.log("Admin login response:", loginResult);
+
       if (!loginResult.success || !loginResult.data?.user) {
         return { success: false, error: "Invalid login response" };
       }
 
-      // Step 2: Verify admin role
-      const adminCheckResponse = await fetch(`${backendUrl}/auth/check-admin`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${loginResult.data.session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId: loginResult.data.user.id }),
-      });
-
-      if (!adminCheckResponse.ok) {
-        return { success: false, error: "Failed to verify admin status" };
-      }
-
-      const adminCheckResult = await adminCheckResponse.json();
-
-      if (!adminCheckResult.success || !adminCheckResult.isAdmin) {
+      // Check if user has admin role
+      if (loginResult.data.user.role !== "admin") {
         return {
           success: false,
           error: "Access denied. This account does not have admin privileges.",
         };
       }
 
-      // Step 3: Store session and set auth state
+      // Store session and set auth state
       const sessionData = {
         user: loginResult.data.user,
-        access_token: loginResult.data.session.access_token,
-        refresh_token: loginResult.data.session.refresh_token,
-        expires_at: loginResult.data.session.expires_at,
+        access_token: loginResult.data.accessToken,
+        refresh_token: loginResult.data.refreshToken,
+        expires_at: Date.now() + (loginResult.data.expiresIn * 1000),
         loginTime: Date.now(),
       };
 
@@ -168,10 +155,11 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
       setAdminUser({
         id: loginResult.data.user.id,
         email: loginResult.data.user.email,
-        role: "admin",
+        role: loginResult.data.user.role,
       });
       setIsAuthenticated(true);
 
+      console.log("Admin login successful");
       return { success: true };
     } catch (error: any) {
       console.error("Admin login error:", error);
@@ -212,59 +200,141 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
     return { "Content-Type": "application/json" };
   };
 
-  // Storage helpers with fallbacks
+  // Cookie utilities for admin storage
+  const adminCookieUtils = {
+    set: (
+      name: string,
+      value: string,
+      options: {
+        maxAge?: number;
+        expires?: Date;
+        secure?: boolean;
+        sameSite?: "strict" | "lax" | "none";
+        path?: string;
+      } = {}
+    ) => {
+      try {
+        const {
+          maxAge,
+          expires,
+          secure = window.location.protocol === "https:",
+          sameSite = "lax",
+          path = "/",
+        } = options;
+
+        let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(
+          value
+        )}`;
+
+        if (maxAge !== undefined) {
+          cookieString += `; Max-Age=${maxAge}`;
+        }
+
+        if (expires) {
+          cookieString += `; Expires=${expires.toUTCString()}`;
+        }
+
+        if (secure) {
+          cookieString += `; Secure`;
+        }
+
+        cookieString += `; SameSite=${sameSite}`;
+        cookieString += `; Path=${path}`;
+
+        document.cookie = cookieString;
+        console.log(`Admin cookie set: ${name}`);
+      } catch (error) {
+        console.warn("Failed to set admin cookie:", error);
+      }
+    },
+
+    get: (name: string): string | null => {
+      try {
+        const value = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith(`${encodeURIComponent(name)}=`))
+          ?.split("=")[1];
+
+        return value ? decodeURIComponent(value) : null;
+      } catch (error) {
+        console.warn("Failed to get admin cookie:", error);
+        return null;
+      }
+    },
+
+    remove: (name: string, path: string = "/") => {
+      try {
+        document.cookie = `${encodeURIComponent(
+          name
+        )}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        console.log(`Admin cookie removed: ${name}`);
+      } catch (error) {
+        console.warn("Failed to remove admin cookie:", error);
+      }
+    },
+  };
+
+  // Storage helpers using cookies for persistence across page refreshes
   const storeSession = (sessionData: any) => {
-    console.log("💾 Storing admin session...", {
+    console.log("💾 Storing admin session in cookies...", {
       hasToken: !!sessionData.access_token,
     });
 
     try {
-      sessionStorage.setItem("admin_session", JSON.stringify(sessionData));
-      console.log("✅ Session stored in sessionStorage");
+      // Store session data in cookie with 7 days expiry
+      adminCookieUtils.set("admin_session", JSON.stringify(sessionData), {
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        secure: window.location.protocol === "https:",
+        sameSite: "lax",
+      });
+      console.log("✅ Admin session stored in cookies");
     } catch (error) {
       console.warn(
-        "⚠️ Could not store session in sessionStorage, using memory"
+        "⚠️ Could not store admin session in cookies, using memory"
       );
       // Store in memory as fallback
       (window as any).__adminSession = sessionData;
-      console.log("✅ Session stored in memory");
+      console.log("✅ Admin session stored in memory");
     }
   };
 
   const getStoredSession = () => {
     try {
-      const stored = sessionStorage.getItem("admin_session");
+      const stored = adminCookieUtils.get("admin_session");
       if (stored) {
         const session = JSON.parse(stored);
-        console.log("📖 Retrieved session from sessionStorage", {
+        console.log("📖 Retrieved admin session from cookies", {
           hasToken: !!session.access_token,
         });
         return session;
       }
     } catch (error) {
-      console.warn("⚠️ Could not read from sessionStorage:", error);
+      console.warn("⚠️ Could not read admin session from cookies:", error);
     }
 
     // Fallback to memory storage
     const memorySession = (window as any).__adminSession;
     if (memorySession) {
-      console.log("📖 Retrieved session from memory storage", {
+      console.log("📖 Retrieved admin session from memory storage", {
         hasToken: !!memorySession.access_token,
       });
       return memorySession;
     }
 
-    console.warn("❌ No session found in either storage");
+    console.warn("❌ No admin session found in either storage");
     return null;
   };
 
   const clearStoredSession = () => {
     try {
-      sessionStorage.removeItem("admin_session");
+      console.log("🗑️ Clearing admin session from cookies...");
+      adminCookieUtils.remove("admin_session");
+      console.log("✅ Admin session cleared from cookies");
     } catch (error) {
-      // Clear memory storage as fallback
-      delete (window as any).__adminSession;
+      console.warn("⚠️ Could not clear admin session from cookies:", error);
     }
+    // Also clear memory storage as fallback
+    delete (window as any).__adminSession;
   };
 
   const value: AdminAuthContextType = {

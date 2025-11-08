@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTokenAuth } from "@/contexts/TokenAuthContext";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { createApiClient } from "@/utils/apiClient";
 
 const AdminLogin = () => {
@@ -34,7 +34,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { login, loading } = useTokenAuth();
+  const { login, loading } = useAdminAuth();
 
   // Get redirect path from location state
   const from = (location.state as any)?.from?.pathname || "/admin";
