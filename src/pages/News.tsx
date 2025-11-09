@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Calendar, User, ArrowRight, TrendingUp, Share2 } from "lucide-react";
 import Header from "@/components/Header";
 import ShareModal from "@/components/ShareModal";
@@ -8,6 +10,21 @@ import Footer from "@/components/Footer";
 
 
 const News = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Hard refresh when navigating from article publish success
+  useEffect(() => {
+    // Check if we came from publish success modal
+    if (location.state?.fromPublish) {
+      // Force a hard refresh to fetch latest articles
+      window.location.reload();
+
+      // Clear the state after refresh so it doesn't keep refreshing
+      // This will execute after the reload completes
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
   const newsArticles = [
     {
       id: 1,
