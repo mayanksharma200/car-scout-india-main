@@ -29,10 +29,12 @@ import News from "./pages/News";
 import LoanApplication from "./pages/LoanApplication";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import Wishlist from "./pages/Wishlist";
 import ReviewsPage from "./pages/ReviewsPage";
 import GalleryPage from "./pages/GalleryPage";
 import AdminLogin from "./pages/AdminLogin";
+import AdminForgotPassword from "./pages/AdminForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRouteGuard from "./components/AdminRouteGuard";
 import AdminSetup from "./components/AdminSetup";
@@ -99,6 +101,7 @@ const App = () => {
               <Route path="/news" element={<News />} />
               <Route path="/loan-application" element={<LoanApplication />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route
                 path="/auth/google/callback"
                 element={<GoogleOAuthHandler />}
@@ -124,6 +127,7 @@ const App = () => {
                     <Routes>
                       {/* Admin Login - No guard needed */}
                       <Route path="login" element={<AdminLogin />} />
+                      <Route path="forgot-password" element={<AdminForgotPassword />} />
 
                       {/* Protected Admin Routes */}
                       <Route

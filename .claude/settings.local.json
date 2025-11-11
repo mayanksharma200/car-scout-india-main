@@ -27,7 +27,8 @@
       "Bash(python3:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(xargs -I {} bash -c 'echo \"\"\"\"=== FILE: {} ===\"\"\"\" && head -50 {}')",
-      "Bash(cd /Users/mayanksharma/codebase repos/car-scout-india-main/backend)"
+      "Bash(cd /Users/mayanksharma/codebase repos/car-scout-india-main/backend)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []

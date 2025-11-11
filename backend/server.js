@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import IMAGINAPIService from "./services/imaginAPI.js";
 import IMAGINOnlyService from "./services/imaginOnlyService.js";
+import emailService from "./services/emailService.js";
 
 dotenv.config();
 
@@ -2360,6 +2361,323 @@ app.get("/api/auth/verify", validateToken, (req, res) => {
       message: "Token is valid",
     },
   });
+});
+
+// ===== FORGOT PASSWORD ENDPOINTS =====
+
+// Send OTP for password reset
+app.post("/api/auth/forgot-password/send-otp", async (req, res) => {
+  try {
+    const { email, role = 'user' } = req.body;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: "Email is required"
+      });
+    }
+
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid role specified"
+      });
+    }
+
+    // Check if user exists with the specified email and role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, role, first_name, is_active')
+      .eq('email', email)
+      .eq('role', role)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(404).json({
+        success: false,
+        error: `No ${role} account found with this email address.`
+      });
+    }
+
+    if (!profile.is_active) {
+      return res.status(403).json({
+        success: false,
+        error: "Account is deactivated. Please contact support."
+      });
+    }
+
+    // Generate OTP
+    const otp = emailService.generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Delete any existing OTPs for this email
+    await supabase
+      .from('password_reset_otp')
+      .delete()
+      .eq('email', email)
+      .eq('role', role);
+
+    // Store OTP in database
+    const { error: otpError } = await supabase
+      .from('password_reset_otp')
+      .insert({
+        user_id: profile.id,
+        email: email,
+        otp_code: otp,
+        role: role,
+        expires_at: expiresAt.toISOString(),
+        verified: false,
+        attempts: 0,
+        ip_address: req.ip,
+        user_agent: req.get('user-agent')
+      });
+
+    if (otpError) {
+      console.error('❌ Failed to store OTP:', otpError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to generate OTP. Please try again."
+      });
+    }
+
+    // Send OTP email
+    try {
+      await emailService.sendPasswordResetOTP(email, otp, profile.first_name);
+
+      console.log(`✅ Password reset OTP sent to ${email} (${role})`);
+
+      res.json({
+        success: true,
+        message: "OTP has been sent to your email address.",
+        expiresIn: 600 // 10 minutes in seconds
+      });
+    } catch (emailError) {
+      console.error('❌ Failed to send OTP email:', emailError);
+
+      // Delete the OTP if email fails
+      await supabase
+        .from('password_reset_otp')
+        .delete()
+        .eq('email', email)
+        .eq('role', role);
+
+      res.status(500).json({
+        success: false,
+        error: emailError.message || "Failed to send OTP email. Please try again."
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Forgot password send OTP error:', error);
+    res.status(500).json({
+      success: false,
+      error: "An unexpected error occurred. Please try again."
+    });
+  }
+});
+
+// Verify OTP
+app.post("/api/auth/forgot-password/verify-otp", async (req, res) => {
+  try {
+    const { email, otp, role = 'user' } = req.body;
+
+    // Validate input
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        error: "Email and OTP are required"
+      });
+    }
+
+    // Find the OTP record
+    const { data: otpRecord, error: otpError } = await supabase
+      .from('password_reset_otp')
+      .select('*')
+      .eq('email', email)
+      .eq('role', role)
+      .eq('verified', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (otpError || !otpRecord) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired OTP"
+      });
+    }
+
+    // Check if OTP has expired
+    if (new Date(otpRecord.expires_at) < new Date()) {
+      await supabase
+        .from('password_reset_otp')
+        .delete()
+        .eq('id', otpRecord.id);
+
+      return res.status(400).json({
+        success: false,
+        error: "OTP has expired. Please request a new one."
+      });
+    }
+
+    // Check attempts limit (max 5 attempts)
+    if (otpRecord.attempts >= 5) {
+      await supabase
+        .from('password_reset_otp')
+        .delete()
+        .eq('id', otpRecord.id);
+
+      return res.status(400).json({
+        success: false,
+        error: "Too many failed attempts. Please request a new OTP."
+      });
+    }
+
+    // Verify OTP
+    if (otpRecord.otp_code !== otp) {
+      // Increment attempts
+      await supabase
+        .from('password_reset_otp')
+        .update({ attempts: otpRecord.attempts + 1 })
+        .eq('id', otpRecord.id);
+
+      return res.status(400).json({
+        success: false,
+        error: `Invalid OTP. ${4 - otpRecord.attempts} attempts remaining.`
+      });
+    }
+
+    // Mark OTP as verified
+    await supabase
+      .from('password_reset_otp')
+      .update({
+        verified: true,
+        verified_at: new Date().toISOString()
+      })
+      .eq('id', otpRecord.id);
+
+    console.log(`✅ OTP verified for ${email} (${role})`);
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+      resetToken: otpRecord.id // Return the OTP record ID as reset token
+    });
+
+  } catch (error) {
+    console.error('❌ Verify OTP error:', error);
+    res.status(500).json({
+      success: false,
+      error: "An unexpected error occurred. Please try again."
+    });
+  }
+});
+
+// Reset password with verified OTP
+app.post("/api/auth/forgot-password/reset", async (req, res) => {
+  try {
+    const { email, resetToken, newPassword, role = 'user' } = req.body;
+
+    // Validate input
+    if (!email || !resetToken || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: "Email, reset token, and new password are required"
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: "Password must be at least 8 characters long"
+      });
+    }
+
+    // Find and verify the OTP record
+    const { data: otpRecord, error: otpError } = await supabase
+      .from('password_reset_otp')
+      .select('*')
+      .eq('id', resetToken)
+      .eq('email', email)
+      .eq('role', role)
+      .eq('verified', true)
+      .single();
+
+    if (otpError || !otpRecord) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired reset token"
+      });
+    }
+
+    // Check if reset token has expired (15 minutes after verification)
+    const expiryTime = new Date(otpRecord.verified_at);
+    expiryTime.setMinutes(expiryTime.getMinutes() + 15);
+
+    if (expiryTime < new Date()) {
+      await supabase
+        .from('password_reset_otp')
+        .delete()
+        .eq('id', resetToken);
+
+      return res.status(400).json({
+        success: false,
+        error: "Reset token has expired. Please request a new OTP."
+      });
+    }
+
+    // Update user password in Supabase Auth
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      otpRecord.user_id,
+      { password: newPassword }
+    );
+
+    if (updateError) {
+      console.error('❌ Failed to update password:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to reset password. Please try again."
+      });
+    }
+
+    // Delete the used OTP record
+    await supabase
+      .from('password_reset_otp')
+      .delete()
+      .eq('id', resetToken);
+
+    // Invalidate all existing sessions for this user
+    await supabase
+      .from('user_sessions')
+      .update({ is_active: false })
+      .eq('user_id', otpRecord.user_id);
+
+    // Get user profile for confirmation email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name')
+      .eq('id', otpRecord.user_id)
+      .single();
+
+    // Send confirmation email (non-blocking)
+    emailService.sendPasswordResetConfirmation(email, profile?.first_name)
+      .catch(err => console.error('Failed to send confirmation email:', err));
+
+    console.log(`✅ Password reset successful for ${email} (${role})`);
+
+    res.json({
+      success: true,
+      message: "Password has been reset successfully. Please log in with your new password."
+    });
+
+  } catch (error) {
+    console.error('❌ Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      error: "An unexpected error occurred. Please try again."
+    });
+  }
 });
 
 // ===== PROTECTED ROUTES =====
