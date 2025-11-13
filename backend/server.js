@@ -10,6 +10,8 @@ import dotenv from "dotenv";
 import IMAGINAPIService from "./services/imaginAPI.js";
 import IMAGINOnlyService from "./services/imaginOnlyService.js";
 import emailService from "./services/emailService.js";
+import ideogramAPI from "./services/ideogramAPI.js";
+import s3UploadService from "./services/s3UploadService.js";
 
 dotenv.config();
 
@@ -1468,6 +1470,339 @@ app.post("/api/admin/cars/generate-images", async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate images',
+      message: error.message
+    });
+  }
+});
+
+// Admin endpoint for generating images with Ideogram AI
+app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
+  try {
+    const { carId, carData, options = {} } = req.body;
+
+    if (!carId || !carData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: carId and carData'
+      });
+    }
+
+    console.log(`🎨 Generating Ideogram AI images for: ${carData.brand} ${carData.model}`);
+
+    // Check if Ideogram is configured
+    if (!ideogramAPI.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Ideogram API is not configured. Please add IDEOGRAM_API_KEY to environment variables.'
+      });
+    }
+
+    // Generate images using Ideogram API
+    const generationOptions = {
+      num_images: options.num_images || 8, // Generate 8 images for all angles
+      aspect_ratio: options.aspect_ratio || '16x9',
+      rendering_speed: options.rendering_speed || 'TURBO',
+      style_type: options.style_type || 'REALISTIC'
+    };
+
+    const ideogramResult = await ideogramAPI.generateCarImages(carData, generationOptions);
+
+    if (ideogramResult.success && ideogramResult.images.length > 0) {
+      console.log(`✅ Successfully generated ${ideogramResult.totalImages} Ideogram images for: ${carData.brand} ${carData.model}`);
+
+      // Return images for preview - DO NOT save to database yet
+      // User will review and approve images before uploading to S3
+      res.json({
+        success: true,
+        carId,
+        carName: `${carData.brand} ${carData.model}`,
+        images: ideogramResult.images,
+        imagesCount: ideogramResult.totalImages,
+        primaryImage: ideogramResult.primaryImage,
+        created: ideogramResult.created,
+        message: 'Images generated successfully. Please review and approve before saving.'
+      });
+    } else {
+      console.log(`❌ Ideogram generation failed for: ${carData.brand} ${carData.model}`);
+      res.status(422).json({
+        success: false,
+        error: 'Ideogram API did not return valid images for this car',
+        carId,
+        carName: `${carData.brand} ${carData.model}`
+      });
+    }
+
+  } catch (error) {
+    console.error('Error generating Ideogram images:', error);
+
+    // Handle specific error types
+    let statusCode = 500;
+    let errorMessage = error.message;
+
+    if (error.message.includes('Invalid Ideogram API key')) {
+      statusCode = 401;
+    } else if (error.message.includes('Rate limit exceeded')) {
+      statusCode = 429;
+    } else if (error.message.includes('safety check')) {
+      statusCode = 422;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      error: 'Failed to generate Ideogram images',
+      message: errorMessage
+    });
+  }
+});
+
+// Admin endpoint to upload approved Ideogram images to S3 and save to car
+app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
+  try {
+    const { carId, approvedImages } = req.body;
+
+    if (!carId || !approvedImages || !Array.isArray(approvedImages) || approvedImages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: carId and approvedImages array'
+      });
+    }
+
+    console.log(`📤 Uploading ${approvedImages.length} approved images to S3 for car ${carId}`);
+
+    // Check if S3 is configured
+    if (!s3UploadService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'AWS S3 is not configured. Please add AWS credentials to environment variables.'
+      });
+    }
+
+    // Upload approved images to S3
+    const uploadResults = await s3UploadService.uploadMultipleImages(approvedImages, carId);
+
+    // Filter successful uploads
+    const successfulUploads = uploadResults.filter(result => result.success);
+    const failedUploads = uploadResults.filter(result => !result.success);
+
+    if (successfulUploads.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'All image uploads failed',
+        failedUploads
+      });
+    }
+
+    // Extract S3 URLs
+    const s3ImageUrls = successfulUploads.map(result => result.s3Url);
+
+    // Fetch current car data
+    const { data: currentCar, error: fetchError } = await supabase
+      .from('cars')
+      .select('images')
+      .eq('id', carId)
+      .single();
+
+    if (fetchError) {
+      console.error(`Failed to fetch car ${carId}:`, fetchError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch car data',
+        details: fetchError.message
+      });
+    }
+
+    // Merge existing images with new S3 images (avoid duplicates)
+    const existingImages = currentCar.images || [];
+    const mergedImages = [...new Set([...existingImages, ...s3ImageUrls])];
+
+    // Prepare update data
+    const updateData = {
+      images: mergedImages,
+      ideogram_images: {
+        source: 'ideogram',
+        primary: s3ImageUrls[0],
+        angles: successfulUploads.map(upload => ({
+          angle: upload.angle,
+          url: upload.s3Url,
+          resolution: upload.resolution,
+          is_safe: upload.is_safe,
+          original_url: upload.originalUrl
+        })),
+        total_images: successfulUploads.length,
+        valid: true,
+        last_updated: new Date().toISOString()
+      },
+      image_last_updated: new Date().toISOString()
+    };
+
+    // Update car in database
+    const { error: updateError } = await supabase
+      .from('cars')
+      .update(updateData)
+      .eq('id', carId);
+
+    if (updateError) {
+      console.error(`Failed to update car ${carId}:`, updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Database update failed',
+        details: updateError.message,
+        uploadedUrls: s3ImageUrls // Return URLs even if DB update fails
+      });
+    }
+
+    console.log(`✅ Successfully uploaded ${successfulUploads.length} images and updated car ${carId}`);
+
+    res.json({
+      success: true,
+      carId,
+      uploadedCount: successfulUploads.length,
+      failedCount: failedUploads.length,
+      s3ImageUrls,
+      totalImages: mergedImages.length,
+      uploadResults: {
+        successful: successfulUploads,
+        failed: failedUploads
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading approved images:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload approved images',
+      message: error.message
+    });
+  }
+});
+
+// Batch Ideogram generation endpoint for multiple cars
+app.post("/api/admin/cars/ideogram-bulk-generate", async (req, res) => {
+  try {
+    const { carIds, options = {} } = req.body;
+
+    if (!carIds || !Array.isArray(carIds) || carIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing or invalid carIds array'
+      });
+    }
+
+    console.log(`🎨 Starting Ideogram bulk generation for ${carIds.length} cars`);
+
+    // Check if Ideogram is configured
+    if (!ideogramAPI.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Ideogram API is not configured'
+      });
+    }
+
+    const results = [];
+    const errors = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    // Process each car
+    for (const carId of carIds) {
+      try {
+        // Fetch car data
+        const { data: car, error: fetchError } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('id', carId)
+          .single();
+
+        if (fetchError || !car) {
+          errors.push({
+            carId,
+            error: 'Car not found',
+            details: fetchError?.message
+          });
+          failCount++;
+          continue;
+        }
+
+        // Generate images
+        const generationOptions = {
+          num_images: options.num_images || 8,
+          aspect_ratio: options.aspect_ratio || '16:9',
+          rendering_speed: options.rendering_speed || 'TURBO',
+          style_type: options.style_type || 'REALISTIC'
+        };
+
+        const ideogramResult = await ideogramAPI.generateCarImages(car, generationOptions);
+
+        if (ideogramResult.success && ideogramResult.images.length > 0) {
+          const formattedData = ideogramAPI.formatForDatabase(ideogramResult, carId);
+          const imageUrls = ideogramResult.images.map(img => img.url);
+
+          const updateData = {
+            images: imageUrls,
+            ideogram_images: formattedData,
+            image_last_updated: new Date().toISOString()
+          };
+
+          const { error: updateError } = await supabase
+            .from('cars')
+            .update(updateData)
+            .eq('id', carId);
+
+          if (updateError) {
+            errors.push({
+              carId,
+              carName: `${car.brand} ${car.model}`,
+              error: 'Database update failed',
+              details: updateError.message
+            });
+            failCount++;
+          } else {
+            results.push({
+              carId,
+              carName: `${car.brand} ${car.model}`,
+              imagesCount: ideogramResult.totalImages,
+              primaryImage: ideogramResult.primaryImage
+            });
+            successCount++;
+          }
+        } else {
+          errors.push({
+            carId,
+            carName: `${car.brand} ${car.model}`,
+            error: 'Image generation failed'
+          });
+          failCount++;
+        }
+
+      } catch (carError) {
+        console.error(`Error processing car ${carId}:`, carError);
+        errors.push({
+          carId,
+          error: carError.message
+        });
+        failCount++;
+      }
+
+      // Add small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    console.log(`✅ Ideogram bulk generation complete: ${successCount} succeeded, ${failCount} failed`);
+
+    res.json({
+      success: true,
+      processed: carIds.length,
+      successful: successCount,
+      failed: failCount,
+      results,
+      errors
+    });
+
+  } catch (error) {
+    console.error('Error in Ideogram bulk generation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Bulk generation failed',
       message: error.message
     });
   }

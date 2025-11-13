@@ -17,6 +17,7 @@ import IMAGINBulkUpdater from "@/components/IMAGINBulkUpdater";
 import IMAGINImageTest from "@/components/IMAGINImageTest";
 import ImageDebugTest from "@/components/ImageDebugTest";
 import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
+import IdeogramCarImageGenerator from "@/components/IdeogramCarImageGenerator";
 import { useStats } from "@/hooks/useSupabaseData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -465,8 +466,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Car Batch Image Updater - NEW SELECTIVE FEATURE */}
-          <CarBatchImageUpdater />
+          {/* Ideogram AI Car Image Generator - NEW AI-POWERED FEATURE */}
+          <div className="mt-8">
+            <IdeogramCarImageGenerator />
+          </div>
+
+          {/* Car Batch Image Updater - IMAGIN SELECTIVE FEATURE */}
+          <div className="mt-8">
+            <CarBatchImageUpdater />
+          </div>
 
           {/* IMAGIN Bulk Updater */}
           <div className="mt-8">
