@@ -66,8 +66,7 @@ async function uploadToS3(imageBuffer, fileName, contentType = 'image/jpeg') {
       Key: fileName,
       Body: imageBuffer,
       ContentType: contentType,
-      // Removed ACL: 'public-read' due to IAM permissions
-      // Images will be public if bucket has public read policy
+      ACL: 'public-read', // Make individual objects public (requires s3:PutObjectAcl permission)
       CacheControl: 'max-age=31536000', // Cache for 1 year
     });
 
