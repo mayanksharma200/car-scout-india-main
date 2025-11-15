@@ -19,27 +19,32 @@ const IDEOGRAM_API_BASE_URL = 'https://api.ideogram.ai/v1/ideogram-v3';
  * @param {number} angleIndex - Index of the angle (0-7)
  * @returns {string} - Specific Ideogram prompt for that angle
  */
-function generateCarPrompt(carData, angleIndex = 0) {
+function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
   const { brand, model, variant } = carData;
   const carName = `${brand} ${model} ${variant || ''}`.trim();
+
+  // Add color consistency instruction if we have a reference from previous angles
+  const colorInstruction = colorReference
+    ? `The car must be in ${colorReference} color, exactly matching the reference. Same paint color, same finish, consistent across all angles. `
+    : 'Use the car\'s original factory color. ';
 
   // Define individual prompts for each specific angle
   // Each prompt is focused on ONE view only to avoid collages
   const anglePrompts = [
     // 0: Front 3/4 view (hero shot)
-    `Professional automotive studio photograph of a ${carName}. Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 1: Left side profile
-    `Professional automotive studio photograph of a ${carName}. Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 2: Rear view
-    `Professional automotive studio photograph of a ${carName}. Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 3: Right side profile
-    `Professional automotive studio photograph of a ${carName}. Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 4: Detail shot (wheel/headlight)
-    `Professional automotive studio close-up photograph of a ${carName}. Detailed shot focusing on front wheel and headlight area. Single focused detail composition with dramatic lighting. Clean studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio close-up photograph of a ${carName}. ${colorInstruction}Detailed shot focusing on front wheel and headlight area. Single focused detail composition with dramatic lighting. Clean studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 5: Interior dashboard
     `Professional automotive interior photograph of a ${carName}. Close-up view of dashboard, steering wheel, and instrument cluster from driver's seat perspective. Single interior angle. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
@@ -59,6 +64,8 @@ function generateCarPrompt(carData, angleIndex = 0) {
  * @param {Object} carData - Car data object
  * @param {number} angleIndex - Index of the angle (0-7)
  * @param {Object} options - Generation options
+ * @param {number} options.seed - Optional seed from first image for consistency
+ * @param {string} options.colorReference - Optional color description from first image
  * @returns {Promise<Object>} - Single image result
  */
 async function generateSingleAngleImage(carData, angleIndex, options = {}) {
@@ -68,7 +75,7 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
     throw new Error('IDEOGRAM_API_KEY not found in environment variables');
   }
 
-  const prompt = generateCarPrompt(carData, angleIndex);
+  const prompt = generateCarPrompt(carData, angleIndex, options.colorReference || '');
   const angleName = getAngleLabel(angleIndex);
 
   const formData = new FormData();
@@ -79,8 +86,14 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
   formData.append('style_type', options.style_type || 'REALISTIC');
   formData.append('magic_prompt', 'AUTO');
 
-  // Negative prompt to avoid collages and unwanted elements
-  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
+  // Use seed from first image to maintain consistency across angles
+  if (options.seed) {
+    formData.append('seed', options.seed);
+    console.log(`[Ideogram] Using seed ${options.seed} for consistency`);
+  }
+
+  // Negative prompt to avoid collages, color changes, and unwanted elements
+  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
   formData.append('negative_prompt', negativePrompt);
 
   console.log(`[Ideogram] Generating ${angleName} for ${carData.brand} ${carData.model}`);
@@ -136,12 +149,31 @@ async function generateCarImages(carData, options = {}) {
 
     const images = [];
     const errors = [];
+    let masterSeed = null; // Seed from first image for color consistency
+    let colorReference = ''; // Color description from first image
 
     // Generate each angle separately to avoid collages
     for (let i = 0; i < numImages; i++) {
       try {
-        const imageResult = await generateSingleAngleImage(carData, i, options);
+        // For images after the first one, use the seed from the first image
+        const angleOptions = { ...options };
+        if (i > 0 && masterSeed) {
+          angleOptions.seed = masterSeed;
+          angleOptions.colorReference = colorReference;
+        }
+
+        const imageResult = await generateSingleAngleImage(carData, i, angleOptions);
         images.push(imageResult);
+
+        // Save seed from first image to use for consistency in all other angles
+        if (i === 0 && imageResult.seed) {
+          masterSeed = imageResult.seed;
+          // Extract color reference from first image (you could use AI to detect this,
+          // but for now we'll just add a generic instruction)
+          colorReference = 'the same';
+          console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed} for color consistency`);
+        }
+
         console.log(`[Ideogram] ✅ Generated ${imageResult.angle} (${i + 1}/${numImages})`);
 
         // Small delay to avoid rate limiting
@@ -167,10 +199,11 @@ async function generateCarImages(carData, options = {}) {
       images: images,
       totalImages: images.length,
       primaryImage: images[0]?.url || null,
+      masterSeed: masterSeed, // Include master seed in results
       errors: errors.length > 0 ? errors : undefined
     };
 
-    console.log(`[Ideogram] ✅ Successfully generated ${results.totalImages} individual images`);
+    console.log(`[Ideogram] ✅ Successfully generated ${results.totalImages} individual images with consistent styling`);
     if (errors.length > 0) {
       console.log(`[Ideogram] ⚠️ ${errors.length} images failed to generate`);
     }
