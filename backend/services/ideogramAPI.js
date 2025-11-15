@@ -28,23 +28,26 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
     ? `The car must be in ${colorReference} color, exactly matching the reference. Same paint color, same finish, consistent across all angles. `
     : 'Use the car\'s original factory color. ';
 
+  // Common lighting instruction for color consistency
+  const lightingInstruction = 'Bright, even studio lighting with neutral color temperature. Pure white background. Consistent lighting across all angles. ';
+
   // Define individual prompts for each specific angle
   // Each prompt is focused on ONE view only to avoid collages
   const anglePrompts = [
     // 0: Front 3/4 view (hero shot)
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean pure white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color as original with neutral white lighting. NO warm tones, NO yellow tint, NO color shift. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 1: Left side profile
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean pure white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 2: Rear view
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean pure white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 3: Right side profile
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean pure white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 4: Detail shot (wheel/headlight)
-    `Professional automotive studio close-up photograph of a ${carName}. ${colorInstruction}Detailed shot focusing on front wheel and headlight area. Single focused detail composition with dramatic lighting. Clean studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. Maintain consistent car color and finish. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive studio close-up photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Detailed shot focusing on front wheel and headlight area. Single focused detail composition. Clean pure white studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. Maintain EXACT same car paint color with neutral white lighting. NO dramatic lighting, NO shadows that change color appearance. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 5: Interior dashboard
     `Professional automotive interior photograph of a ${carName}. Close-up view of dashboard, steering wheel, and instrument cluster from driver's seat perspective. Single interior angle. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
@@ -92,8 +95,8 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
     console.log(`[Ideogram] Using seed ${options.seed} for consistency`);
   }
 
-  // Negative prompt to avoid collages, color changes, and unwanted elements
-  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
+  // Negative prompt to avoid collages, color changes, lighting variations, and unwanted elements
+  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
   formData.append('negative_prompt', negativePrompt);
 
   console.log(`[Ideogram] Generating ${angleName} for ${carData.brand} ${carData.model}`);
