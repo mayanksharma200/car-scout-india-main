@@ -11,38 +11,110 @@ import path from 'path';
 const IDEOGRAM_API_BASE_URL = 'https://api.ideogram.ai/v1/ideogram-v3';
 
 /**
- * Generate a comprehensive automotive studio photoshoot prompt for a car
+ * Generate individual prompt for a specific car angle
  * @param {Object} carData - Car data object
  * @param {string} carData.brand - Car brand/make
  * @param {string} carData.model - Car model
  * @param {string} carData.variant - Car variant/trim
- * @returns {string} - Complete Ideogram prompt
+ * @param {number} angleIndex - Index of the angle (0-7)
+ * @returns {string} - Specific Ideogram prompt for that angle
  */
-function generateCarPrompt(carData) {
+function generateCarPrompt(carData, angleIndex = 0) {
   const { brand, model, variant } = carData;
-
   const carName = `${brand} ${model} ${variant || ''}`.trim();
 
-  const prompt = `Generate a high-quality automotive studio photoshoot of a ${carName}.
-Showcase the car in multiple professional angles similar to CarDekho and CarWale:
-1. Front angle 3/4 view
-2. Rear angle 3/4 view
-3. Full side profile
-4. Front straight view
-5. Rear straight view
-6. Interior dashboard close-up
-7. Interior cabin wide shot
-8. Wheel and headlight close-up
+  // Define individual prompts for each specific angle
+  // Each prompt is focused on ONE view only to avoid collages
+  const anglePrompts = [
+    // 0: Front 3/4 view (hero shot)
+    `Professional automotive studio photograph of a ${carName}. Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
-Style: ultra clean, bright studio lighting, glossy reflections, premium commercial photography, no background noise, seamless white floor, realistic proportions, accurate car detailing, sharp focus, professional product photography.
-The car should be prominently featured with perfect lighting and no distractions.
-Do not add text, watermark, or branding.`;
+    // 1: Left side profile
+    `Professional automotive studio photograph of a ${carName}. Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
-  return prompt;
+    // 2: Rear view
+    `Professional automotive studio photograph of a ${carName}. Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+
+    // 3: Right side profile
+    `Professional automotive studio photograph of a ${carName}. Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+
+    // 4: Detail shot (wheel/headlight)
+    `Professional automotive studio close-up photograph of a ${carName}. Detailed shot focusing on front wheel and headlight area. Single focused detail composition with dramatic lighting. Clean studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+
+    // 5: Interior dashboard
+    `Professional automotive interior photograph of a ${carName}. Close-up view of dashboard, steering wheel, and instrument cluster from driver's seat perspective. Single interior angle. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+
+    // 6: Interior cabin wide
+    `Professional automotive interior photograph of a ${carName}. Wide angle interior showing front seats, dashboard, and cabin space. Single wide interior view showcasing spaciousness. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+
+    // 7: Interior steering wheel
+    `Professional automotive interior photograph of a ${carName}. Close-up of steering wheel and center console from driver's seat. Single interior detail view. Clean, well-lit interior shot with focus on controls. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`
+  ];
+
+  return anglePrompts[angleIndex] || anglePrompts[0];
 }
 
 /**
- * Generate car images using Ideogram v3.0 API
+ * Generate a single image for a specific angle
+ * @param {Object} carData - Car data object
+ * @param {number} angleIndex - Index of the angle (0-7)
+ * @param {Object} options - Generation options
+ * @returns {Promise<Object>} - Single image result
+ */
+async function generateSingleAngleImage(carData, angleIndex, options = {}) {
+  const apiKey = process.env.IDEOGRAM_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('IDEOGRAM_API_KEY not found in environment variables');
+  }
+
+  const prompt = generateCarPrompt(carData, angleIndex);
+  const angleName = getAngleLabel(angleIndex);
+
+  const formData = new FormData();
+  formData.append('prompt', prompt);
+  formData.append('aspect_ratio', options.aspect_ratio || '16x9');
+  formData.append('rendering_speed', options.rendering_speed || 'TURBO');
+  formData.append('num_images', 1); // Generate only 1 image per call
+  formData.append('style_type', options.style_type || 'REALISTIC');
+  formData.append('magic_prompt', 'AUTO');
+
+  // Negative prompt to avoid collages and unwanted elements
+  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
+  formData.append('negative_prompt', negativePrompt);
+
+  console.log(`[Ideogram] Generating ${angleName} for ${carData.brand} ${carData.model}`);
+
+  const response = await axios.post(
+    `${IDEOGRAM_API_BASE_URL}/generate`,
+    formData,
+    {
+      headers: {
+        'Api-Key': apiKey,
+        ...formData.getHeaders()
+      },
+      timeout: 120000
+    }
+  );
+
+  if (!response.data || !response.data.data || response.data.data.length === 0) {
+    throw new Error(`Failed to generate ${angleName}`);
+  }
+
+  const imageData = response.data.data[0]; // Get first (and only) image
+
+  return {
+    url: imageData.url,
+    is_safe: imageData.is_image_safe,
+    seed: imageData.seed,
+    resolution: imageData.resolution,
+    angle: angleName,
+    prompt: imageData.prompt
+  };
+}
+
+/**
+ * Generate all 8 car images using separate API calls for each angle
  * @param {Object} carData - Car data object
  * @param {Object} options - Generation options
  * @param {number} options.num_images - Number of images to generate (default 8 for all angles)
@@ -59,55 +131,49 @@ async function generateCarImages(carData, options = {}) {
       throw new Error('IDEOGRAM_API_KEY not found in environment variables');
     }
 
-    const prompt = generateCarPrompt(carData);
+    const numImages = options.num_images || 8;
+    console.log(`[Ideogram] Starting generation of ${numImages} individual images for ${carData.brand} ${carData.model}`);
 
-    const formData = new FormData();
-    formData.append('prompt', prompt);
-    formData.append('aspect_ratio', options.aspect_ratio || '16:9');
-    formData.append('rendering_speed', options.rendering_speed || 'TURBO');
-    formData.append('num_images', options.num_images || 8);
-    formData.append('style_type', options.style_type || 'REALISTIC');
-    formData.append('magic_prompt', 'AUTO'); // Let Ideogram enhance the prompt
+    const images = [];
+    const errors = [];
 
-    // Optional: Add negative prompt to avoid unwanted elements
-    const negativePrompt = 'blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
-    formData.append('negative_prompt', negativePrompt);
+    // Generate each angle separately to avoid collages
+    for (let i = 0; i < numImages; i++) {
+      try {
+        const imageResult = await generateSingleAngleImage(carData, i, options);
+        images.push(imageResult);
+        console.log(`[Ideogram] ✅ Generated ${imageResult.angle} (${i + 1}/${numImages})`);
 
-    console.log(`[Ideogram] Generating images for ${carData.brand} ${carData.model}`);
-    console.log(`[Ideogram] Prompt: ${prompt.substring(0, 100)}...`);
-
-    const response = await axios.post(
-      `${IDEOGRAM_API_BASE_URL}/generate`,
-      formData,
-      {
-        headers: {
-          'Api-Key': apiKey,
-          ...formData.getHeaders()
-        },
-        timeout: 120000 // 2 minutes timeout for image generation
+        // Small delay to avoid rate limiting
+        if (i < numImages - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        }
+      } catch (error) {
+        console.error(`[Ideogram] ❌ Failed to generate angle ${i}:`, error.message);
+        errors.push({
+          angle: getAngleLabel(i),
+          error: error.message
+        });
       }
-    );
+    }
 
-    if (!response.data || !response.data.data) {
-      throw new Error('Invalid response from Ideogram API');
+    if (images.length === 0) {
+      throw new Error('Failed to generate any images');
     }
 
     const results = {
       success: true,
-      created: response.data.created,
-      images: response.data.data.map((img, index) => ({
-        url: img.url,
-        is_safe: img.is_image_safe,
-        seed: img.seed,
-        resolution: img.resolution,
-        angle: getAngleLabel(index), // Map to angle labels
-        prompt: img.prompt
-      })),
-      totalImages: response.data.data.length,
-      primaryImage: response.data.data[0]?.url || null
+      created: new Date().toISOString(),
+      images: images,
+      totalImages: images.length,
+      primaryImage: images[0]?.url || null,
+      errors: errors.length > 0 ? errors : undefined
     };
 
-    console.log(`[Ideogram] Successfully generated ${results.totalImages} images`);
+    console.log(`[Ideogram] ✅ Successfully generated ${results.totalImages} individual images`);
+    if (errors.length > 0) {
+      console.log(`[Ideogram] ⚠️ ${errors.length} images failed to generate`);
+    }
 
     return results;
   } catch (error) {
@@ -169,14 +235,14 @@ async function downloadImage(imageUrl, outputPath) {
  */
 function getAngleLabel(index) {
   const angleMap = {
-    0: 'front_3_4',        // Front 3/4 view
-    1: 'rear_3_4',         // Rear 3/4 view
-    2: 'side_profile',     // Side profile
-    3: 'front_straight',   // Front straight
-    4: 'rear_straight',    // Rear straight
-    5: 'interior_dash',    // Interior dashboard
-    6: 'interior_cabin',   // Interior cabin
-    7: 'detail_shot'       // Wheel/headlight detail
+    0: 'front_3_4',          // Front 3/4 angle view (hero shot)
+    1: 'left_side',          // Left side profile
+    2: 'rear_view',          // Rear view
+    3: 'right_side',         // Right side profile
+    4: 'detail_shot',        // Detail shot (wheel/headlight)
+    5: 'interior_dash',      // Interior dashboard
+    6: 'interior_cabin',     // Interior cabin wide shot
+    7: 'interior_steering'   // Interior steering wheel
   };
 
   return angleMap[index] || `angle_${index}`;
@@ -265,6 +331,7 @@ async function testConnection() {
 
 export default {
   generateCarImages,
+  generateSingleAngleImage,
   generateCarPrompt,
   downloadImage,
   formatForDatabase,
