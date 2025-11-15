@@ -32,6 +32,8 @@ interface CarItem {
   fuel_type: string;
   transmission: string;
   images?: string[];
+  colors?: string;
+  color_codes?: string;
   created_at: string;
 }
 
@@ -248,7 +250,9 @@ const IdeogramCarImageGenerator = () => {
                 variant: car.variant || '',
                 body_type: car.body_type,
                 year: car.year,
-                fuel_type: car.fuel_type
+                fuel_type: car.fuel_type,
+                colors: car.colors || '', // Pass colors for color consistency
+                color_codes: car.color_codes || ''
               },
               options: options
             })

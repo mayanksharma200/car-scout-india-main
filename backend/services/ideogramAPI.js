@@ -20,11 +20,20 @@ const IDEOGRAM_API_BASE_URL = 'https://api.ideogram.ai/v1/ideogram-v3';
  * @returns {string} - Specific Ideogram prompt for that angle
  */
 function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
-  const { brand, model, variant } = carData;
+  const { brand, model, variant, colors } = carData;
   const carName = `${brand} ${model} ${variant || ''}`.trim();
 
-  // Add color consistency instruction if we have a reference from previous angles
-  const colorInstruction = colorReference
+  // Extract first color from the colors field (e.g., "Caviar Black;Linen Beige;..." -> "Caviar Black")
+  let specificColor = '';
+  if (colors && typeof colors === 'string') {
+    const colorList = colors.split(';');
+    specificColor = colorList[0].trim(); // Get first color
+  }
+
+  // Use specific color from database, or the passed colorReference, or generic instruction
+  const colorInstruction = specificColor
+    ? `The car must be painted in ${specificColor} color. Exact ${specificColor} paint finish, consistent across all angles. `
+    : colorReference
     ? `The car must be in ${colorReference} color, exactly matching the reference. Same paint color, same finish, consistent across all angles. `
     : 'Use the car\'s original factory color. ';
 
@@ -171,10 +180,16 @@ async function generateCarImages(carData, options = {}) {
         // Save seed from first image to use for consistency in all other angles
         if (i === 0 && imageResult.seed) {
           masterSeed = imageResult.seed;
-          // Extract color reference from first image (you could use AI to detect this,
-          // but for now we'll just add a generic instruction)
-          colorReference = 'the same';
-          console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed} for color consistency`);
+
+          // Extract specific color from carData colors field
+          if (carData.colors && typeof carData.colors === 'string') {
+            const colorList = carData.colors.split(';');
+            colorReference = colorList[0].trim(); // Use first color name
+            console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed}, Color: ${colorReference}`);
+          } else {
+            colorReference = 'the same';
+            console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed} for color consistency`);
+          }
         }
 
         console.log(`[Ideogram] ✅ Generated ${imageResult.angle} (${i + 1}/${numImages})`);
