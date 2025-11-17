@@ -1,6 +1,5 @@
 import React from 'react';
 import CarImageGallery from './CarImageGallery';
-import IMAGINImage from './IMAGINImage';
 
 const ImageDebugTest = () => {
   // Test data - exact URLs from your Nissan Magnite
@@ -21,11 +20,11 @@ const ImageDebugTest = () => {
       <div>
         <h2 className="text-lg font-semibold mb-4">Test 1: Direct IMAGINImage (Direct URL)</h2>
         <div className="w-64 h-40 border rounded">
-          <IMAGINImage
+          <img
             src={testImages[0]}
             alt="Test Direct URL"
             className="w-full h-full object-cover"
-            fallback="/placeholder.svg"
+            
           />
         </div>
       </div>
@@ -34,11 +33,11 @@ const ImageDebugTest = () => {
       <div>
         <h2 className="text-lg font-semibold mb-4">Test 2: Direct IMAGINImage (Proxy URL)</h2>
         <div className="w-64 h-40 border rounded">
-          <IMAGINImage
+          <img
             src={proxyImages[0]}
             alt="Test Proxy URL"
             className="w-full h-full object-cover"
-            fallback="/placeholder.svg"
+            
           />
         </div>
       </div>

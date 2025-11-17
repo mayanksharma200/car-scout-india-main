@@ -3,7 +3,16 @@ import { Palette, Check, RotateCcw, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getCarPaintOptions } from "@/utils/imaginAPI";
+
+// Basic color options (no longer using IMAGIN API)
+const COLOR_OPTIONS = [
+  { id: "white", name: "White", hexCode: "#FFFFFF", paintId: "1", paintDescription: "white", isPopular: true },
+  { id: "black", name: "Black", hexCode: "#000000", paintId: "2", paintDescription: "black", isPopular: true },
+  { id: "silver", name: "Silver", hexCode: "#C0C0C0", paintId: "3", paintDescription: "silver", isPopular: true },
+  { id: "blue", name: "Blue", hexCode: "#2563EB", paintId: "4", paintDescription: "blue", isPopular: true },
+  { id: "red", name: "Red", hexCode: "#DC2626", paintId: "5", paintDescription: "red", isPopular: true },
+  { id: "green", name: "Green", hexCode: "#16A34A", paintId: "6", paintDescription: "green" },
+];
 
 interface ColorOption {
   id: string;
@@ -84,7 +93,8 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         setLoadingColors(true);
         console.log('🎨 Loading paint options for car:', car);
 
-        const options = await getCarPaintOptions(car);
+        // Use static color options (IMAGIN API removed)
+        const options = COLOR_OPTIONS;
         console.log('🎨 Loaded paint options:', options);
         console.log('🎨 Paint options length:', options?.length);
         console.log('🎨 First paint option:', options?.[0]);

@@ -13,8 +13,6 @@ import {
   Upload,
   Database,
 } from "lucide-react";
-import IMAGINBulkUpdater from "@/components/IMAGINBulkUpdater";
-import IMAGINImageTest from "@/components/IMAGINImageTest";
 import ImageDebugTest from "@/components/ImageDebugTest";
 import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
 import IdeogramCarImageGenerator from "@/components/IdeogramCarImageGenerator";
@@ -474,16 +472,6 @@ const AdminDashboard = () => {
           {/* Car Batch Image Updater - IMAGIN SELECTIVE FEATURE */}
           <div className="mt-8">
             <CarBatchImageUpdater />
-          </div>
-
-          {/* IMAGIN Bulk Updater */}
-          <div className="mt-8">
-            <IMAGINBulkUpdater />
-          </div>
-
-          {/* IMAGIN Image Test */}
-          <div className="mt-8">
-            <IMAGINImageTest />
           </div>
 
           {/* Image Debug Test */}

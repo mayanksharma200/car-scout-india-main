@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { findCarBySlug, createCarSlug, getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { addMissingMGHectorCars } from "@/utils/addMissingCars";
-import { generateCarImageGallery } from "@/utils/imaginAPI";
 
 const CarDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -312,18 +311,13 @@ const CarDetail = () => {
   ) => {
     if (!car) return [];
 
-    return generateCarImageGallery(
-      {
-        brand: car.brand,
-        model: car.model,
-        bodyType: car.bodyType || car.body_type,
-        year: car.year,
-      },
-      paintId,
-      paintDescription,
-      actualApiPaintId,
-      actualApiDescription
-    );
+    // Use actual car images from database (Ideogram/S3 or uploaded images)
+    if (car.images && Array.isArray(car.images) && car.images.length > 0) {
+      return car.images.map((url: string, index: number) => url);
+    }
+
+    // Fallback to placeholder if no images
+    return ["/placeholder.svg"];
   };
 
   // In your CarDetail component, update the color change handler:

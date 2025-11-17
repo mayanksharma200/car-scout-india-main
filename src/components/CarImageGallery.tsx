@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ShareModal from "./ShareModal";
-import IMAGINImage from "./IMAGINImage";
 import Car360View from "./Car360View";
 
 interface CarImageGalleryProps {
@@ -287,13 +286,13 @@ const CarImageGallery = ({
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
           >
-            <IMAGINImage
+            <img
               src={currentImage?.url || "/placeholder.svg"}
               alt={currentImage?.alt || carName}
               className={`w-full h-full object-cover transition-all duration-300 ${
                 isLoading ? "opacity-60" : "group-hover:scale-105"
               }`}
-              fallback="/placeholder.svg"
+              
             />
 
             {/* Overlay Controls */}
@@ -401,11 +400,11 @@ const CarImageGallery = ({
                               : "border-border hover:border-primary/50"
                           }`}
               >
-                <IMAGINImage
+                <img
                   src={image.url}
                   alt={image.alt}
                   className="w-full h-full object-cover"
-                  fallback="/placeholder.svg"
+                  
                 />
                 {/* Individual Loading State */}
                 {isLoading && index === currentIndex && (
@@ -513,11 +512,11 @@ const CarImageGallery = ({
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
-              <IMAGINImage
+              <img
                 src={currentImage?.url || "/placeholder.svg"}
                 alt={currentImage?.alt || carName}
                 className="max-w-full max-h-full object-contain"
-                fallback="/placeholder.svg"
+                
               />
             </div>
 

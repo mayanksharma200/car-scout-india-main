@@ -8,7 +8,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { getCarSlugFromCar } from "@/utils/carSlugUtils";
 import { supabase } from "@/integrations/supabase/client";
 import WishlistButton from "@/components/WishlistButton";
-import IMAGINImage from "@/components/IMAGINImage";
 import { Share2 } from "lucide-react";
 
 const FeaturedCars = () => {
@@ -252,11 +251,13 @@ const FeaturedCars = () => {
                   >
                     {/* Image with badges */}
                     <div className="relative h-48 bg-gray-100 overflow-hidden">
-                      <IMAGINImage
+                      <img
                         src={transformedCar.image}
                         alt={`${transformedCar.brand} ${transformedCar.model}`}
                         className="w-full h-full object-cover"
-                        fallback="/placeholder.svg"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
                       />
 
                       {/* Badges */}

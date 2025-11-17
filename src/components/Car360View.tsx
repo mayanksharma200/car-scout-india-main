@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { RotateCcw, Play, Pause, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import IMAGINImage from "./IMAGINImage";
 
 interface Car360ViewProps {
   car: {
@@ -208,13 +207,13 @@ const Car360View: React.FC<Car360ViewProps> = ({
       >
         {/* Main 360° Image */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <IMAGINImage
+          <img
             src={currentImageUrl}
             alt={`${car.brand} ${car.model} - 360° View - Angle ${currentAngle + 1}`}
             className={`max-w-full max-h-full object-contain transition-opacity duration-100 ${
               imagesLoaded ? 'opacity-100' : 'opacity-60'
             }`}
-            fallback="/placeholder.svg"
+            
           />
         </div>
         
