@@ -44,7 +44,7 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
   // Each prompt is focused on ONE view only to avoid collages
   const anglePrompts = [
     // 0: Front 3/4 view (hero shot)
-    `A professional automotive photograph of a ${carName} in ${specificColor || 'its original color'}, captured from the front right 3/4 angle view. The camera angle shows both the front grille and the right side of the vehicle. In the image frame: the front bumper/bonnet on the left side of the image, and the rear boot visible on the right side of the image. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the front 3/4 view. The camera should focus on the car's dynamic angle showing both the front grille and the side profile, creating a heroic perspective. The car should be positioned against a clean white background, showcasing its bold front profile and side lines with no distortion. In the image frame: the front bumper/bonnet on the left side of the image, and the rear boot visible on the right side of the image.`,
 
     // 1: Front view
     `A professional automotive photograph of a ${carName} in ${specificColor || 'its original color'}, captured from directly in front. Centered composition showing the front grille, headlights, and front fascia symmetrically. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
@@ -59,13 +59,13 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
     `A professional automotive photograph of a ${carName} in ${specificColor || 'its original color'}, captured from directly behind. Centered composition showing the rear bumper, tail lights, and rear fascia. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
 
     // 5: Interior dashboard
-    `Professional automotive interior photograph of a ${carName}. View from driver's seat showing dashboard, steering wheel, and instrument cluster. Single interior angle showing the dashboard and controls. Clean, well-lit interior. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive interior photograph of a ${carName}. PRIORITY: The steering wheel MUST always be on the RIGHT side. View from driver's seat showing dashboard, steering wheel, and instrument cluster. Single interior angle showing the dashboard and controls. Clean, well-lit interior. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. CRITICAL: The steering wheel MUST be positioned on the RIGHT side of the interior (right-hand drive configuration). IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 6: Interior cabin wide
-    `Professional automotive interior photograph of a ${carName}. Wide angle view of the interior cabin showing front seats, dashboard, and spacious interior. Single wide interior view. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive interior photograph of a ${carName}. PRIORITY: The steering wheel MUST always be on the RIGHT side. Wide angle view of the interior cabin showing front seats, dashboard, and spacious interior. Single wide interior view. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. CRITICAL: The steering wheel MUST be positioned on the RIGHT side of the vehicle (right-hand drive configuration). IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
 
     // 7: Interior steering wheel
-    `Professional automotive interior photograph of a ${carName}. Close-up of the steering wheel and center console from driver's perspective. Detail view of steering wheel, dashboard controls, and center console. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`
+    `Professional automotive interior photograph of a ${carName}. PRIORITY: The steering wheel MUST always be on the RIGHT side. Close-up of the steering wheel and center console from driver's perspective. Detail view of steering wheel, dashboard controls, and center console. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. CRITICAL: The steering wheel MUST be positioned on the RIGHT side of the interior (right-hand drive configuration). The steering wheel must be clearly visible on the right side. IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`
   ];
 
   return anglePrompts[angleIndex] || anglePrompts[0];
@@ -105,7 +105,7 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
   }
 
   // Negative prompt to avoid collages, color changes, lighting variations, and unwanted elements
-  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon, wrong side view, reversed image, mirrored view, flipped image, mirror flip';
+  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon, wrong side view, reversed image, mirrored view, flipped image, mirror flip, left-hand drive, LHD, steering wheel on left, steering on left side, left side steering wheel';
   formData.append('negative_prompt', negativePrompt);
 
   console.log(`[Ideogram] Generating ${angleName} (index ${angleIndex}) for ${carData.brand} ${carData.model}`);
