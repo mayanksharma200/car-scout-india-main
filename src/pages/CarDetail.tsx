@@ -311,9 +311,27 @@ const CarDetail = () => {
   ) => {
     if (!car) return [];
 
-    // Use actual car images from database (Ideogram/S3 or uploaded images)
-    if (car.images && Array.isArray(car.images) && car.images.length > 0) {
-      return car.images.map((url: string, index: number) => url);
+    // Handle both old array format and new angle-mapped object format
+    if (car.images) {
+      // If images is an object with angle keys (new format)
+      if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+        const angleOrder = [
+          'front_3_4', 'front_view', 'left_side', 'right_side',
+          'rear_view', 'interior_dash', 'interior_cabin', 'interior_steering'
+        ];
+        const imageUrls = angleOrder
+          .filter(angle => car.images[angle])
+          .map(angle => car.images[angle]);
+        
+        if (imageUrls.length > 0) {
+          return imageUrls;
+        }
+      }
+      
+      // If images is an array (old format)
+      if (Array.isArray(car.images) && car.images.length > 0) {
+        return car.images.map((url: string, index: number) => url);
+      }
     }
 
     // Fallback to placeholder if no images

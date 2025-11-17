@@ -228,12 +228,32 @@ const FeaturedCars = () => {
                   ),
                   seating: car.seating_capacity || 5,
                   rating: car.rating || 4.2 + Math.random() * 0.8,
-                  image:
-                    Array.isArray(car.images) && car.images.length > 0
-                      ? typeof car.images[0] === "string"
-                        ? car.images[0]
-                        : "/placeholder.svg"
-                      : "/placeholder.svg",
+                  image: (() => {
+                    // Handle both old array format and new angle-mapped object format
+                    if (car.images) {
+                      // If images is an object with angle keys (new format)
+                      if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+                        // Try to get the front_3_4 angle first, then any available angle
+                        return car.images.front_3_4 ||
+                               car.images.front_view ||
+                               car.images.left_side ||
+                               car.images.right_side ||
+                               car.images.rear_view ||
+                               car.images.interior_dash ||
+                               car.images.interior_cabin ||
+                               car.images.interior_steering ||
+                               "/placeholder.svg";
+                      }
+                      
+                      // If images is an array (old format)
+                      if (Array.isArray(car.images) && car.images.length > 0) {
+                        return typeof car.images[0] === "string" ? car.images[0] : "/placeholder.svg";
+                      }
+                    }
+                    
+                    // Fallback to placeholder
+                    return "/placeholder.svg";
+                  })(),
                   isPopular: car.isPopular || Math.random() > 0.5,
                   isBestSeller: car.isBestSeller || Math.random() > 0.7,
                   // Additional fields for navigation

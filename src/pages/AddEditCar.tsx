@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, X, Wand2, RefreshCw, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,20 +25,24 @@ interface CarFormData {
   transmission: string;
   body_type: string;
   seating_capacity: string;
-  engine_capacity: string;
-  power: string;
-  torque: string;
+  engine_type: string;
+  max_power: string;
+  max_torque: string;
   mileage: string;
-  boot_space: string;
+  bootspace_litres: string;
   colors: string;
   color_codes: string;
   description: string;
   status: string;
-  // Images
+  // Images (8 angles)
   image_url_1: string;
   image_url_2: string;
   image_url_3: string;
   image_url_4: string;
+  image_url_5: string;
+  image_url_6: string;
+  image_url_7: string;
+  image_url_8: string;
 }
 
 const AddEditCar = () => {
@@ -48,6 +52,8 @@ const AddEditCar = () => {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<CarFormData>({
     brand: "",
     model: "",
@@ -58,11 +64,11 @@ const AddEditCar = () => {
     transmission: "Manual",
     body_type: "Sedan",
     seating_capacity: "",
-    engine_capacity: "",
-    power: "",
-    torque: "",
+    engine_type: "",
+    max_power: "",
+    max_torque: "",
     mileage: "",
-    boot_space: "",
+    bootspace_litres: "",
     colors: "",
     color_codes: "",
     description: "",
@@ -71,6 +77,10 @@ const AddEditCar = () => {
     image_url_2: "",
     image_url_3: "",
     image_url_4: "",
+    image_url_5: "",
+    image_url_6: "",
+    image_url_7: "",
+    image_url_8: "",
   });
 
   // Fetch car data if in edit mode
@@ -103,19 +113,40 @@ const AddEditCar = () => {
           transmission: car.transmission || "Manual",
           body_type: car.body_type || "Sedan",
           seating_capacity: car.seating_capacity?.toString() || "",
-          engine_capacity: car.engine_capacity || "",
-          power: car.power || "",
-          torque: car.torque || "",
+          engine_type: car.engine_type || "",
+          max_power: car.max_power || "",
+          max_torque: car.max_torque || "",
           mileage: car.mileage || "",
-          boot_space: car.boot_space || "",
+          bootspace_litres: car.bootspace_litres || "",
           colors: car.colors || "",
           color_codes: car.color_codes || "",
           description: car.description || "",
           status: car.status || "active",
-          image_url_1: car.images?.[0] || "",
-          image_url_2: car.images?.[1] || "",
-          image_url_3: car.images?.[2] || "",
-          image_url_4: car.images?.[3] || "",
+          // Handle both array format (old) and object format (new) for images
+          image_url_1: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.front_3_4 || "")
+            : (car.images?.[0] || ""),
+          image_url_2: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.front_view || "")
+            : (car.images?.[1] || ""),
+          image_url_3: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.left_side || "")
+            : (car.images?.[2] || ""),
+          image_url_4: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.right_side || "")
+            : (car.images?.[3] || ""),
+          image_url_5: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.rear_view || "")
+            : (car.images?.[4] || ""),
+          image_url_6: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.interior_dash || "")
+            : (car.images?.[5] || ""),
+          image_url_7: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.interior_cabin || "")
+            : (car.images?.[6] || ""),
+          image_url_8: (typeof car.images === 'object' && !Array.isArray(car.images))
+            ? (car.images?.interior_steering || "")
+            : (car.images?.[7] || ""),
         });
       }
     } catch (error) {
@@ -144,6 +175,133 @@ const AddEditCar = () => {
     }));
   };
 
+  // Delete specific image
+  const handleDeleteImage = async (imageIndex: number) => {
+    const fieldName = `image_url_${imageIndex}` as keyof CarFormData;
+    const imageUrl = formData[fieldName];
+
+    // If it's an S3 URL and we're in edit mode, delete from S3
+    if (imageUrl && isEditMode && id && imageUrl.includes('amazonaws.com')) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageUrl }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to delete image from S3');
+        }
+      } catch (error) {
+        console.error('Error deleting image:', error);
+      }
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: "",
+    }));
+    toast.success(`Image ${imageIndex} deleted`);
+  };
+
+  // Generate image using Ideogram AI for specific angle
+  const handleGenerateImage = async (imageIndex: number) => {
+    if (!formData.brand || !formData.model) {
+      toast.error("Please fill in Brand and Model first");
+      return;
+    }
+
+    setGeneratingImage(true);
+    setGeneratingIndex(imageIndex);
+
+    try {
+      const fieldName = `image_url_${imageIndex}` as keyof CarFormData;
+      const currentImageUrl = formData[fieldName];
+
+      // If we're in edit mode and there's an existing image, delete it first
+      if (currentImageUrl && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
+        try {
+          const deleteResponse = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageUrl: currentImageUrl }),
+          });
+
+          if (deleteResponse.ok) {
+            console.log(`✅ Deleted old image from S3: ${currentImageUrl}`);
+          } else {
+            console.error('Failed to delete old image from S3');
+          }
+        } catch (deleteError) {
+          console.error('Error deleting old image:', deleteError);
+        }
+      }
+
+      const angleNames = [
+        "front_3_4",
+        "front_view",
+        "left_side",
+        "right_side",
+        "rear_view",
+        "interior_dash",
+        "interior_cabin",
+        "interior_steering"
+      ];
+
+      const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-generate-single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          carData: {
+            brand: formData.brand,
+            model: formData.model,
+            variant: formData.variant || '',
+            body_type: formData.body_type,
+            fuel_type: formData.fuel_type,
+            colors: formData.colors || '',
+            color_codes: formData.color_codes || ''
+          },
+          angle: angleNames[imageIndex - 1], // 1-indexed to 0-indexed
+          options: {
+            num_images: 1,
+            aspect_ratio: '16x9',
+            rendering_speed: 'TURBO',
+            style_type: 'REALISTIC'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate image');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.imageUrl) {
+        setFormData((prev) => ({
+          ...prev,
+          [fieldName]: result.imageUrl,
+        }));
+        toast.success(`Image ${imageIndex} generated and uploaded successfully!`);
+      } else {
+        throw new Error('No image URL returned');
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast.error(`Failed to generate image: ${error.message}`);
+    } finally {
+      setGeneratingImage(false);
+      setGeneratingIndex(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -156,12 +314,27 @@ const AddEditCar = () => {
     try {
       setSaving(true);
 
-      // Prepare data
-      const images: string[] = [];
-      if (formData.image_url_1) images.push(formData.image_url_1);
-      if (formData.image_url_2) images.push(formData.image_url_2);
-      if (formData.image_url_3) images.push(formData.image_url_3);
-      if (formData.image_url_4) images.push(formData.image_url_4);
+      // Prepare data with angle-mapped images
+      const angleKeys = [
+        "front_3_4",
+        "front_view",
+        "left_side",
+        "right_side",
+        "rear_view",
+        "interior_dash",
+        "interior_cabin",
+        "interior_steering"
+      ];
+
+      const images = {};
+      if (formData.image_url_1) images[angleKeys[0]] = formData.image_url_1;
+      if (formData.image_url_2) images[angleKeys[1]] = formData.image_url_2;
+      if (formData.image_url_3) images[angleKeys[2]] = formData.image_url_3;
+      if (formData.image_url_4) images[angleKeys[3]] = formData.image_url_4;
+      if (formData.image_url_5) images[angleKeys[4]] = formData.image_url_5;
+      if (formData.image_url_6) images[angleKeys[5]] = formData.image_url_6;
+      if (formData.image_url_7) images[angleKeys[6]] = formData.image_url_7;
+      if (formData.image_url_8) images[angleKeys[7]] = formData.image_url_8;
 
       const carData = {
         brand: formData.brand,
@@ -175,16 +348,16 @@ const AddEditCar = () => {
         seating_capacity: formData.seating_capacity
           ? parseInt(formData.seating_capacity)
           : null,
-        engine_capacity: formData.engine_capacity,
-        power: formData.power,
-        torque: formData.torque,
+        engine_type: formData.engine_type,
+        max_power: formData.max_power,
+        max_torque: formData.max_torque,
         mileage: formData.mileage,
-        boot_space: formData.boot_space,
+        bootspace_litres: formData.bootspace_litres,
         colors: formData.colors,
         color_codes: formData.color_codes,
         description: formData.description,
         status: formData.status,
-        images: images.length > 0 ? images : null,
+        images: Object.keys(images).length > 0 ? images : null,
       };
 
       let response;
@@ -431,33 +604,33 @@ const AddEditCar = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="engine_capacity">Engine Capacity</Label>
+              <Label htmlFor="engine_type">Engine Type</Label>
               <Input
-                id="engine_capacity"
-                name="engine_capacity"
-                value={formData.engine_capacity}
+                id="engine_type"
+                name="engine_type"
+                value={formData.engine_type}
                 onChange={handleChange}
                 placeholder="e.g., 1197cc"
               />
             </div>
 
             <div>
-              <Label htmlFor="power">Power</Label>
+              <Label htmlFor="max_power">Power</Label>
               <Input
-                id="power"
-                name="power"
-                value={formData.power}
+                id="max_power"
+                name="max_power"
+                value={formData.max_power}
                 onChange={handleChange}
                 placeholder="e.g., 88.5 bhp @ 6000 rpm"
               />
             </div>
 
             <div>
-              <Label htmlFor="torque">Torque</Label>
+              <Label htmlFor="max_torque">Torque</Label>
               <Input
-                id="torque"
-                name="torque"
-                value={formData.torque}
+                id="max_torque"
+                name="max_torque"
+                value={formData.max_torque}
                 onChange={handleChange}
                 placeholder="e.g., 113 Nm @ 4400 rpm"
               />
@@ -475,11 +648,11 @@ const AddEditCar = () => {
             </div>
 
             <div>
-              <Label htmlFor="boot_space">Boot Space</Label>
+              <Label htmlFor="bootspace_litres">Boot Space</Label>
               <Input
-                id="boot_space"
-                name="boot_space"
-                value={formData.boot_space}
+                id="bootspace_litres"
+                name="bootspace_litres"
+                value={formData.bootspace_litres}
                 onChange={handleChange}
                 placeholder="e.g., 268 litres"
               />
@@ -520,56 +693,118 @@ const AddEditCar = () => {
         {/* Images */}
         <Card>
           <CardHeader>
-            <CardTitle>Images</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span>Car Images (8 angles)</span>
+              <span className="text-sm text-muted-foreground font-normal">
+                - Professional automotive photography
+              </span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Upload or generate professional studio images for different car angles using Ideogram AI
+            </p>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4">
-            <div>
-              <Label htmlFor="image_url_1">Image URL 1 (Primary)</Label>
-              <Input
-                id="image_url_1"
-                name="image_url_1"
-                type="url"
-                value={formData.image_url_1}
-                onChange={handleChange}
-                placeholder="https://example.com/image1.jpg"
-              />
-            </div>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((index) => {
+              const angleNames = [
+                "Front 3/4",
+                "Front View",
+                "Left Side",
+                "Right Side",
+                "Rear View",
+                "Interior Dash",
+                "Interior Cabin",
+                "Interior Steering"
+              ];
+              const fieldName = `image_url_${index}` as keyof CarFormData;
+              const imageUrl = formData[fieldName];
+              const isGenerating = generatingImage && generatingIndex === index;
 
-            <div>
-              <Label htmlFor="image_url_2">Image URL 2</Label>
-              <Input
-                id="image_url_2"
-                name="image_url_2"
-                type="url"
-                value={formData.image_url_2}
-                onChange={handleChange}
-                placeholder="https://example.com/image2.jpg"
-              />
-            </div>
+              return (
+                <div key={index} className="space-y-2 p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={fieldName} className="font-medium">
+                      {index}. {angleNames[index - 1]}
+                      {index === 1 && <span className="text-xs text-purple-600 ml-1">(Primary)</span>}
+                    </Label>
+                    {imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteImage(index)}
+                        className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
 
-            <div>
-              <Label htmlFor="image_url_3">Image URL 3</Label>
-              <Input
-                id="image_url_3"
-                name="image_url_3"
-                type="url"
-                value={formData.image_url_3}
-                onChange={handleChange}
-                placeholder="https://example.com/image3.jpg"
-              />
-            </div>
+                  {/* Image Preview */}
+                  {imageUrl && (
+                    <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden group">
+                      <img
+                        src={imageUrl}
+                        alt={angleNames[index - 1]}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => window.open(imageUrl, '_blank')}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View Full
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-            <div>
-              <Label htmlFor="image_url_4">Image URL 4</Label>
-              <Input
-                id="image_url_4"
-                name="image_url_4"
-                type="url"
-                value={formData.image_url_4}
-                onChange={handleChange}
-                placeholder="https://example.com/image4.jpg"
-              />
-            </div>
+                  {/* Image URL Input */}
+                  <Input
+                    id={fieldName}
+                    name={fieldName}
+                    type="url"
+                    value={imageUrl}
+                    onChange={handleChange}
+                    placeholder={`https://example.com/${angleNames[index - 1].toLowerCase().replace(/ /g, '-')}.jpg`}
+                    className="text-sm"
+                  />
+
+                  {/* Generate with Ideogram Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleGenerateImage(index)}
+                    disabled={isGenerating || !formData.brand || !formData.model}
+                    className="w-full border-purple-200 hover:border-purple-300 hover:bg-purple-50 text-purple-700"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : imageUrl ? (
+                      <>
+                        <Wand2 className="w-3 h-3 mr-2" />
+                        Replace with AI
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-3 h-3 mr-2" />
+                        Generate with Ideogram
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 

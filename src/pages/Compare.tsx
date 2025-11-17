@@ -97,12 +97,26 @@ const CarSelectorModal = ({
         // Transform cars to match interface - same pattern as your CarListing
         const transformedCars = carsData.map((car) => {
           let carImage = "/placeholder.svg";
-          if (
-            Array.isArray(car.images) &&
-            car.images.length > 0 &&
-            car.images[0] !== "/placeholder.svg"
-          ) {
-            carImage = car.images[0];
+          
+          // Handle both old array format and new angle-mapped object format
+          if (car.images) {
+            // If images is an object with angle keys (new format)
+            if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+              // Try to get the front_3_4 angle first, then any available angle
+              carImage = (car.images as any).front_3_4 ||
+                       (car.images as any).front_view ||
+                       (car.images as any).left_side ||
+                       (car.images as any).right_side ||
+                       (car.images as any).rear_view ||
+                       (car.images as any).interior_dash ||
+                       (car.images as any).interior_cabin ||
+                       (car.images as any).interior_steering ||
+                       "/placeholder.svg";
+            }
+            // If images is an array (old format)
+            else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+              carImage = car.images[0];
+            }
           }
 
           return {
@@ -535,10 +549,31 @@ const Compare = () => {
       seating: car.seating_capacity || car.seating || 5,
       rating: car.rating || 4.2 + Math.random() * 0.8,
       mileage: parsedMileage,
-      image:
-        Array.isArray(car.images) && car.images.length > 0
-          ? car.images[0]
-          : "/placeholder.svg",
+      image: (() => {
+        // Handle both old array format and new angle-mapped object format
+        if (car.images) {
+          // If images is an object with angle keys (new format)
+          if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+            // Try to get the front_3_4 angle first, then any available angle
+            return (car.images as any).front_3_4 ||
+                   (car.images as any).front_view ||
+                   (car.images as any).left_side ||
+                   (car.images as any).right_side ||
+                   (car.images as any).rear_view ||
+                   (car.images as any).interior_dash ||
+                   (car.images as any).interior_cabin ||
+                   (car.images as any).interior_steering ||
+                   "/placeholder.svg";
+          }
+          // If images is an array (old format)
+          else if (Array.isArray(car.images) && car.images.length > 0) {
+            return car.images[0];
+          }
+        }
+        
+        // Fallback to placeholder
+        return "/placeholder.svg";
+      })(),
     };
   };
 

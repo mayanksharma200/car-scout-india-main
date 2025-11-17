@@ -435,11 +435,31 @@ const CompareSection = () => {
       price: comparison.car1.price_min || comparison.car1.price || 0,
       fuelType:
         comparison.car1.fuel_type || comparison.car1.fuelType || "Petrol",
-      image:
-        Array.isArray(comparison.car1.images) &&
-        comparison.car1.images.length > 0
-          ? comparison.car1.images[0]
-          : "/placeholder.svg",
+      image: (() => {
+        // Handle both old array format and new angle-mapped object format
+        if (comparison.car1.images) {
+          // If images is an object with angle keys (new format)
+          if (typeof comparison.car1.images === 'object' && !Array.isArray(comparison.car1.images)) {
+            // Try to get front_3_4 angle first, then any available angle
+            return (comparison.car1.images as any).front_3_4 ||
+                   (comparison.car1.images as any).front_view ||
+                   (comparison.car1.images as any).left_side ||
+                   (comparison.car1.images as any).right_side ||
+                   (comparison.car1.images as any).rear_view ||
+                   (comparison.car1.images as any).interior_dash ||
+                   (comparison.car1.images as any).interior_cabin ||
+                   (comparison.car1.images as any).interior_steering ||
+                   "/placeholder.svg";
+          }
+          // If images is an array (old format)
+          else if (Array.isArray(comparison.car1.images) && comparison.car1.images.length > 0) {
+            return comparison.car1.images[0];
+          }
+        }
+        
+        // Fallback to placeholder
+        return "/placeholder.svg";
+      })(),
     };
 
     const car2 = {
@@ -447,11 +467,31 @@ const CompareSection = () => {
       price: comparison.car2.price_min || comparison.car2.price || 0,
       fuelType:
         comparison.car2.fuel_type || comparison.car2.fuelType || "Petrol",
-      image:
-        Array.isArray(comparison.car2.images) &&
-        comparison.car2.images.length > 0
-          ? comparison.car2.images[0]
-          : "/placeholder.svg",
+      image: (() => {
+        // Handle both old array format and new angle-mapped object format
+        if (comparison.car2.images) {
+          // If images is an object with angle keys (new format)
+          if (typeof comparison.car2.images === 'object' && !Array.isArray(comparison.car2.images)) {
+            // Try to get front_3_4 angle first, then any available angle
+            return (comparison.car2.images as any).front_3_4 ||
+                   (comparison.car2.images as any).front_view ||
+                   (comparison.car2.images as any).left_side ||
+                   (comparison.car2.images as any).right_side ||
+                   (comparison.car2.images as any).rear_view ||
+                   (comparison.car2.images as any).interior_dash ||
+                   (comparison.car2.images as any).interior_cabin ||
+                   (comparison.car2.images as any).interior_steering ||
+                   "/placeholder.svg";
+          }
+          // If images is an array (old format)
+          else if (Array.isArray(comparison.car2.images) && comparison.car2.images.length > 0) {
+            return comparison.car2.images[0];
+          }
+        }
+        
+        // Fallback to placeholder
+        return "/placeholder.svg";
+      })(),
     };
 
     setSelectedCar1(car1);

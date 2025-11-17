@@ -309,20 +309,55 @@ const ManageCars = () => {
                   <TableRow key={car.id}>
                     <TableCell>
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                        {car.images && car.images.length > 0 ? (
-                          <img
-                            src={car.images[0]}
-                            alt={`${car.brand} ${car.model}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder.svg";
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Car className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
+                        {(() => {
+                          // Handle both old array format and new angle-mapped object format
+                          if (car.images) {
+                            // If images is an object with angle keys (new format)
+                            if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+                              // Try to get the front_3_4 angle first, then any available angle
+                              const imageUrl = (car.images as any).front_3_4 ||
+                                             (car.images as any).front_view ||
+                                             (car.images as any).left_side ||
+                                             (car.images as any).right_side ||
+                                             (car.images as any).rear_view ||
+                                             (car.images as any).interior_dash ||
+                                             (car.images as any).interior_cabin ||
+                                             (car.images as any).interior_steering ||
+                                             "/placeholder.svg";
+                              
+                              return (
+                                <img
+                                  src={imageUrl}
+                                  alt={`${car.brand} ${car.model}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/placeholder.svg";
+                                  }}
+                                />
+                              );
+                            }
+                            // If images is an array (old format)
+                            else if (Array.isArray(car.images) && car.images.length > 0) {
+                              return (
+                                <img
+                                  src={car.images[0]}
+                                  alt={`${car.brand} ${car.model}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/placeholder.svg";
+                                  }}
+                                />
+                              );
+                            }
+                          }
+                          
+                          // Fallback to placeholder
+                          return (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Car className="w-8 h-8 text-gray-400" />
+                            </div>
+                          );
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>

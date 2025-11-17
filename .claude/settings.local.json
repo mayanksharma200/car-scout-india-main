@@ -36,7 +36,9 @@
       "Bash(git reset:*)",
       "Bash(git diff-tree:*)",
       "Bash(git filter-branch:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []

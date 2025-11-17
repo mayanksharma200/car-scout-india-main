@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import crypto from 'crypto';
 
@@ -48,8 +48,14 @@ function generateFileName(carId, angle, extension = 'jpg') {
   const timestamp = Date.now();
   const randomString = crypto.randomBytes(4).toString('hex');
   const sanitizedAngle = angle.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+  
+  // Sanitize car ID to handle spaces and special characters
+  const sanitizedCarId = carId
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
 
-  return `cars/${carId}/ideogram_${sanitizedAngle}_${timestamp}_${randomString}.${extension}`;
+  return `cars/${sanitizedCarId}/ideogram_${sanitizedAngle}_${timestamp}_${randomString}.${extension}`;
 }
 
 /**
@@ -66,7 +72,7 @@ async function uploadToS3(imageBuffer, fileName, contentType = 'image/jpeg') {
       Key: fileName,
       Body: imageBuffer,
       ContentType: contentType,
-      ACL: 'public-read', // Make individual objects public (requires s3:PutObjectAcl permission)
+      ACL: 'public-read',
       CacheControl: 'max-age=31536000', // Cache for 1 year
     });
 
@@ -152,6 +158,68 @@ async function uploadMultipleImages(images, carId) {
 }
 
 /**
+ * Delete image from S3
+ * @param {string} s3Url - Full S3 URL of the image to delete
+ * @returns {Promise<boolean>} - True if deletion was successful
+ */
+async function deleteImageFromS3(s3Url) {
+  try {
+    if (!s3Url || !s3Url.includes(BUCKET_NAME)) {
+      console.log('[S3Delete] Invalid S3 URL or not from our bucket:', s3Url);
+      return false;
+    }
+
+    // Extract the key from the S3 URL
+    // Format: https://bucket-name.s3.region.amazonaws.com/path/to/file.jpg
+    const urlParts = s3Url.split(`${BUCKET_NAME}.s3.`)[1];
+    if (!urlParts) {
+      console.error('[S3Delete] Could not parse S3 URL:', s3Url);
+      return false;
+    }
+
+    const key = urlParts.split('/').slice(1).join('/'); // Remove region and get the key
+
+    console.log(`[S3Delete] Deleting from S3: ${key}`);
+
+    const command = new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+
+    await s3Client.send(command);
+    console.log(`[S3Delete] Successfully deleted: ${key}`);
+    return true;
+  } catch (error) {
+    console.error('[S3Delete] Error deleting from S3:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Delete multiple images from S3
+ * @param {string[]} s3Urls - Array of S3 URLs to delete
+ * @returns {Promise<Object>} - Results object with successful and failed deletions
+ */
+async function deleteMultipleImages(s3Urls) {
+  const results = {
+    successful: [],
+    failed: [],
+  };
+
+  for (const url of s3Urls) {
+    const success = await deleteImageFromS3(url);
+    if (success) {
+      results.successful.push(url);
+    } else {
+      results.failed.push(url);
+    }
+  }
+
+  console.log(`[S3Delete] Deleted ${results.successful.length}/${s3Urls.length} images`);
+  return results;
+}
+
+/**
  * Check if S3 is configured
  * @returns {boolean} - True if AWS credentials are configured
  */
@@ -169,5 +237,7 @@ export default {
   uploadToS3,
   downloadImageFromURL,
   generateFileName,
+  deleteImageFromS3,
+  deleteMultipleImages,
   isConfigured,
 };

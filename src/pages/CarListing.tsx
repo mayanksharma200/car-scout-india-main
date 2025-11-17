@@ -268,12 +268,26 @@ const CarListing = () => {
   const handleSearchResults = (navigationState: any) => {
     const transformedCars = navigationState.searchResults.map((car: any) => {
       let carImage = "/placeholder.svg";
-      if (
-        Array.isArray(car.images) &&
-        car.images.length > 0 &&
-        car.images[0] !== "/placeholder.svg"
-      ) {
-        carImage = car.images[0] as string;
+      
+      // Handle both old array format and new angle-mapped object format
+      if (car.images) {
+        // If images is an object with angle keys (new format)
+        if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+          // Try to get the front_3_4 angle first, then any available angle
+          carImage = car.images.front_3_4 ||
+                   car.images.front_view ||
+                   car.images.left_side ||
+                   car.images.right_side ||
+                   car.images.rear_view ||
+                   car.images.interior_dash ||
+                   car.images.interior_cabin ||
+                   car.images.interior_steering ||
+                   "/placeholder.svg";
+        }
+        // If images is an array (old format)
+        else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+          carImage = car.images[0] as string;
+        }
       }
 
       // Handle null/undefined prices - set a default price if null
@@ -380,12 +394,26 @@ const CarListing = () => {
       if (carsData && carsData.length > 0) {
         const transformedCars = carsData.map((car, index) => {
           let carImage = "/placeholder.svg";
-          if (
-            Array.isArray(car.images) &&
-            car.images.length > 0 &&
-            car.images[0] !== "/placeholder.svg"
-          ) {
-            carImage = car.images[0] as string;
+          
+          // Handle both old array format and new angle-mapped object format
+          if (car.images) {
+            // If images is an object with angle keys (new format)
+            if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+              // Try to get the front_3_4 angle first, then any available angle
+              carImage = car.images.front_3_4 ||
+                       car.images.front_view ||
+                       car.images.left_side ||
+                       car.images.right_side ||
+                       car.images.rear_view ||
+                       car.images.interior_dash ||
+                       car.images.interior_cabin ||
+                       car.images.interior_steering ||
+                       "/placeholder.svg";
+            }
+            // If images is an array (old format)
+            else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+              carImage = car.images[0] as string;
+            }
           }
 
           // Handle null/undefined prices - set a default price if null
@@ -408,9 +436,9 @@ const CarListing = () => {
           const transformed = {
             ...car,
             price: carPrice,
-            exactPrice: car.exact_price || null,  // Base price from Excel
+            exactPrice: (car as any).exact_price || null,  // Base price from Excel
             onRoadPrice: carOnRoadPrice,
-            delhiPrice: car.delhi_price || null,  // On-road price Delhi
+            delhiPrice: (car as any).delhi_price || null,  // On-road price Delhi
             fuelType: car.fuel_type || car.fuelType || "Petrol",
             bodyType: car.body_type || car.bodyType || "Sedan",
             seating: car.seating_capacity || car.seating || 5,

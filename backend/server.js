@@ -1080,12 +1080,42 @@ app.get("/api/cars/:id", async (req, res) => {
 // Create a new car
 app.post("/api/admin/cars", async (req, res) => {
   try {
-    const carData = {
+    let carData = {
       ...req.body,
       status: req.body.status || 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+
+    // Handle angle-mapped images - convert from individual fields to object
+  if (carData.image_url_1 || carData.image_url_2 || carData.image_url_3 ||
+      carData.image_url_4 || carData.image_url_5 || carData.image_url_6 ||
+      carData.image_url_7 || carData.image_url_8) {
+    
+    const angleKeys = [
+      "front_3_4",
+      "front_view",
+      "left_side",
+      "right_side",
+      "rear_view",
+      "interior_dash",
+      "interior_cabin",
+      "interior_steering"
+    ];
+
+    const images = {};
+    for (let i = 0; i < 8; i++) {
+      const fieldName = `image_url_${i + 1}`;
+      if (carData[fieldName]) {
+        images[angleKeys[i]] = carData[fieldName];
+      }
+      // Remove individual fields from carData
+      delete carData[fieldName];
+    }
+
+    // Store as images object
+    carData.images = images;
+  }
 
     console.log('[Admin] Creating new car:', carData.brand, carData.model);
 
@@ -1126,10 +1156,40 @@ app.post("/api/admin/cars", async (req, res) => {
 app.put("/api/admin/cars/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const carData = {
+    let carData = {
       ...req.body,
       updated_at: new Date().toISOString()
     };
+
+    // Handle angle-mapped images - convert from individual fields to object
+    if (carData.image_url_1 || carData.image_url_2 || carData.image_url_3 ||
+        carData.image_url_4 || carData.image_url_5 || carData.image_url_6 ||
+        carData.image_url_7 || carData.image_url_8) {
+      
+      const angleKeys = [
+        "front_3_4",
+        "front_view",
+        "left_side",
+        "right_side",
+        "rear_view",
+        "interior_dash",
+        "interior_cabin",
+        "interior_steering"
+      ];
+
+      const images = {};
+      for (let i = 0; i < 8; i++) {
+        const fieldName = `image_url_${i + 1}`;
+        if (carData[fieldName]) {
+          images[angleKeys[i]] = carData[fieldName];
+        }
+        // Remove individual fields from carData
+        delete carData[fieldName];
+      }
+
+      // Store as images object
+      carData.images = images;
+    }
 
     console.log('[Admin] Updating car:', id);
 
@@ -1501,6 +1561,172 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to upload approved images',
+      message: error.message
+    });
+  }
+});
+
+// Generate a single image for a specific angle using Ideogram AI
+app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
+  try {
+    const { carData, angle, options = {} } = req.body;
+
+    if (!carData || !angle) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: carData and angle'
+      });
+    }
+
+    console.log(`🎨 Generating single Ideogram AI image for: ${carData.brand} ${carData.model} - ${angle}`);
+
+    // Check if Ideogram is configured
+    if (!ideogramAPI.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Ideogram API is not configured. Please add IDEOGRAM_API_KEY to environment variables.'
+      });
+    }
+
+    // Convert angle name to angle index for Ideogram API
+    const angleMap = {
+      'front_3_4': 0,
+      'front_view': 1,
+      'left_side': 2,
+      'right_side': 3,
+      'rear_view': 4,
+      'interior_dash': 5,
+      'interior_cabin': 6,
+      'interior_steering': 7
+    };
+    
+    const angleIndex = angleMap[angle] || 0;
+    console.log(`[Backend] Converting angle '${angle}' to index ${angleIndex}`);
+
+    // Generate single image using Ideogram API with specific angle index
+    const generationOptions = {
+      num_images: 1,
+      aspect_ratio: options.aspect_ratio || '16x9',
+      rendering_speed: options.rendering_speed || 'TURBO',
+      style_type: options.style_type || 'REALISTIC'
+    };
+
+    // Generate only the specific angle we need
+    const ideogramResult = await ideogramAPI.generateSingleAngleImage(carData, angleIndex, generationOptions);
+
+    if (ideogramResult && ideogramResult.url) {
+      console.log(`✅ Successfully generated single Ideogram image for: ${carData.brand} ${carData.model} - ${angle}`);
+
+      // Upload directly to S3
+      if (s3UploadService.isConfigured()) {
+        const uploadResults = await s3UploadService.uploadMultipleImages(
+          [ideogramResult],
+          `${carData.brand} ${carData.model}`
+        );
+
+        // Find the first successful upload
+        const successfulUpload = uploadResults.find(result => result.success);
+        
+        if (successfulUpload) {
+          const s3Url = successfulUpload.s3Url;
+          console.log(`✅ Image uploaded to S3: ${s3Url}`);
+
+          res.json({
+            success: true,
+            imageUrl: s3Url,
+            angle: angle,
+            originalUrl: ideogramResult.url,
+            resolution: ideogramResult.resolution,
+            message: 'Image generated and uploaded successfully'
+          });
+        } else {
+          // Return Ideogram URL if S3 upload fails
+          console.error(`❌ S3 upload failed for ${angle}:`, uploadResults);
+          res.json({
+            success: true,
+            imageUrl: ideogramResult.url,
+            angle: angle,
+            resolution: ideogramResult.resolution,
+            message: 'Image generated successfully (S3 upload failed, using direct URL)'
+          });
+        }
+      } else {
+        // Return Ideogram URL if S3 not configured
+        console.warn(`⚠️ S3 not configured, returning Ideogram URL for ${angle}`);
+        res.json({
+          success: true,
+          imageUrl: ideogramResult.url,
+          angle: angle,
+          resolution: ideogramResult.resolution,
+          message: 'Image generated successfully'
+        });
+      }
+    } else {
+      console.log(`❌ Ideogram generation failed for: ${carData.brand} ${carData.model} - ${angle}`);
+      res.status(422).json({
+        success: false,
+        error: 'Ideogram API did not return a valid image for this angle'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error generating single Ideogram image:', error);
+
+    let statusCode = 500;
+    let errorMessage = error.message;
+
+    if (error.message.includes('Invalid Ideogram API key')) {
+      statusCode = 401;
+    } else if (error.message.includes('Rate limit exceeded')) {
+      statusCode = 429;
+    } else if (error.message.includes('safety check')) {
+      statusCode = 422;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      error: 'Failed to generate Ideogram image',
+      message: errorMessage
+    });
+  }
+});
+
+// Delete individual image from S3
+app.post("/api/admin/cars/:id/delete-image", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Image URL is required'
+      });
+    }
+
+    console.log(`[Admin] Deleting image for car ${id}: ${imageUrl}`);
+
+    // Delete from S3 if it's an S3 URL
+    if (s3UploadService.isConfigured() && imageUrl.includes('amazonaws.com')) {
+      const deleted = await s3UploadService.deleteImageFromS3(imageUrl);
+      
+      if (deleted) {
+        console.log(`✅ Deleted image from S3: ${imageUrl}`);
+      } else {
+        console.error(`❌ Failed to delete image from S3: ${imageUrl}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Image deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete image',
       message: error.message
     });
   }

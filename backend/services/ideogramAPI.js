@@ -44,28 +44,28 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
   // Each prompt is focused on ONE view only to avoid collages
   const anglePrompts = [
     // 0: Front 3/4 view (hero shot)
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Front three-quarter angle view showing the front and driver side of the car. Single car in hero shot composition. Clean pure white studio background with soft floor reflections. Premium commercial photography quality, similar to CarDekho. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color as original with neutral white lighting. NO warm tones, NO yellow tint, NO color shift. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the front 3/4 view. The camera should focus on the car's dynamic angle showing both the front grille and the DRIVER'S SIDE (left side when facing the car), creating a heroic perspective. The car should be positioned against a clean white background, showcasing its bold front profile and side lines with no distortion. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). IMPORTANT: This must show the driver's side of the vehicle.`,
 
-    // 1: Left side profile
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Complete left side profile view. Single car positioned parallel to camera showing full side view. Clean pure white studio background with soft floor reflections. Premium commercial photography quality, similar to CarWale. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    // 1: Front view
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the front view. The camera should focus on the car's grille, headlights, and overall symmetrical design. The car should be positioned centrally against a clean white background, showcasing its bold front profile with no distortion. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration).`,
 
-    // 2: Rear view
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Rear view photograph showing the back of the car with tail lights and rear design. Single car, straight-on rear composition. Clean pure white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    // 2: Left side profile (driver's side in India)
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the DRIVER'S SIDE view (left side when facing the car). The camera should focus on the car's side profile from a slightly elevated angle, showing the smooth curves of the body, door handles, and wheels. This is the side with the steering wheel. The left side should be in profile, with a white background accentuating the car's length and shape. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). IMPORTANT: This must show the driver's side of the vehicle.`,
 
-    // 3: Right side profile
-    `Professional automotive studio photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Complete right side profile view. Single car positioned parallel to camera showing full right side view. Clean pure white studio background with soft floor reflections. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE car from ONE angle. Maintain EXACT same car paint color with neutral white lighting. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    // 3: Right side profile (passenger's side in India)
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the PASSENGER'S SIDE view (right side when facing the car). The camera should be positioned to clearly showcase the car's side profile, including the door lines, side mirrors, and wheel design. This is the side opposite the steering wheel. The car should be shown in profile, with the full right side visible against a clean white background. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). IMPORTANT: This must show the passenger's side of the vehicle.`,
 
-    // 4: Detail shot (wheel/headlight)
-    `Professional automotive studio close-up photograph of a ${carName}. ${colorInstruction}${lightingInstruction}Detailed shot focusing on front wheel and headlight area. Single focused detail composition. Clean pure white studio background. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE detail angle. Maintain EXACT same car paint color with neutral white lighting. NO dramatic lighting, NO shadows that change color appearance. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    // 4: Rear view
+    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the back view. The image should highlight the rear bumper, tail lights, and overall rear design. The car should be centered with a clean white background, showcasing the rear silhouette and features from a straight-on perspective. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration).`,
 
     // 5: Interior dashboard
-    `Professional automotive interior photograph of a ${carName}. Close-up view of dashboard, steering wheel, and instrument cluster from driver's seat perspective. Single interior angle. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive interior photograph of a ${carName}. Close-up view of dashboard, steering wheel, and instrument cluster from driver's seat perspective. Single interior angle. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). CRITICAL: Steering wheel must be positioned on the RIGHT side of the interior as viewed from driver's perspective.`,
 
     // 6: Interior cabin wide
-    `Professional automotive interior photograph of a ${carName}. Wide angle interior showing front seats, dashboard, and cabin space. Single wide interior view showcasing spaciousness. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
+    `Professional automotive interior photograph of a ${carName}. Wide angle interior showing front seats, dashboard, and cabin space. Single wide interior view showcasing spaciousness. Clean, well-lit interior shot. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). CRITICAL: Steering wheel must be positioned on the RIGHT side of the interior as viewed from driver's perspective.`,
 
     // 7: Interior steering wheel
-    `Professional automotive interior photograph of a ${carName}. Close-up of steering wheel and center console from driver's seat. Single interior detail view. Clean, well-lit interior shot with focus on controls. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`
+    `Professional automotive interior photograph of a ${carName}. Close-up of steering wheel and center console from driver's seat. Single interior detail view. Clean, well-lit interior shot with focus on controls. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. IMPORTANT: Show ONLY ONE interior angle. NO collage, NO grid, NO multiple views, NO text, NO watermarks. STEERING WHEEL ON THE RIGHT SIDE (Indian market configuration). CRITICAL: Steering wheel must be positioned on the RIGHT side of the interior as viewed from driver's perspective.`
   ];
 
   return anglePrompts[angleIndex] || anglePrompts[0];
@@ -105,10 +105,11 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
   }
 
   // Negative prompt to avoid collages, color changes, lighting variations, and unwanted elements
-  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon';
+  const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon, wrong side view, reversed image, mirrored view, driver side when passenger side requested, passenger side when driver side requested';
   formData.append('negative_prompt', negativePrompt);
 
-  console.log(`[Ideogram] Generating ${angleName} for ${carData.brand} ${carData.model}`);
+  console.log(`[Ideogram] Generating ${angleName} (index ${angleIndex}) for ${carData.brand} ${carData.model}`);
+  console.log(`[Ideogram] Prompt: ${prompt.substring(0, 100)}...`);
 
   const response = await axios.post(
     `${IDEOGRAM_API_BASE_URL}/generate`,
@@ -287,10 +288,10 @@ async function downloadImage(imageUrl, outputPath) {
 function getAngleLabel(index) {
   const angleMap = {
     0: 'front_3_4',          // Front 3/4 angle view (hero shot)
-    1: 'left_side',          // Left side profile
-    2: 'rear_view',          // Rear view
+    1: 'front_view',         // Front view
+    2: 'left_side',          // Left side profile
     3: 'right_side',         // Right side profile
-    4: 'detail_shot',        // Detail shot (wheel/headlight)
+    4: 'rear_view',          // Rear view
     5: 'interior_dash',      // Interior dashboard
     6: 'interior_cabin',     // Interior cabin wide shot
     7: 'interior_steering'   // Interior steering wheel
