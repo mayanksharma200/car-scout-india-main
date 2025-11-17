@@ -1075,6 +1075,236 @@ app.get("/api/cars/:id", async (req, res) => {
   }
 });
 
+// ===== ADMIN CAR CRUD ENDPOINTS =====
+
+// Create a new car
+app.post("/api/admin/cars", async (req, res) => {
+  try {
+    const carData = {
+      ...req.body,
+      status: req.body.status || 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[Admin] Creating new car:', carData.brand, carData.model);
+
+    const { data, error } = await supabase
+      .from("cars")
+      .insert([carData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error creating car:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create car',
+        details: error.message
+      });
+    }
+
+    console.log('[Admin] ✅ Car created successfully:', data.id);
+
+    res.status(201).json({
+      success: true,
+      data: data,
+      message: 'Car created successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in create car:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Update an existing car
+app.put("/api/admin/cars/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const carData = {
+      ...req.body,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[Admin] Updating car:', id);
+
+    const { data, error } = await supabase
+      .from("cars")
+      .update(carData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error updating car:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update car',
+        details: error.message
+      });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Car not found'
+      });
+    }
+
+    console.log('[Admin] ✅ Car updated successfully:', id);
+
+    res.json({
+      success: true,
+      data: data,
+      message: 'Car updated successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in update car:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Delete a car
+app.delete("/api/admin/cars/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('[Admin] Deleting car:', id);
+
+    const { data, error } = await supabase
+      .from("cars")
+      .delete()
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error deleting car:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to delete car',
+        details: error.message
+      });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Car not found'
+      });
+    }
+
+    console.log('[Admin] ✅ Car deleted successfully:', id);
+
+    res.json({
+      success: true,
+      message: 'Car deleted successfully',
+      data: data
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in delete car:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Get all cars for admin (includes inactive/draft cars)
+app.get("/api/admin/cars", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      search,
+      brand,
+      fuel_type,
+      transmission,
+      sort_by = 'created_at',
+      sort_order = 'desc'
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = supabase
+      .from("cars")
+      .select("*", { count: 'exact' });
+
+    // Filters
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (brand) {
+      query = query.eq('brand', brand);
+    }
+
+    if (fuel_type) {
+      query = query.eq('fuel_type', fuel_type);
+    }
+
+    if (transmission) {
+      query = query.eq('transmission', transmission);
+    }
+
+    if (search) {
+      query = query.or(`brand.ilike.%${search}%,model.ilike.%${search}%,variant.ilike.%${search}%`);
+    }
+
+    // Sorting
+    query = query.order(sort_by, { ascending: sort_order === 'asc' });
+
+    // Pagination
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Admin] Error fetching cars:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch cars',
+        details: error.message
+      });
+    }
+
+    const totalPages = Math.ceil(count / parseInt(limit));
+
+    res.json({
+      success: true,
+      data: data,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        totalPages: totalPages,
+        hasMore: parseInt(page) < totalPages
+      }
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in get cars:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 // Admin endpoint for generating images with Ideogram AI
 app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
   try {

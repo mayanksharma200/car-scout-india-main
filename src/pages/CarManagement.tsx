@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useCars } from "@/hooks/useSupabaseData";
-import { Plus, Edit, Trash2, Eye, Search, Filter, MoreHorizontal, Car as CarIcon, Image, IndianRupee } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Edit, Trash2, Eye, Search, Filter, MoreHorizontal, Car as CarIcon, Image, IndianRupee, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,19 +17,54 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import AdminLayout from "@/components/AdminLayout";
 import { BulkCarInsertionUI } from "@/components/BulkCarInsertionUI";
 import { SQLDumpParser } from "@/components/SQLDumpParser";
 import { CSVFileUploader } from "@/components/CSVFileUploader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+interface Car {
+  id: string;
+  brand: string;
+  model: string;
+  variant: string;
+  price_min?: number;
+  price_max?: number;
+  fuel_type: string;
+  transmission: string;
+  body_type: string;
+  images?: string[];
+  status: string;
+  views?: number;
+  leads?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const CarManagement = () => {
   const { toast } = useToast();
-  const { cars, addCar: addCarToDb, loading } = useCars();
+  const [cars, setCars] = useState<Car[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [brandFilter, setBrandFilter] = useState("all");
-  
+  const [allBrands, setAllBrands] = useState<string[]>([]);
+
+  // Pagination States
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCars, setTotalCars] = useState(0);
+  const limit = 20;
+
   // Add New Car Dialog States
   const [isAddCarOpen, setIsAddCarOpen] = useState(false);
   const [newCar, setNewCar] = useState({
@@ -44,6 +79,87 @@ const CarManagement = () => {
     description: "",
     status: "draft"
   });
+
+  // Delete Dialog States
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [carToDelete, setCarToDelete] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Fetch all unique brands from API
+  const fetchAllBrands = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/admin/cars?limit=1000&sort_by=brand`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch brands");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        const brands = result.data
+          .map((car: Car) => car.brand)
+          .filter(Boolean); // Remove empty/null brands
+        const uniqueBrands = Array.from(new Set(brands)).sort(); // Remove duplicates and sort
+        setAllBrands(uniqueBrands);
+      }
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+    }
+  };
+
+  // Fetch cars from API
+  const fetchCars = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sort_by: "updated_at",
+        sort_order: "desc",
+      });
+
+      if (searchQuery) params.append("search", searchQuery);
+      if (brandFilter !== "all") params.append("brand", brandFilter);
+
+      const response = await fetch(
+        `http://localhost:3001/api/admin/cars?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch cars");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCars(result.data);
+        setTotalPages(result.pagination.totalPages);
+        setTotalCars(result.pagination.total);
+      }
+    } catch (error) {
+      console.error("Error fetching cars:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load cars from database",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch all brands on component mount
+  useEffect(() => {
+    fetchAllBrands();
+  }, []);
+
+  // Fetch cars when page, search, or filters change
+  useEffect(() => {
+    fetchCars();
+  }, [page, searchQuery, brandFilter]);
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
@@ -67,26 +183,6 @@ const CarManagement = () => {
     }
   };
 
-  const filteredCars = cars.filter(car => {
-    const matchesSearch = car.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         car.variant.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || car.status === statusFilter;
-    const matchesBrand = brandFilter === "all" || car.brand === brandFilter;
-    
-    return matchesSearch && matchesStatus && matchesBrand;
-  });
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="p-6 flex items-center justify-center">
-          <div>Loading cars...</div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   // Handle add new car
   const handleAddCar = async () => {
     if (!newCar.brand || !newCar.model || !newCar.variant || !newCar.price) {
@@ -100,30 +196,42 @@ const CarManagement = () => {
 
     try {
       console.log("Adding new car:", newCar);
-      
-      // Add car using Supabase
+
+      // Add car using API
       const carData = {
         brand: newCar.brand,
         model: newCar.model,
         variant: newCar.variant,
-        price: parseInt(newCar.price),
-        status: newCar.status as 'published' | 'draft' | 'review',
-        images: 0,
+        price_min: parseInt(newCar.price),
+        price_max: parseInt(newCar.price),
+        status: newCar.status,
         fuel_type: newCar.fuelType,
         transmission: newCar.transmission,
+        body_type: "Sedan", // Default value
         mileage: newCar.mileage,
-        seating: newCar.seating,
+        seating_capacity: newCar.seating,
         description: newCar.description,
-        views: 0,
-        leads: 0
       };
-      
-      const addedCar = await addCarToDb(carData);
-      
-      toast({
-        title: "Success",
-        description: `${addedCar?.brand} ${addedCar?.model} has been created successfully and synced across all systems.`,
+
+      const response = await fetch("http://localhost:3001/api/admin/cars", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(carData),
       });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `${result.data.brand} ${result.data.model} has been created successfully.`,
+        });
+
+        // Refresh car list
+        fetchCars();
+      } else {
+        throw new Error(result.error || "Failed to add car");
+      }
       
       // Reset form
       setNewCar({
@@ -149,217 +257,63 @@ const CarManagement = () => {
     }
   };
 
+  // Handle delete click
+  const handleDeleteClick = (car: any) => {
+    setCarToDelete(car);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!carToDelete) return;
+
+    try {
+      setDeleting(true);
+      const response = await fetch(
+        `http://localhost:3001/api/admin/cars/${carToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Car deleted successfully",
+        });
+        setDeleteDialogOpen(false);
+        setCarToDelete(null);
+        // Refresh car list
+        fetchCars();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete car",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting car:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete car",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Car Management</h1>
-            <p className="text-muted-foreground">Manage your car inventory and listings</p>
-          </div>
-          
-          {/* Add New Car Dialog */}
-          <Dialog open={isAddCarOpen} onOpenChange={setIsAddCarOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Plus className="w-4 h-4 mr-2" />
-                Add New Car
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Car</DialogTitle>
-                <DialogDescription>
-                  Create a new car listing with all the details
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="brand">Brand *</Label>
-                    <Input
-                      id="brand"
-                      value={newCar.brand}
-                      onChange={(e) => setNewCar(prev => ({ ...prev, brand: e.target.value }))}
-                      placeholder="e.g., Maruti Suzuki"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="model">Model *</Label>
-                    <Input
-                      id="model"
-                      value={newCar.model}
-                      onChange={(e) => setNewCar(prev => ({ ...prev, model: e.target.value }))}
-                      placeholder="e.g., Swift"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="variant">Variant *</Label>
-                    <Input
-                      id="variant"
-                      value={newCar.variant}
-                      onChange={(e) => setNewCar(prev => ({ ...prev, variant: e.target.value }))}
-                      placeholder="e.g., ZXI+ AMT"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price *</Label>
-                    <Input
-                      id="price"
-                      value={newCar.price}
-                      onChange={(e) => setNewCar(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="e.g., 849000"
-                      type="number"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fuelType">Fuel Type</Label>
-                    <Select value={newCar.fuelType} onValueChange={(value) => setNewCar(prev => ({ ...prev, fuelType: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="Petrol">Petrol</SelectItem>
-                        <SelectItem value="Diesel">Diesel</SelectItem>
-                        <SelectItem value="CNG">CNG</SelectItem>
-                        <SelectItem value="Electric">Electric</SelectItem>
-                        <SelectItem value="Hybrid">Hybrid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="transmission">Transmission</Label>
-                    <Select value={newCar.transmission} onValueChange={(value) => setNewCar(prev => ({ ...prev, transmission: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="Manual">Manual</SelectItem>
-                        <SelectItem value="Automatic">Automatic</SelectItem>
-                        <SelectItem value="AMT">AMT</SelectItem>
-                        <SelectItem value="CVT">CVT</SelectItem>
-                        <SelectItem value="DCT">DCT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="seating">Seating</Label>
-                    <Select value={newCar.seating} onValueChange={(value) => setNewCar(prev => ({ ...prev, seating: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="2">2 Seater</SelectItem>
-                        <SelectItem value="4">4 Seater</SelectItem>
-                        <SelectItem value="5">5 Seater</SelectItem>
-                        <SelectItem value="7">7 Seater</SelectItem>
-                        <SelectItem value="8">8 Seater</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="mileage">Mileage (km/l)</Label>
-                    <Input
-                      id="mileage"
-                      value={newCar.mileage}
-                      onChange={(e) => setNewCar(prev => ({ ...prev, mileage: e.target.value }))}
-                      placeholder="e.g., 23.2"
-                      type="number"
-                      step="0.1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select value={newCar.status} onValueChange={(value) => setNewCar(prev => ({ ...prev, status: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                        <SelectItem value="review">Under Review</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newCar.description}
-                    onChange={(e) => setNewCar(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Enter car description and key features..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button variant="outline" onClick={() => setIsAddCarOpen(false)} className="flex-1">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddCar} className="flex-1 bg-gradient-primary hover:opacity-90">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Car
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Car Management</h1>
+          <p className="text-muted-foreground">Manage your car inventory and listings</p>
         </div>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search cars..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="review">Under Review</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={brandFilter} onValueChange={setBrandFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Brands</SelectItem>
-                  <SelectItem value="Maruti Suzuki">Maruti Suzuki</SelectItem>
-                  <SelectItem value="Hyundai">Hyundai</SelectItem>
-                  <SelectItem value="Tata">Tata</SelectItem>
-                  <SelectItem value="Mahindra">Mahindra</SelectItem>
-                  <SelectItem value="Honda">Honda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -435,10 +389,193 @@ const CarManagement = () => {
           </TabsContent>
         </Tabs>
 
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <Select value={brandFilter} onValueChange={(value) => {
+                setBrandFilter(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Brands</SelectItem>
+                  {allBrands.map((brand) => (
+                    <SelectItem key={brand} value={brand}>
+                      {brand}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search cars..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Dialog open={isAddCarOpen} onOpenChange={setIsAddCarOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 whitespace-nowrap">
+                    <Plus className="w-4 h-4" />
+                    Add New Car
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add New Car</DialogTitle>
+                    <DialogDescription>
+                      Add a new car to your inventory. Fill in the required details below.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="brand">Brand *</Label>
+                        <Input
+                          id="brand"
+                          value={newCar.brand}
+                          onChange={(e) => setNewCar(prev => ({ ...prev, brand: e.target.value }))}
+                          placeholder="e.g., Maruti Suzuki"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="model">Model *</Label>
+                        <Input
+                          id="model"
+                          value={newCar.model}
+                          onChange={(e) => setNewCar(prev => ({ ...prev, model: e.target.value }))}
+                          placeholder="e.g., Swift"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="variant">Variant *</Label>
+                        <Input
+                          id="variant"
+                          value={newCar.variant}
+                          onChange={(e) => setNewCar(prev => ({ ...prev, variant: e.target.value }))}
+                          placeholder="e.g., ZXI+ AMT"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="price">Price *</Label>
+                        <Input
+                          id="price"
+                          value={newCar.price}
+                          onChange={(e) => setNewCar(prev => ({ ...prev, price: e.target.value }))}
+                          placeholder="e.g., 849000"
+                          type="number"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fuelType">Fuel Type</Label>
+                        <Select value={newCar.fuelType} onValueChange={(value) => setNewCar(prev => ({ ...prev, fuelType: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border border-border z-50">
+                            <SelectItem value="Petrol">Petrol</SelectItem>
+                            <SelectItem value="Diesel">Diesel</SelectItem>
+                            <SelectItem value="CNG">CNG</SelectItem>
+                            <SelectItem value="Electric">Electric</SelectItem>
+                            <SelectItem value="Hybrid">Hybrid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="transmission">Transmission</Label>
+                        <Select value={newCar.transmission} onValueChange={(value) => setNewCar(prev => ({ ...prev, transmission: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border border-border z-50">
+                            <SelectItem value="Manual">Manual</SelectItem>
+                            <SelectItem value="Automatic">Automatic</SelectItem>
+                            <SelectItem value="AMT">AMT</SelectItem>
+                            <SelectItem value="CVT">CVT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="seating">Seating</Label>
+                        <Input
+                          id="seating"
+                          value={newCar.seating}
+                          onChange={(e) => setNewCar(prev => ({ ...prev, seating: e.target.value }))}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mileage">Mileage</Label>
+                      <Input
+                        id="mileage"
+                        value={newCar.mileage}
+                        onChange={(e) => setNewCar(prev => ({ ...prev, mileage: e.target.value }))}
+                        placeholder="e.g., 23.2 km/l"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={newCar.description}
+                        onChange={(e) => setNewCar(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Brief description of the car..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={newCar.status} onValueChange={(value) => setNewCar(prev => ({ ...prev, status: value }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="review">Under Review</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setIsAddCarOpen(false)} className="flex-1">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddCar} className="flex-1 bg-gradient-primary hover:opacity-90">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Car
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Cars Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Car Listings ({filteredCars.length})</CardTitle>
+            <CardTitle>Car Listings ({totalCars})</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -453,7 +590,27 @@ const CarManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCars.map((car) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">Loading cars...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : cars.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <CarIcon className="w-12 h-12 text-muted-foreground" />
+                        <p className="text-muted-foreground">No cars found</p>
+                        <p className="text-sm text-muted-foreground">Try adjusting your filters or add a new car</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  cars.map((car) => (
                   <TableRow key={car.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -467,7 +624,7 @@ const CarManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium">{formatPrice(car.price)}</p>
+                      <p className="font-medium">{car.price_min ? formatPrice(car.price_min) : 'N/A'}</p>
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(car.status)}
@@ -476,15 +633,15 @@ const CarManagement = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm">
                           <Eye className="w-3 h-3" />
-                          <span>{car.views.toLocaleString()} views</span>
+                          <span>{car.views?.toLocaleString() || 0} views</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <IndianRupee className="w-3 h-3" />
-                          <span>{car.leads} leads</span>
+                          <span>{car.leads || 0} leads</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Image className="w-3 h-3" />
-                          <span>{car.images} photos</span>
+                          <span>{car.images?.length || 0} photos</span>
                         </div>
                       </div>
                     </TableCell>
@@ -499,19 +656,28 @@ const CarManagement = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
+                          <DropdownMenuItem asChild>
+                            <Link to={`/cars/${car.id}`} className="flex items-center cursor-pointer">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Car
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Car
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Image className="w-4 h-4 mr-2" />
-                            Manage Photos
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
+                              <Image className="w-4 h-4 mr-2" />
+                              Manage Photos
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem
+                            className="text-red-600 cursor-pointer"
+                            onClick={() => handleDeleteClick(car)}
+                          >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete Car
                           </DropdownMenuItem>
@@ -519,12 +685,70 @@ const CarManagement = () => {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+                )}
               </TableBody>
             </Table>
+
+            {/* Pagination */}
+            {!loading && cars.length > 0 && (
+              <div className="flex items-center justify-between border-t px-6 py-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(page - 1) * limit + 1} to{" "}
+                  {Math.min(page * limit, totalCars)} of {totalCars} cars
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  <div className="text-sm">
+                    Page {page} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the car "{carToDelete?.brand}{" "}
+              {carToDelete?.model} {carToDelete?.variant}" from your inventory.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };

@@ -39,6 +39,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminRouteGuard from "./components/AdminRouteGuard";
 import AdminSetup from "./components/AdminSetup";
 import CarManagement from "./pages/CarManagement";
+import AddEditCar from "./pages/AddEditCar";
 import LeadManagement from "./pages/LeadManagement";
 import APISettings from "./pages/APISettings";
 import ContentManagement from "./pages/ContentManagement";
@@ -144,6 +145,24 @@ const App = () => {
                         element={
                           <AdminRouteGuard>
                             <CarManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
+
+                      <Route
+                        path="cars/new"
+                        element={
+                          <AdminRouteGuard>
+                            <AddEditCar />
+                          </AdminRouteGuard>
+                        }
+                      />
+
+                      <Route
+                        path="cars/edit/:id"
+                        element={
+                          <AdminRouteGuard>
+                            <AddEditCar />
                           </AdminRouteGuard>
                         }
                       />
