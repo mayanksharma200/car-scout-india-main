@@ -92,8 +92,7 @@ const AdminLogin = () => {
 
       const result = await login(
         formData.email,
-        formData.password,
-        formData.rememberMe
+        formData.password
       );
 
       if (result.success) {
@@ -299,8 +298,7 @@ const AdminLogin = () => {
                 <Shield className="h-4 w-4" />
                 <AlertDescription>
                   This login uses secure HTTP-only cookies for authentication.
-                  Your session will remain active for 7 days with remember me
-                  enabled.
+                  Your session will remain active for 7 days with automatic token refresh.
                 </AlertDescription>
               </Alert>
 
@@ -384,7 +382,7 @@ const AdminLogin = () => {
           <div className="mt-4 p-4 bg-background/80 rounded-lg backdrop-blur-sm">
             <p className="text-xs text-center text-muted-foreground">
               <strong>Dev Mode:</strong> Using secure cookie-based auth with
-              15min access tokens + 7d refresh tokens
+              7-day access tokens + 30-day refresh tokens
             </p>
           </div>
         )}

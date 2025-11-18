@@ -9,8 +9,8 @@ const supabase = createClient(
 
 // Token configuration
 const TOKEN_CONFIG = {
-  accessTokenExpiry: "15m",
-  refreshTokenExpiry: "7d",
+  accessTokenExpiry: "7d", // Extended from 15m to 7d for admin convenience
+  refreshTokenExpiry: "30d", // Extended refresh token expiry
   secret: process.env.JWT_SECRET || "your-super-secret-key",
   issuer: "Carlist360-api",
   audience: "Carlist360-users",
@@ -70,7 +70,7 @@ export const generateTokens = async (user) => {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 15 * 60, // 15 minutes in seconds
+      expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
       tokenType: "Bearer",
     };
   } catch (error) {
