@@ -523,14 +523,14 @@ const AdminDashboard = () => {
           </div>
 
           {/* Car Batch Image Updater - IMAGIN SELECTIVE FEATURE */}
-          <div className="mt-8">
+          {/* <div className="mt-8">
             <CarBatchImageUpdater />
-          </div>
+          </div> */}
 
           {/* Image Debug Test */}
-          <div className="mt-8">
+          {/* <div className="mt-8">
             <ImageDebugTest />
-          </div>
+          </div> */}
         </main>
       </div>
     </div>
