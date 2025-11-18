@@ -299,8 +299,7 @@ const CarManagement = () => {
         <Tabs defaultValue="csv" className="mb-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="csv">Excel / CSV Upload</TabsTrigger>
-            <TabsTrigger value="sql">SQL Dump</TabsTrigger>
-            <TabsTrigger value="json">JSON</TabsTrigger>
+            {/* <TabsTrigger value="sql">SQL Dump</TabsTrigger> */}
           </TabsList>
           <TabsContent value="csv">
             <CSVFileUploader />
