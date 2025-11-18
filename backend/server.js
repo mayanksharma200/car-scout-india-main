@@ -153,6 +153,36 @@ if (IS_PRODUCTION) {
   console.log("⚠️ Rate limiting disabled in development");
 }
 
+// ===== ADMIN ACTIVITY LOGGING HELPER =====
+
+/**
+ * Log admin activity to database
+ * @param {Object} activityData - Activity details
+ * @param {string} activityData.action_type - Type of action (car_added, car_deleted, etc.)
+ * @param {string} activityData.action_title - Short title
+ * @param {string} activityData.action_details - Detailed description
+ * @param {string} activityData.entity_type - Entity type (car, lead, etc.)
+ * @param {string} activityData.entity_id - Entity ID
+ * @param {Object} activityData.metadata - Additional metadata
+ */
+const logAdminActivity = async (activityData) => {
+  try {
+    const activity = {
+      ...activityData,
+      created_at: new Date().toISOString()
+    };
+
+    await supabase
+      .from('admin_activities')
+      .insert([activity]);
+
+    console.log(`[Activity] Logged: ${activityData.action_title}`);
+  } catch (error) {
+    // Don't fail the main operation if activity logging fails
+    console.error('[Activity] Failed to log activity:', error.message);
+  }
+};
+
 // ===== TOKEN MANAGEMENT =====
 
 // Generate JWT tokens (environment-aware)
@@ -1136,6 +1166,16 @@ app.post("/api/admin/cars", async (req, res) => {
 
     console.log('[Admin] ✅ Car created successfully:', data.id);
 
+    // Log activity
+    await logAdminActivity({
+      action_type: 'car_added',
+      action_title: 'New car added',
+      action_details: `${data.brand} ${data.model} ${data.variant || ''}`.trim(),
+      entity_type: 'car',
+      entity_id: data.id,
+      metadata: { source: 'manual' }
+    });
+
     res.status(201).json({
       success: true,
       data: data,
@@ -1218,6 +1258,16 @@ app.put("/api/admin/cars/:id", async (req, res) => {
 
     console.log('[Admin] ✅ Car updated successfully:', id);
 
+    // Log activity
+    await logAdminActivity({
+      action_type: 'car_updated',
+      action_title: 'Car updated',
+      action_details: `${data.brand} ${data.model} ${data.variant || ''}`.trim(),
+      entity_type: 'car',
+      entity_id: data.id,
+      metadata: { source: 'manual' }
+    });
+
     res.json({
       success: true,
       data: data,
@@ -1265,6 +1315,16 @@ app.delete("/api/admin/cars/:id", async (req, res) => {
     }
 
     console.log('[Admin] ✅ Car deleted successfully:', id);
+
+    // Log activity
+    await logAdminActivity({
+      action_type: 'car_deleted',
+      action_title: 'Car deleted',
+      action_details: `${data.brand} ${data.model} ${data.variant || ''}`.trim(),
+      entity_type: 'car',
+      entity_id: data.id,
+      metadata: { source: 'manual' }
+    });
 
     res.json({
       success: true,
