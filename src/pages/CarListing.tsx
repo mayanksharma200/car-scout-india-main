@@ -1006,8 +1006,8 @@ const CarListing = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Desktop Ad Banner */}
-      <div className="hidden md:block relative z-0">
+      {/* Ad Banner - Visible on all devices */}
+      <div className="relative z-0">
         <AdBanner placement="below_navigation" />
       </div>
 
@@ -1271,10 +1271,8 @@ const CarListing = () => {
             } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
           >
             {/* Desktop Ad in Sidebar */}
-            <div className="hidden xl:block" style={{ maxHeight: '250px', overflow: 'hidden', pointerEvents: 'none' }}>
-              <div style={{ pointerEvents: 'auto' }}>
-                <AdBanner placement="left_sidebar" />
-              </div>
+            <div className="hidden xl:block" style={{ maxHeight: '250px', overflow: 'hidden' }}>
+              <AdBanner placement="left_sidebar" />
             </div>
 
             <Card className="relative z-10 pointer-events-auto">
