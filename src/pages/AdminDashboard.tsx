@@ -117,27 +117,53 @@ const AdminDashboard = () => {
       const newLeadsResult = await newLeadsResponse.json();
       const pendingNewLeadsCount = newLeadsResult.success ? newLeadsResult.data.length : 0;
 
+      // Helper function to parse price from TEXT field (removes ₹, commas, "Lakh", etc.)
+      const parsePrice = (priceText: any): number | null => {
+        if (!priceText) return null;
+
+        // Convert to string and handle various formats
+        let priceStr = String(priceText).trim().toUpperCase();
+
+        // Return null for "N/A" or other non-numeric values
+        if (priceStr === 'N/A' || priceStr === '' || priceStr === 'NULL') return null;
+
+        // Remove currency symbols and spaces
+        priceStr = priceStr.replace(/[₹$,\s]/g, '');
+
+        // Handle "Lakh" format (e.g., "10.5 Lakh" = 1050000)
+        if (priceStr.includes('LAKH') || priceStr.includes('L')) {
+          const numStr = priceStr.replace(/[LAKH]/g, '');
+          const num = parseFloat(numStr);
+          return !isNaN(num) ? num * 100000 : null;
+        }
+
+        // Handle "Crore" format (e.g., "1.5 Crore" = 15000000)
+        if (priceStr.includes('CRORE') || priceStr.includes('CR')) {
+          const numStr = priceStr.replace(/[CRORE]/g, '');
+          const num = parseFloat(numStr);
+          return !isNaN(num) ? num * 10000000 : null;
+        }
+
+        // Try to parse as plain number
+        const num = parseFloat(priceStr);
+        return !isNaN(num) && num > 0 ? num : null;
+      };
+
       // Calculate average price (using exact_price, ex_showroom_price, or average of price_min and price_max)
-      // Filter out cars with invalid prices (null, undefined, NaN, or "N/A")
       const totalCars = carsData?.length || 0;
-      const carsWithValidPrices = carsData?.filter((car: any) => {
-        const price = car.exact_price || car.ex_showroom_price ||
-                     ((car.price_min && car.price_max) ? (car.price_min + car.price_max) / 2 : null);
-        return price !== null &&
-               price !== undefined &&
-               !isNaN(Number(price)) &&
-               price !== "N/A" &&
-               price !== 0 &&
-               Number(price) > 0;
-      }) || [];
+      const carsWithValidPrices = carsData?.map((car: any) => {
+        // Try to get price from various sources
+        let price = parsePrice(car.exact_price);
+        if (!price) price = parsePrice(car.ex_showroom_price);
+        if (!price && car.price_min && car.price_max) {
+          price = (car.price_min + car.price_max) / 2;
+        }
+        return { ...car, parsedPrice: price };
+      }).filter((car: any) => car.parsedPrice !== null && car.parsedPrice > 0) || [];
 
       const totalCarsWithPrice = carsWithValidPrices.length;
       const averagePrice = totalCarsWithPrice > 0
-        ? Math.round(carsWithValidPrices.reduce((sum: number, car: any) => {
-            const price = Number(car.exact_price) || Number(car.ex_showroom_price) ||
-                         ((car.price_min && car.price_max) ? (Number(car.price_min) + Number(car.price_max)) / 2 : 0);
-            return sum + price;
-          }, 0) / totalCarsWithPrice)
+        ? Math.round(carsWithValidPrices.reduce((sum: number, car: any) => sum + car.parsedPrice, 0) / totalCarsWithPrice)
         : 0;
 
       setDashboardStats({

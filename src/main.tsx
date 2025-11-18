@@ -1,6 +1,6 @@
 // main.tsx
-// CRITICAL: Import error suppressor FIRST before anything else
-import "@/utils/errorSuppressor";
+// Temporarily disabled error suppressor to fix React hook errors
+// import "@/utils/errorSuppressor";
 
 // Then React and other imports
 import React from "react";

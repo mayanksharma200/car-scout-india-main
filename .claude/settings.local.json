@@ -39,7 +39,8 @@
       "Bash(xargs cat:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

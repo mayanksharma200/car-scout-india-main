@@ -135,23 +135,8 @@ export function installGlobalErrorSuppressor() {
     return originalAddEventListener.call(window, type, listener, options);
   };
 
-  // Override Promise rejection handling
-  if (typeof Promise !== 'undefined') {
-    const originalCatch = Promise.prototype.catch;
-    Promise.prototype.catch = function(onRejected) {
-      return originalCatch.call(this, (reason: any) => {
-        const message = String(reason?.message || reason || '');
-        if (shouldSuppress(message)) {
-          logSuppression('promise rejection', message);
-          return undefined; // Silently handle
-        }
-        if (onRejected) {
-          return onRejected(reason);
-        }
-        throw reason;
-      });
-    };
-  }
+  // Note: DO NOT override Promise.prototype methods as they break React internals
+  // The window.onunhandledrejection handler above is sufficient for catching promise errors
 
   console.log("✅ Global error suppressor installed successfully");
 }
