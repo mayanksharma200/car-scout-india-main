@@ -16,7 +16,6 @@ import {
 import ImageDebugTest from "@/components/ImageDebugTest";
 import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
 import IdeogramCarImageGenerator from "@/components/IdeogramCarImageGenerator";
-import { useStats } from "@/hooks/useSupabaseData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,7 +50,13 @@ const AdminDashboard = () => {
   const [newLeads, setNewLeads] = useState<NewLead[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [loadingLeads, setLoadingLeads] = useState(true);
-  const liveStats = useStats();
+  const [dashboardStats, setDashboardStats] = useState({
+    totalCars: 0,
+    recentActivitiesCount: 0,
+    pendingNewLeadsCount: 0,
+    averagePrice: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // Fetch recent activities
@@ -88,10 +93,72 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch dashboard statistics
+  const fetchDashboardStats = async () => {
+    try {
+      setLoadingStats(true);
+
+      // Fetch total cars count and prices
+      const { data: carsData, error: carsError } = await supabase
+        .from('cars')
+        .select('exact_price, ex_showroom_price, price_min, price_max') as any;
+
+      if (carsError) {
+        console.error('Error fetching cars:', carsError);
+      }
+
+      // Fetch recent activities count using the API endpoint
+      const activitiesResponse = await fetch('http://localhost:3001/api/admin/activities?limit=1000');
+      const activitiesResult = await activitiesResponse.json();
+      const recentActivitiesCount = activitiesResult.success ? activitiesResult.data.length : 0;
+
+      // Fetch pending new leads count using the API endpoint
+      const newLeadsResponse = await fetch('http://localhost:3001/api/admin/new-leads?limit=1000');
+      const newLeadsResult = await newLeadsResponse.json();
+      const pendingNewLeadsCount = newLeadsResult.success ? newLeadsResult.data.length : 0;
+
+      // Calculate average price (using exact_price, ex_showroom_price, or average of price_min and price_max)
+      // Filter out cars with invalid prices (null, undefined, NaN, or "N/A")
+      const totalCars = carsData?.length || 0;
+      const carsWithValidPrices = carsData?.filter((car: any) => {
+        const price = car.exact_price || car.ex_showroom_price ||
+                     ((car.price_min && car.price_max) ? (car.price_min + car.price_max) / 2 : null);
+        return price !== null &&
+               price !== undefined &&
+               !isNaN(Number(price)) &&
+               price !== "N/A" &&
+               price !== 0 &&
+               Number(price) > 0;
+      }) || [];
+
+      const totalCarsWithPrice = carsWithValidPrices.length;
+      const averagePrice = totalCarsWithPrice > 0
+        ? Math.round(carsWithValidPrices.reduce((sum: number, car: any) => {
+            const price = Number(car.exact_price) || Number(car.ex_showroom_price) ||
+                         ((car.price_min && car.price_max) ? (Number(car.price_min) + Number(car.price_max)) / 2 : 0);
+            return sum + price;
+          }, 0) / totalCarsWithPrice)
+        : 0;
+
+      setDashboardStats({
+        totalCars: totalCars,
+        recentActivitiesCount: recentActivitiesCount,
+        pendingNewLeadsCount: pendingNewLeadsCount,
+        averagePrice: averagePrice,
+      });
+
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   // Load activities and leads on mount
   useEffect(() => {
     fetchActivities();
     fetchNewLeads();
+    fetchDashboardStats();
   }, []);
 
   // Prevent auto-scroll on page load
@@ -158,28 +225,28 @@ const AdminDashboard = () => {
   const stats = [
     {
       title: "Total Cars",
-      value: liveStats.totalCars.toString(),
+      value: loadingStats ? "..." : dashboardStats.totalCars.toString(),
       change: "+12%",
       trend: "up",
       icon: Car,
     },
     {
-      title: "Active Leads",
-      value: liveStats.totalLeads.toString(),
+      title: "Recent Activity",
+      value: loadingStats ? "..." : dashboardStats.recentActivitiesCount.toString(),
+      change: "+20%",
+      trend: "up",
+      icon: BarChart3,
+    },
+    {
+      title: "Pending New Leads",
+      value: loadingStats ? "..." : dashboardStats.pendingNewLeadsCount.toString(),
       change: "+8%",
       trend: "up",
       icon: Users,
     },
     {
-      title: "Published Content",
-      value: liveStats.publishedContent.toString(),
-      change: "+5%",
-      trend: "up",
-      icon: FileText,
-    },
-    {
       title: "Avg Car Price",
-      value: formatPrice(liveStats.averagePrice),
+      value: loadingStats ? "..." : formatPrice(dashboardStats.averagePrice),
       change: "+15%",
       trend: "up",
       icon: TrendingUp,
