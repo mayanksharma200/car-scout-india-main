@@ -34,7 +34,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "Manage Cars", href: "/admin/cars", icon: Car },
     { name: "Lead Management", href: "/admin/leads", icon: Users },
     { name: "Content Management", href: "/admin/content", icon: FileText },
-    { name: "API Settings", href: "/admin/api-settings", icon: Globe },
+    // { name: "API Settings", href: "/admin/api-settings", icon: Globe },
     // { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
   ];
 
@@ -162,9 +162,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
           {sidebarOpen && (
             <div className="mt-3 flex gap-2">
-              <Button variant="ghost" size="sm" title="Settings">
+              {/* <Button variant="ghost" size="sm" title="Settings">
                 <Settings className="w-4 h-4" />
-              </Button>
+              </Button> */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -199,7 +199,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               {location.pathname === "/admin/cars" && "Car Management"}
               {location.pathname === "/admin/leads" && "Lead Management"}
               {location.pathname === "/admin/content" && "Content Management"}
-              {location.pathname === "/admin/api-settings" && "API Settings"}
+              {/* {location.pathname === "/admin/api-settings" && "API Settings"} */}
             </div>
           </div>
 

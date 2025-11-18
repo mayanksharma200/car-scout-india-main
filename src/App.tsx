@@ -41,7 +41,7 @@ import AdminSetup from "./components/AdminSetup";
 import CarManagement from "./pages/CarManagement";
 import AddEditCar from "./pages/AddEditCar";
 import LeadManagement from "./pages/LeadManagement";
-import APISettings from "./pages/APISettings";
+// import APISettings from "./pages/APISettings";
 import ContentManagement from "./pages/ContentManagement";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
@@ -185,14 +185,14 @@ const App = () => {
                         }
                       />
 
-                      <Route
+                      {/* <Route
                         path="api-settings"
                         element={
                           <AdminRouteGuard>
                             <APISettings />
                           </AdminRouteGuard>
                         }
-                      />
+                      /> */}
                     </Routes>
                   </AdminAuthProvider>
                 }
@@ -207,7 +207,7 @@ const App = () => {
         {/* Development Tools */}
         {/* <AuthStatus /> */}
         {/* <DevAuthHelper /> */}
-        <AdminSetup />
+        {/* <AdminSetup /> */}
       </TooltipProvider>
     </QueryClientProvider>
   );
