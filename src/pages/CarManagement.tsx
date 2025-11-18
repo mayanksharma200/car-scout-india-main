@@ -62,11 +62,87 @@ const CarManagement = () => {
   const [totalCars, setTotalCars] = useState(0);
   const limit = 20;
 
+  // Stats States
+  const [stats, setStats] = useState({
+    totalCars: 0,
+    totalBrands: 0,
+    carsWithImages: 0,
+    averagePrice: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // Delete Dialog States
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [carToDelete, setCarToDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Fetch stats from API
+  const fetchStats = async () => {
+    try {
+      setLoadingStats(true);
+      const response = await fetch(
+        `http://localhost:3001/api/admin/cars?limit=10000&sort_by=brand`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch stats");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        const allCars = result.data;
+
+        // Calculate total cars
+        const totalCars = allCars.length;
+
+        // Calculate unique brands
+        const brands = allCars
+          .map((car: Car) => car.brand)
+          .filter(Boolean);
+        const uniqueBrands = Array.from(new Set(brands));
+        const totalBrands = uniqueBrands.length;
+
+        // Calculate cars with images
+        const carsWithImages = allCars.filter((car: any) =>
+          car.images &&
+          ((Array.isArray(car.images) && car.images.length > 0) ||
+           (typeof car.images === 'object' && Object.keys(car.images).length > 0))
+        ).length;
+
+        // Calculate average price
+        const carsWithValidPrices = allCars.filter((car: any) => {
+          const price = car.exact_price || car.ex_showroom_price || car.price_min;
+          return price !== null &&
+                 price !== undefined &&
+                 !isNaN(Number(price)) &&
+                 price !== "N/A" &&
+                 Number(price) > 0;
+        });
+
+        const averagePrice = carsWithValidPrices.length > 0
+          ? Math.round(carsWithValidPrices.reduce((sum: number, car: any) => {
+              const price = Number(car.exact_price) || Number(car.ex_showroom_price) || Number(car.price_min);
+              return sum + price;
+            }, 0) / carsWithValidPrices.length)
+          : 0;
+
+        setStats({
+          totalCars,
+          totalBrands,
+          carsWithImages,
+          averagePrice,
+        });
+
+        // Also set brands for the filter
+        setAllBrands(uniqueBrands.sort() as string[]);
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   // Fetch all unique brands from API
   const fetchAllBrands = async () => {
@@ -134,9 +210,9 @@ const CarManagement = () => {
     }
   };
 
-  // Fetch all brands on component mount
+  // Fetch stats and brands on component mount
   useEffect(() => {
-    fetchAllBrands();
+    fetchStats();
   }, []);
 
   // Fetch cars when page, search, or filters change
@@ -248,7 +324,7 @@ const CarManagement = () => {
                    <CarIcon className="w-5 h-5 text-blue-600" />
                  </div>
                 <div>
-                  <p className="text-2xl font-bold">{cars.length}</p>
+                  <p className="text-2xl font-bold">{loadingStats ? "..." : stats.totalCars}</p>
                   <p className="text-sm text-muted-foreground">Total Cars</p>
                 </div>
               </div>
@@ -258,11 +334,11 @@ const CarManagement = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-green-600" />
+                  <Filter className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{cars.filter(c => c.status === 'published').length}</p>
-                  <p className="text-sm text-muted-foreground">Published</p>
+                  <p className="text-2xl font-bold">{loadingStats ? "..." : stats.totalBrands}</p>
+                  <p className="text-sm text-muted-foreground">Total Brands</p>
                 </div>
               </div>
             </CardContent>
@@ -271,11 +347,11 @@ const CarManagement = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Edit className="w-5 h-5 text-yellow-600" />
+                  <Image className="w-5 h-5 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{cars.filter(c => c.status === 'draft').length}</p>
-                  <p className="text-sm text-muted-foreground">Drafts</p>
+                  <p className="text-2xl font-bold">{loadingStats ? "..." : stats.carsWithImages}</p>
+                  <p className="text-sm text-muted-foreground">Cars with Images</p>
                 </div>
               </div>
             </CardContent>
@@ -287,7 +363,7 @@ const CarManagement = () => {
                   <IndianRupee className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">₹18.2L</p>
+                  <p className="text-2xl font-bold">{loadingStats ? "..." : formatPrice(stats.averagePrice)}</p>
                   <p className="text-sm text-muted-foreground">Avg Price</p>
                 </div>
               </div>
