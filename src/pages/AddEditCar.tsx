@@ -16,24 +16,70 @@ import {
 import { toast } from "sonner";
 
 interface CarFormData {
+  // Basic Information
+  external_id: string;
   brand: string;
   model: string;
   variant: string;
-  price_min: string;
-  price_max: string;
+  body_type: string;
   fuel_type: string;
   transmission: string;
-  body_type: string;
   seating_capacity: string;
+  engine_capacity: string;
+  status: string;
+  api_source: string;
+  
+  // Pricing
+  price_min: string;
+  price_max: string;
+  exact_price: string;
+  ex_showroom_price: string;
+  rto_charges: string;
+  insurance_cost: string;
+  mumbai_price: string;
+  bangalore_price: string;
+  delhi_price: string;
+  pune_price: string;
+  hyderabad_price: string;
+  chennai_price: string;
+  kolkata_price: string;
+  ahmedabad_price: string;
+  
+  // Specifications
   engine_type: string;
   max_power: string;
   max_torque: string;
   mileage: string;
+  top_speed: string;
+  acceleration: string;
+  length_mm: string;
+  width_mm: string;
+  height_mm: string;
+  wheelbase_mm: string;
+  ground_clearance_mm: string;
   bootspace_litres: string;
+  fuel_tank_capacity_litres: string;
+  
+  // Safety & Features
+  airbags: string;
+  ncap_rating: string;
+  abs: boolean;
+  esc: boolean;
+  sunroof: string;
+  ac_type: string;
+  cruise_control: boolean;
+  
+  // Warranty
+  warranty_years: string;
+  warranty_km: string;
+  battery_warranty_years: string;
+  battery_warranty_km: string;
+  
+  // Colors & Description
   colors: string;
   color_codes: string;
   description: string;
-  status: string;
+  
   // Images (8 angles)
   image_url_1: string;
   image_url_2: string;
@@ -55,24 +101,71 @@ const AddEditCar = () => {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState<CarFormData>({
+    // Basic Information
+    external_id: "",
     brand: "",
     model: "",
     variant: "",
-    price_min: "",
-    price_max: "",
+    body_type: "Sedan",
     fuel_type: "Petrol",
     transmission: "Manual",
-    body_type: "Sedan",
     seating_capacity: "",
+    engine_capacity: "",
+    status: "active",
+    api_source: "manual",
+    
+    // Pricing
+    price_min: "",
+    price_max: "",
+    exact_price: "",
+    ex_showroom_price: "",
+    rto_charges: "",
+    insurance_cost: "",
+    mumbai_price: "",
+    bangalore_price: "",
+    delhi_price: "",
+    pune_price: "",
+    hyderabad_price: "",
+    chennai_price: "",
+    kolkata_price: "",
+    ahmedabad_price: "",
+    
+    // Specifications
     engine_type: "",
     max_power: "",
     max_torque: "",
     mileage: "",
+    top_speed: "",
+    acceleration: "",
+    length_mm: "",
+    width_mm: "",
+    height_mm: "",
+    wheelbase_mm: "",
+    ground_clearance_mm: "",
     bootspace_litres: "",
+    fuel_tank_capacity_litres: "",
+    
+    // Safety & Features
+    airbags: "",
+    ncap_rating: "",
+    abs: false,
+    esc: false,
+    sunroof: "",
+    ac_type: "",
+    cruise_control: false,
+    
+    // Warranty
+    warranty_years: "",
+    warranty_km: "",
+    battery_warranty_years: "",
+    battery_warranty_km: "",
+    
+    // Colors & Description
     colors: "",
     color_codes: "",
     description: "",
-    status: "active",
+    
+    // Images
     image_url_1: "",
     image_url_2: "",
     image_url_3: "",
@@ -104,24 +197,70 @@ const AddEditCar = () => {
       if (result.success) {
         const car = result.data;
         setFormData({
+          // Basic Information
+          external_id: car.external_id || "",
           brand: car.brand || "",
           model: car.model || "",
           variant: car.variant || "",
-          price_min: car.price_min?.toString() || "",
-          price_max: car.price_max?.toString() || "",
+          body_type: car.body_type || "Sedan",
           fuel_type: car.fuel_type || "Petrol",
           transmission: car.transmission || "Manual",
-          body_type: car.body_type || "Sedan",
           seating_capacity: car.seating_capacity?.toString() || "",
+          engine_capacity: car.engine_capacity || "",
+          status: car.status || "active",
+          api_source: car.api_source || "manual",
+          
+          // Pricing
+          price_min: car.price_min?.toString() || "",
+          price_max: car.price_max?.toString() || "",
+          exact_price: car.exact_price || "",
+          ex_showroom_price: car.ex_showroom_price || "",
+          rto_charges: car.rto_charges || "",
+          insurance_cost: car.insurance_cost || "",
+          mumbai_price: car.mumbai_price || "",
+          bangalore_price: car.bangalore_price || "",
+          delhi_price: car.delhi_price || "",
+          pune_price: car.pune_price || "",
+          hyderabad_price: car.hyderabad_price || "",
+          chennai_price: car.chennai_price || "",
+          kolkata_price: car.kolkata_price || "",
+          ahmedabad_price: car.ahmedabad_price || "",
+          
+          // Specifications
           engine_type: car.engine_type || "",
           max_power: car.max_power || "",
           max_torque: car.max_torque || "",
           mileage: car.mileage || "",
+          top_speed: car.top_speed?.toString() || "",
+          acceleration: car.acceleration?.toString() || "",
+          length_mm: car.length_mm || "",
+          width_mm: car.width_mm || "",
+          height_mm: car.height_mm || "",
+          wheelbase_mm: car.wheelbase_mm || "",
+          ground_clearance_mm: car.ground_clearance_mm || "",
           bootspace_litres: car.bootspace_litres || "",
+          fuel_tank_capacity_litres: car.fuel_tank_capacity_litres || "",
+          
+          // Safety & Features
+          airbags: car.airbags || "",
+          ncap_rating: car.ncap_rating || "",
+          abs: car.abs || false,
+          esc: car.esc || false,
+          sunroof: car.sunroof || "",
+          ac_type: car.ac_type || "",
+          cruise_control: car.cruise_control || false,
+          
+          // Warranty
+          warranty_years: car.warranty_years?.toString() || "",
+          warranty_km: car.warranty_km?.toString() || "",
+          battery_warranty_years: car.battery_warranty_years?.toString() || "",
+          battery_warranty_km: car.battery_warranty_km?.toString() || "",
+          
+          // Colors & Description
           colors: car.colors || "",
           color_codes: car.color_codes || "",
           description: car.description || "",
-          status: car.status || "active",
+          
           // Handle both array format (old) and object format (new) for images
           image_url_1: (typeof car.images === 'object' && !Array.isArray(car.images))
             ? (car.images?.front_3_4 || "")
@@ -181,7 +320,7 @@ const AddEditCar = () => {
     const imageUrl = formData[fieldName];
 
     // If it's an S3 URL and we're in edit mode, delete from S3
-    if (imageUrl && isEditMode && id && imageUrl.includes('amazonaws.com')) {
+    if (imageUrl && typeof imageUrl === 'string' && isEditMode && id && imageUrl.includes('amazonaws.com')) {
       try {
         const response = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
           method: 'POST',
@@ -221,7 +360,7 @@ const AddEditCar = () => {
       const currentImageUrl = formData[fieldName];
 
       // If we're in edit mode and there's an existing image, delete it first
-      if (currentImageUrl && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
+      if (currentImageUrl && typeof currentImageUrl === 'string' && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
         try {
           const deleteResponse = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
             method: 'POST',
@@ -337,26 +476,73 @@ const AddEditCar = () => {
       if (formData.image_url_8) images[angleKeys[7]] = formData.image_url_8;
 
       const carData = {
+        // Basic Information
+        external_id: formData.external_id || null,
         brand: formData.brand,
         model: formData.model,
         variant: formData.variant,
-        price_min: formData.price_min ? parseInt(formData.price_min) : null,
-        price_max: formData.price_max ? parseInt(formData.price_max) : null,
+        body_type: formData.body_type,
         fuel_type: formData.fuel_type,
         transmission: formData.transmission,
-        body_type: formData.body_type,
         seating_capacity: formData.seating_capacity
           ? parseInt(formData.seating_capacity)
           : null,
+        engine_capacity: formData.engine_capacity,
+        status: formData.status,
+        api_source: formData.api_source,
+        
+        // Pricing
+        price_min: formData.price_min ? parseInt(formData.price_min) : null,
+        price_max: formData.price_max ? parseInt(formData.price_max) : null,
+        exact_price: formData.exact_price || null,
+        ex_showroom_price: formData.ex_showroom_price || null,
+        rto_charges: formData.rto_charges || null,
+        insurance_cost: formData.insurance_cost || null,
+        mumbai_price: formData.mumbai_price || null,
+        bangalore_price: formData.bangalore_price || null,
+        delhi_price: formData.delhi_price || null,
+        pune_price: formData.pune_price || null,
+        hyderabad_price: formData.hyderabad_price || null,
+        chennai_price: formData.chennai_price || null,
+        kolkata_price: formData.kolkata_price || null,
+        ahmedabad_price: formData.ahmedabad_price || null,
+        
+        // Specifications
         engine_type: formData.engine_type,
         max_power: formData.max_power,
         max_torque: formData.max_torque,
         mileage: formData.mileage,
+        top_speed: formData.top_speed ? parseInt(formData.top_speed) : null,
+        acceleration: formData.acceleration ? parseFloat(formData.acceleration) : null,
+        length_mm: formData.length_mm,
+        width_mm: formData.width_mm,
+        height_mm: formData.height_mm,
+        wheelbase_mm: formData.wheelbase_mm,
+        ground_clearance_mm: formData.ground_clearance_mm,
         bootspace_litres: formData.bootspace_litres,
+        fuel_tank_capacity_litres: formData.fuel_tank_capacity_litres,
+        
+        // Safety & Features
+        airbags: formData.airbags || null,
+        ncap_rating: formData.ncap_rating || null,
+        abs: formData.abs,
+        esc: formData.esc,
+        sunroof: formData.sunroof || null,
+        ac_type: formData.ac_type || null,
+        cruise_control: formData.cruise_control,
+        
+        // Warranty
+        warranty_years: formData.warranty_years ? parseInt(formData.warranty_years) : null,
+        warranty_km: formData.warranty_km ? parseInt(formData.warranty_km) : null,
+        battery_warranty_years: formData.battery_warranty_years ? parseInt(formData.battery_warranty_years) : null,
+        battery_warranty_km: formData.battery_warranty_km ? parseInt(formData.battery_warranty_km) : null,
+        
+        // Colors & Description
         colors: formData.colors,
         color_codes: formData.color_codes,
         description: formData.description,
-        status: formData.status,
+        
+        // Images
         images: Object.keys(images).length > 0 ? images : null,
       };
 
@@ -434,6 +620,17 @@ const AddEditCar = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="external_id">External ID</Label>
+              <Input
+                id="external_id"
+                name="external_id"
+                value={formData.external_id}
+                onChange={handleChange}
+                placeholder="e.g., bmw_3_series_320d_luxury_edition"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="brand">
                 Brand <span className="text-destructive">*</span>
               </Label>
@@ -469,6 +666,17 @@ const AddEditCar = () => {
                 value={formData.variant}
                 onChange={handleChange}
                 placeholder="e.g., VXI, ZXI"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="engine_capacity">Engine Capacity</Label>
+              <Input
+                id="engine_capacity"
+                name="engine_capacity"
+                value={formData.engine_capacity}
+                onChange={handleChange}
+                placeholder="e.g., 1995 cc"
               />
             </div>
 
@@ -530,6 +738,7 @@ const AddEditCar = () => {
                   <SelectItem value="AMT">AMT</SelectItem>
                   <SelectItem value="CVT">CVT</SelectItem>
                   <SelectItem value="DCT">DCT</SelectItem>
+                  <SelectItem value="Automatic (TC)">Automatic (TC)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -544,6 +753,24 @@ const AddEditCar = () => {
                 onChange={handleChange}
                 placeholder="e.g., 5"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="api_source">API Source</Label>
+              <Select
+                value={formData.api_source}
+                onValueChange={(value) => handleSelectChange("api_source", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="csv_import">CSV Import</SelectItem>
+                  <SelectItem value="api_scrape">API Scrape</SelectItem>
+                  <SelectItem value="dealer_feed">Dealer Feed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -572,6 +799,17 @@ const AddEditCar = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label htmlFor="exact_price">Exact Price</Label>
+              <Input
+                id="exact_price"
+                name="exact_price"
+                value={formData.exact_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 50.88 Lakh"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="price_min">Minimum Price</Label>
               <Input
                 id="price_min"
@@ -592,6 +830,127 @@ const AddEditCar = () => {
                 value={formData.price_max}
                 onChange={handleChange}
                 placeholder="e.g., 850000"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ex_showroom_price">Ex-Showroom Price</Label>
+              <Input
+                id="ex_showroom_price"
+                name="ex_showroom_price"
+                value={formData.ex_showroom_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹46,90,000.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="rto_charges">RTO Charges</Label>
+              <Input
+                id="rto_charges"
+                name="rto_charges"
+                value={formData.rto_charges}
+                onChange={handleChange}
+                placeholder="e.g., ₹5,62,800.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="insurance_cost">Insurance Cost</Label>
+              <Input
+                id="insurance_cost"
+                name="insurance_cost"
+                value={formData.insurance_cost}
+                onChange={handleChange}
+                placeholder="e.g., ₹1,37,066.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="mumbai_price">Mumbai Price</Label>
+              <Input
+                id="mumbai_price"
+                name="mumbai_price"
+                value={formData.mumbai_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 56.52 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="bangalore_price">Bangalore Price</Label>
+              <Input
+                id="bangalore_price"
+                name="bangalore_price"
+                value={formData.bangalore_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 59.86 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="delhi_price">Delhi Price</Label>
+              <Input
+                id="delhi_price"
+                name="delhi_price"
+                value={formData.delhi_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 54.69 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="pune_price">Pune Price</Label>
+              <Input
+                id="pune_price"
+                name="pune_price"
+                value={formData.pune_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 57.23 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="hyderabad_price">Hyderabad Price</Label>
+              <Input
+                id="hyderabad_price"
+                name="hyderabad_price"
+                value={formData.hyderabad_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 58.20 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="chennai_price">Chennai Price</Label>
+              <Input
+                id="chennai_price"
+                name="chennai_price"
+                value={formData.chennai_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 57.69 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="kolkata_price">Kolkata Price</Label>
+              <Input
+                id="kolkata_price"
+                name="kolkata_price"
+                value={formData.kolkata_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 54.98 Lakh onwards"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ahmedabad_price">Ahmedabad Price</Label>
+              <Input
+                id="ahmedabad_price"
+                name="ahmedabad_price"
+                value={formData.ahmedabad_price}
+                onChange={handleChange}
+                placeholder="e.g., ₹ 53.16 Lakh onwards"
               />
             </div>
           </CardContent>
@@ -655,6 +1014,173 @@ const AddEditCar = () => {
                 value={formData.bootspace_litres}
                 onChange={handleChange}
                 placeholder="e.g., 268 litres"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="fuel_tank_capacity_litres">Fuel Tank Capacity</Label>
+              <Input
+                id="fuel_tank_capacity_litres"
+                name="fuel_tank_capacity_litres"
+                value={formData.fuel_tank_capacity_litres}
+                onChange={handleChange}
+                placeholder="e.g., 59 litres"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Safety & Features */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Safety & Features</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="airbags">Airbags</Label>
+              <Input
+                id="airbags"
+                name="airbags"
+                value={formData.airbags}
+                onChange={handleChange}
+                placeholder="e.g., 6 Airbags (Driver, Passenger, 2 Curtain, Driver Side, Front Passenger Side)"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ncap_rating">NCAP Rating</Label>
+              <Input
+                id="ncap_rating"
+                name="ncap_rating"
+                value={formData.ncap_rating}
+                onChange={handleChange}
+                placeholder="e.g., 5 Star (Euro NCAP)"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="abs">Anti-lock Braking System (ABS)</Label>
+              <Select
+                value={formData.abs.toString()}
+                onValueChange={(value) => handleSelectChange("abs", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="esc">Electronic Stability Control (ESC)</Label>
+              <Select
+                value={formData.esc.toString()}
+                onValueChange={(value) => handleSelectChange("esc", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="sunroof">Sunroof</Label>
+              <Input
+                id="sunroof"
+                name="sunroof"
+                value={formData.sunroof}
+                onChange={handleChange}
+                placeholder="e.g., Electrically Adjustable"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ac_type">Air Conditioning Type</Label>
+              <Input
+                id="ac_type"
+                name="ac_type"
+                value={formData.ac_type}
+                onChange={handleChange}
+                placeholder="e.g., Yes (Automatic Three Zone)"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="cruise_control">Cruise Control</Label>
+              <Select
+                value={formData.cruise_control.toString()}
+                onValueChange={(value) => handleSelectChange("cruise_control", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Warranty */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Warranty</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="warranty_years">Warranty Years</Label>
+              <Input
+                id="warranty_years"
+                name="warranty_years"
+                type="number"
+                value={formData.warranty_years}
+                onChange={handleChange}
+                placeholder="e.g., 3"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="warranty_km">Warranty Kilometers</Label>
+              <Input
+                id="warranty_km"
+                name="warranty_km"
+                type="number"
+                value={formData.warranty_km}
+                onChange={handleChange}
+                placeholder="e.g., 40000"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="battery_warranty_years">Battery Warranty Years</Label>
+              <Input
+                id="battery_warranty_years"
+                name="battery_warranty_years"
+                type="number"
+                value={formData.battery_warranty_years}
+                onChange={handleChange}
+                placeholder="e.g., 8 (for EVs)"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="battery_warranty_km">Battery Warranty Kilometers</Label>
+              <Input
+                id="battery_warranty_km"
+                name="battery_warranty_km"
+                type="number"
+                value={formData.battery_warranty_km}
+                onChange={handleChange}
+                placeholder="e.g., 160000 (for EVs)"
               />
             </div>
           </CardContent>
@@ -743,7 +1269,7 @@ const AddEditCar = () => {
                   {imageUrl && (
                     <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden group">
                       <img
-                        src={imageUrl}
+                        src={typeof imageUrl === 'string' ? imageUrl : ''}
                         alt={angleNames[index - 1]}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -756,7 +1282,7 @@ const AddEditCar = () => {
                           variant="secondary"
                           size="sm"
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => window.open(imageUrl, '_blank')}
+                          onClick={() => typeof imageUrl === 'string' && window.open(imageUrl, '_blank')}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           View Full
@@ -770,7 +1296,7 @@ const AddEditCar = () => {
                     id={fieldName}
                     name={fieldName}
                     type="url"
-                    value={imageUrl}
+                    value={typeof imageUrl === 'string' ? imageUrl : ''}
                     onChange={handleChange}
                     placeholder={`https://example.com/${angleNames[index - 1].toLowerCase().replace(/ /g, '-')}.jpg`}
                     className="text-sm"

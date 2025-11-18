@@ -45,16 +45,30 @@ import { toast } from "sonner";
 
 interface Car {
   id: string;
+  external_id?: string;
   brand: string;
   model: string;
   variant: string;
   price_min?: number;
   price_max?: number;
+  exact_price?: string;
+  ex_showroom_price?: string;
   fuel_type: string;
   transmission: string;
   body_type: string;
-  images?: string[];
+  seating_capacity?: number;
+  engine_capacity?: string;
+  mileage?: string;
+  top_speed?: number;
+  airbags?: string;
+  ncap_rating?: string;
+  abs?: boolean;
+  esc?: boolean;
+  cruise_control?: boolean;
+  warranty_years?: number;
+  images?: string[] | Record<string, string>;
   status: string;
+  api_source?: string;
   created_at: string;
   updated_at: string;
 }
@@ -313,8 +327,10 @@ const ManageCars = () => {
                   <TableHead>Image</TableHead>
                   <TableHead>Brand & Model</TableHead>
                   <TableHead>Variant</TableHead>
-                  <TableHead>Price Range</TableHead>
-                  <TableHead>Fuel/Trans</TableHead>
+                  <TableHead>Engine</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Fuel</TableHead>
+                  <TableHead>Safety</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
