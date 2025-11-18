@@ -170,6 +170,21 @@ const CarManagement = () => {
     return `₹${price.toLocaleString()}`;
   };
 
+  // Create slug from brand, model, variant
+  const createSlug = (brand: string, model: string, variant?: string) => {
+    const parts = [brand, model];
+    if (variant && variant !== model) {
+      parts.push(variant);
+    }
+
+    return parts
+      .join('-')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-') // Replace non-alphanumeric chars with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'published':
@@ -657,7 +672,7 @@ const CarManagement = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link to={`/cars/${car.id}`} className="flex items-center cursor-pointer">
+                            <Link to={`/cars/${createSlug(car.brand, car.model, car.variant)}`} className="flex items-center cursor-pointer">
                               <Eye className="w-4 h-4 mr-2" />
                               View Details
                             </Link>

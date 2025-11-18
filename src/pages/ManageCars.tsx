@@ -165,6 +165,21 @@ const ManageCars = () => {
     return "N/A";
   };
 
+  // Create slug from brand, model, variant
+  const createSlug = (brand: string, model: string, variant?: string) => {
+    const parts = [brand, model];
+    if (variant && variant !== model) {
+      parts.push(variant);
+    }
+
+    return parts
+      .join('-')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-') // Replace non-alphanumeric chars with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  };
+
   return (
     <div className="container mx-auto p-6">
       {/* Header */}
@@ -399,7 +414,7 @@ const ManageCars = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link to={`/cars/${car.id}`} target="_blank">
+                        <Link to={`/cars/${createSlug(car.brand, car.model, car.variant)}`} target="_blank">
                           <Button variant="ghost" size="sm">
                             <Eye className="w-4 h-4" />
                           </Button>
