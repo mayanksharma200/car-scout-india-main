@@ -400,8 +400,8 @@ const CarListing = () => {
             status: car.status,
             price_min: car.price_min,
             price_max: car.price_max,
-            exact_price: car.exact_price,
-            delhi_price: car.delhi_price
+            exact_price: (car as any).exact_price,
+            delhi_price: (car as any).delhi_price
           })));
         }
 
@@ -572,7 +572,8 @@ const CarListing = () => {
     );
   };
 
-  const getFilteredAndSortedCars = () => {
+  // Memoize filtered and sorted cars to prevent unnecessary re-computation
+  const filteredAndSortedCars = React.useMemo(() => {
     console.log("Applying filters:", filters);
     console.log("Total cars before filtering:", cars.length);
 
@@ -711,9 +712,7 @@ const CarListing = () => {
     }
 
     return filteredCars;
-  };
-
-  const filteredAndSortedCars = getFilteredAndSortedCars();
+  }, [cars, filters, searchQuery, sortBy]);
 
   // Update displayed cars when filtered cars or page changes
   useEffect(() => {
@@ -809,13 +808,14 @@ const CarListing = () => {
         </h4>
         <Slider
           value={filters.priceRange}
-          onValueChange={(value) =>
-            setFilters((prev) => ({ ...prev, priceRange: value }))
-          }
+          onValueChange={(value) => {
+            console.log("Price range slider changed:", value);
+            setFilters((prev) => ({ ...prev, priceRange: value }));
+          }}
           max={5000000}
           min={0}
           step={50000}
-          className="w-full mb-3"
+          className="w-full mb-3 pointer-events-auto"
         />
         <div className="flex justify-between text-xs lg:text-sm text-muted-foreground">
           <span>₹{(filters.priceRange[0] / 100000).toFixed(1)}L</span>
@@ -828,17 +828,18 @@ const CarListing = () => {
         <h4 className="font-medium mb-3 text-sm lg:text-base">Brand</h4>
         <div className="space-y-2 max-h-32 overflow-y-auto">
           {brands.map((brand) => (
-            <div key={brand} className="flex items-center space-x-2">
+            <div key={brand} className="flex items-center space-x-2 pointer-events-auto">
               <Checkbox
                 id={`${brand}-filter`}
                 checked={filters.brands.includes(brand)}
-                onCheckedChange={(checked) =>
-                  handleFilterChange("brands", brand, checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  console.log(`Brand ${brand} checkbox changed:`, checked);
+                  handleFilterChange("brands", brand, checked as boolean);
+                }}
               />
               <label
                 htmlFor={`${brand}-filter`}
-                className="text-xs lg:text-sm cursor-pointer"
+                className="text-xs lg:text-sm cursor-pointer select-none"
               >
                 {brand}
               </label>
@@ -855,17 +856,18 @@ const CarListing = () => {
         </h4>
         <div className="space-y-2">
           {bodyTypes.map((type) => (
-            <div key={type} className="flex items-center space-x-2">
+            <div key={type} className="flex items-center space-x-2 pointer-events-auto">
               <Checkbox
                 id={`${type}-filter`}
                 checked={filters.bodyTypes.includes(type)}
-                onCheckedChange={(checked) =>
-                  handleFilterChange("bodyTypes", type, checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  console.log(`Body type ${type} checkbox changed:`, checked);
+                  handleFilterChange("bodyTypes", type, checked as boolean);
+                }}
               />
               <label
                 htmlFor={`${type}-filter`}
-                className="text-xs lg:text-sm cursor-pointer"
+                className="text-xs lg:text-sm cursor-pointer select-none"
               >
                 {type}
               </label>
@@ -882,17 +884,18 @@ const CarListing = () => {
         </h4>
         <div className="space-y-2">
           {fuelTypes.map((fuel) => (
-            <div key={fuel} className="flex items-center space-x-2">
+            <div key={fuel} className="flex items-center space-x-2 pointer-events-auto">
               <Checkbox
                 id={`${fuel}-filter`}
                 checked={filters.fuelTypes.includes(fuel)}
-                onCheckedChange={(checked) =>
-                  handleFilterChange("fuelTypes", fuel, checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  console.log(`Fuel type ${fuel} checkbox changed:`, checked);
+                  handleFilterChange("fuelTypes", fuel, checked as boolean);
+                }}
               />
               <label
                 htmlFor={`${fuel}-filter`}
-                className="text-xs lg:text-sm cursor-pointer"
+                className="text-xs lg:text-sm cursor-pointer select-none"
               >
                 {fuel}
               </label>
@@ -906,21 +909,22 @@ const CarListing = () => {
         <h4 className="font-medium mb-3 text-sm lg:text-base">Transmission</h4>
         <div className="space-y-2">
           {transmissions.map((transmission) => (
-            <div key={transmission} className="flex items-center space-x-2">
+            <div key={transmission} className="flex items-center space-x-2 pointer-events-auto">
               <Checkbox
                 id={`${transmission}-filter`}
                 checked={filters.transmissions.includes(transmission)}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked) => {
+                  console.log(`Transmission ${transmission} checkbox changed:`, checked);
                   handleFilterChange(
                     "transmissions",
                     transmission,
                     checked as boolean
-                  )
-                }
+                  );
+                }}
               />
               <label
                 htmlFor={`${transmission}-filter`}
-                className="text-xs lg:text-sm cursor-pointer"
+                className="text-xs lg:text-sm cursor-pointer select-none"
               >
                 {transmission}
               </label>
@@ -934,17 +938,18 @@ const CarListing = () => {
         <h4 className="font-medium mb-3 text-sm lg:text-base">Seating</h4>
         <div className="space-y-2">
           {seatingOptions.map((seating) => (
-            <div key={seating} className="flex items-center space-x-2">
+            <div key={seating} className="flex items-center space-x-2 pointer-events-auto">
               <Checkbox
                 id={`seating-${seating}-filter`}
                 checked={filters.seating.includes(seating)}
-                onCheckedChange={(checked) =>
-                  handleFilterChange("seating", seating, checked as boolean)
-                }
+                onCheckedChange={(checked) => {
+                  console.log(`Seating ${seating} checkbox changed:`, checked);
+                  handleFilterChange("seating", seating, checked as boolean);
+                }}
               />
               <label
                 htmlFor={`seating-${seating}-filter`}
-                className="text-xs lg:text-sm cursor-pointer"
+                className="text-xs lg:text-sm cursor-pointer select-none"
               >
                 {seating} Seater
               </label>
@@ -998,7 +1003,7 @@ const CarListing = () => {
       <Header />
 
       {/* Desktop Ad Banner */}
-      <div className="hidden md:block">
+      <div className="hidden md:block relative z-0">
         <AdBanner placement="below_navigation" />
       </div>
 
@@ -1262,11 +1267,13 @@ const CarListing = () => {
             } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
           >
             {/* Desktop Ad in Sidebar */}
-            <div className="hidden xl:block">
-              <AdBanner placement="left_sidebar" />
+            <div className="hidden xl:block" style={{ maxHeight: '250px', overflow: 'hidden', pointerEvents: 'none' }}>
+              <div style={{ pointerEvents: 'auto' }}>
+                <AdBanner placement="left_sidebar" />
+              </div>
             </div>
 
-            <Card>
+            <Card className="relative z-10 pointer-events-auto">
               <CardContent className="p-4 lg:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-sm lg:text-base">

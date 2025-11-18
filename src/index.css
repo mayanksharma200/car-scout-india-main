@@ -154,6 +154,7 @@
   position: relative;
   max-width: 100%;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .ad-slot {
@@ -162,6 +163,47 @@
   border: 1px solid #e9ecef;
   border-radius: 8px;
   position: relative;
+  overflow: hidden;
+  contain: layout style paint;
+}
+
+/* Force all iframes and divs inside ads to stay contained */
+.ad-slot iframe,
+.ad-slot > div,
+.ad-slot > div > iframe {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  position: relative !important;
+  pointer-events: auto !important;
+  z-index: 1 !important;
+}
+
+/* Prevent Google Ad iframes from escaping containers */
+.ad-slot-container iframe[id^="google_ads_iframe"],
+.ad-slot iframe[id^="google_ads_iframe"],
+.ad-slot iframe[id*="google"],
+.ad-slot div[id*="google"] {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
+}
+
+/* Ensure filter inputs always stay on top */
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+button,
+select,
+.card,
+[role="dialog"],
+[role="menu"] {
+  position: relative;
+  z-index: 999 !important;
 }
 
 /* Mobile-first responsive design */

@@ -18,6 +18,9 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEmpty, setIsEmpty] = useState(false);
+  const observerRef = useRef<MutationObserver | null>(null);
+  const isEnforcingRef = useRef<boolean>(false);
+  const lastEnforceTimeRef = useRef<number>(0);
   const [uniqueId] = useState(
     () => `gpt-${slot.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
@@ -130,10 +133,93 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
 
           window.googletag.display(uniqueId);
           setIsLoaded(true);
-          
-          // Check if ad is empty after a short delay
-          setTimeout(checkIfEmpty, 2000);
-          
+
+          // Force containment on all ad elements after load with throttling
+          const enforceContainment = () => {
+            // Prevent infinite loop - if already enforcing, skip
+            if (isEnforcingRef.current) {
+              return;
+            }
+
+            // Throttle to max once per 500ms
+            const now = Date.now();
+            if (now - lastEnforceTimeRef.current < 500) {
+              return;
+            }
+
+            isEnforcingRef.current = true;
+            lastEnforceTimeRef.current = now;
+
+            try {
+              const adContainer = document.getElementById(uniqueId);
+              if (adContainer) {
+                // Temporarily disconnect observer to prevent infinite loop
+                if (observerRef.current) {
+                  observerRef.current.disconnect();
+                }
+
+                // Force containment styles on the container
+                adContainer.style.setProperty('position', 'relative', 'important');
+                adContainer.style.setProperty('overflow', 'hidden', 'important');
+                adContainer.style.setProperty('max-width', '100%', 'important');
+                adContainer.style.setProperty('max-height', `${height}px`, 'important');
+
+                // Force containment on all iframes within
+                const iframes = adContainer.querySelectorAll('iframe');
+                iframes.forEach((iframe: HTMLIFrameElement) => {
+                  iframe.style.setProperty('position', 'absolute', 'important');
+                  iframe.style.setProperty('top', '0', 'important');
+                  iframe.style.setProperty('left', '0', 'important');
+                  iframe.style.setProperty('max-width', '100%', 'important');
+                  iframe.style.setProperty('max-height', '100%', 'important');
+                  iframe.style.setProperty('z-index', '1', 'important');
+                });
+
+                // Force containment on all divs within
+                const divs = adContainer.querySelectorAll('div');
+                divs.forEach((div: HTMLDivElement) => {
+                  const currentPosition = window.getComputedStyle(div).position;
+                  if (currentPosition === 'fixed') {
+                    div.style.setProperty('position', 'absolute', 'important');
+                  }
+                });
+
+                // Reconnect observer after enforcement
+                if (observerRef.current && adContainer) {
+                  observerRef.current.observe(adContainer, {
+                    childList: true,
+                    subtree: false,  // Only direct children, not deep
+                    attributes: true,
+                    attributeFilter: ['style']
+                  });
+                }
+              }
+            } finally {
+              isEnforcingRef.current = false;
+            }
+          };
+
+          setTimeout(() => {
+            enforceContainment();
+            checkIfEmpty();
+
+            // Set up MutationObserver with throttling
+            const adContainer = document.getElementById(uniqueId);
+            if (adContainer && !observerRef.current) {
+              observerRef.current = new MutationObserver(() => {
+                // Use requestAnimationFrame for better performance
+                requestAnimationFrame(enforceContainment);
+              });
+
+              observerRef.current.observe(adContainer, {
+                childList: true,
+                subtree: false,  // Only watch direct children
+                attributes: true,
+                attributeFilter: ['style']
+              });
+            }
+          }, 2000);
+
           console.log(`✅ Ad slot ${slot.id} displayed successfully with sizes:`, adSizes);
         } else {
           console.error(`❌ Failed to define ad slot: ${slot.id}`);
@@ -149,7 +235,14 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
       loadAd();
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Cleanup MutationObserver on unmount
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
   }, [loadAd]);
 
   const currentSize = isMobile && slot.mobileSize ? slot.mobileSize : slot.size;
@@ -180,19 +273,23 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
   }
 
   return (
-    <div className="ad-slot-container flex justify-center items-center my-4">
+    <div className="ad-slot-container flex justify-center items-center my-4 relative isolate">
       <div
         ref={adRef}
-        className="ad-slot"
+        className="ad-slot relative"
         style={{
           minWidth: `${width}px`,
           minHeight: isEmpty ? '0px' : `${height}px`,
           maxWidth: "100%",
           border: process.env.NODE_ENV === "development" ? "1px dashed #ccc" : "none",
+          overflow: "hidden",
+          maxHeight: `${height}px`,
+          contain: "layout style paint",
+          isolation: "isolate",
         }}
       />
       {process.env.NODE_ENV === "development" && !isEmpty && (
-        <div className="text-xs text-gray-500 absolute">
+        <div className="text-xs text-gray-500 absolute bottom-0 right-0 pointer-events-none">
           {/* {slot.name} ({width}x{height}) */}
         </div>
       )}

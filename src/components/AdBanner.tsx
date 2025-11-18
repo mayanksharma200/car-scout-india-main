@@ -22,7 +22,7 @@ const AdBanner: React.FC<AdBannerProps> = ({
   }
 
   return (
-    <div className={`ad-banner w-full flex justify-center ${className}`}>
+    <div className={`ad-banner w-full flex justify-center relative overflow-hidden ${className}`} style={{ isolation: 'isolate' }}>
       <AdSlot slot={adSlot} showFallback={showFallback} />
     </div>
   );
