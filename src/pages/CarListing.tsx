@@ -765,8 +765,12 @@ const CarListing = () => {
     "Volkswagen",
   ].sort();
 
-  // Use allBrands instead of extracting from cars
-  const brands = allBrands;
+  // Extract brands from cars to only show available brands
+  const brands = React.useMemo(() => {
+    const availableBrands = [...new Set(cars.map((car) => car.brand).filter(Boolean))];
+    // Sort brands alphabetically
+    return availableBrands.sort();
+  }, [cars]);
   const bodyTypes = [
     ...new Set(cars.map((car) => car.bodyType).filter(Boolean)),
   ].sort();
