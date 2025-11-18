@@ -1864,6 +1864,173 @@ app.post("/api/admin/cars/ideogram-bulk-generate", async (req, res) => {
   }
 });
 
+// ===== ADMIN LEADS ENDPOINTS =====
+
+// Get all leads for admin with pagination, search, and filters
+app.get("/api/admin/leads", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      source,
+      search,
+      sort_by = 'created_at',
+      sort_order = 'desc'
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = supabase
+      .from("leads")
+      .select("*", { count: 'exact' });
+
+    // Filters
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (source) {
+      query = query.eq('source', source);
+    }
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,city.ilike.%${search}%`);
+    }
+
+    // Sorting
+    query = query.order(sort_by, { ascending: sort_order === 'asc' });
+
+    // Pagination
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Admin] Error fetching leads:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch leads',
+        details: error.message
+      });
+    }
+
+    const totalPages = Math.ceil(count / parseInt(limit));
+
+    res.json({
+      success: true,
+      data: data,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        totalPages: totalPages,
+        hasMore: parseInt(page) < totalPages
+      }
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in get leads:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Delete a lead by ID
+app.delete("/api/admin/leads/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lead ID is required'
+      });
+    }
+
+    const { error } = await supabase
+      .from("leads")
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('[Admin] Error deleting lead:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to delete lead',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Lead deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in delete lead:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Update a lead by ID
+app.put("/api/admin/leads/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const leadData = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lead ID is required'
+      });
+    }
+
+    // Remove fields that shouldn't be updated
+    const { id: _, created_at, user_id, ip_address, user_agent, ...updateData } = leadData;
+
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("leads")
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error updating lead:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update lead',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data: data,
+      message: 'Lead updated successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in update lead:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 app.post("/api/leads", optionalAuth, async (req, res) => {
   try {
     const leadData = {

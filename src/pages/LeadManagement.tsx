@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { useLeads, useCars } from "@/hooks/useSupabaseData";
-import { Users, Search, Filter, MoreHorizontal, Phone, Mail, Calendar, Car, TrendingUp, MapPin, Eye, MessageSquare, ExternalLink } from "lucide-react";
-import ExportLeadsButton from "@/components/ExportLeadsButton";
+import { useState, useEffect } from "react";
+import { Users, Search, Filter, MoreHorizontal, Phone, Mail, Calendar, Car, TrendingUp, MapPin, Eye, MessageSquare, ExternalLink, Edit, Trash2, IndianRupee, Briefcase, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,30 +12,185 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import AdminLayout from "@/components/AdminLayout";
 
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  interested_car_id: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  timeline: string | null;
+  source: string;
+  status: string;
+  api_sent: boolean;
+  api_response: any;
+  created_at: string;
+  updated_at: string;
+  employment_type?: string | null;
+  monthly_income?: number | null;
+  loan_amount?: number | null;
+  emi_amount?: string | null;
+  message?: string | null;
+}
+
 const LeadManagement = () => {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Get leads and cars from Supabase
-  const { leads, loading: leadsLoading } = useLeads();
-  const { cars, loading: carsLoading } = useCars();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  if (leadsLoading || carsLoading) {
-    return (
-      <AdminLayout>
-        <div className="p-6 flex items-center justify-center">
-          <div>Loading leads...</div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const limit = 20;
+
+  // Fetch leads from API
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sort_by: "created_at",
+        sort_order: "desc",
+      });
+
+      if (searchQuery) params.append("search", searchQuery);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (sourceFilter !== "all") params.append("source", sourceFilter);
+
+      const response = await fetch(
+        `http://localhost:3001/api/admin/leads?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch leads");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setLeads(result.data);
+        setTotalPages(result.pagination?.totalPages || 1);
+        setTotalLeads(result.pagination?.total || result.data.length);
+      }
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      toast.error("Failed to load leads");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads();
+  }, [page, searchQuery, statusFilter, sourceFilter]);
+
+  const handleDeleteClick = (lead: Lead) => {
+    setLeadToDelete(lead);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!leadToDelete) return;
+
+    try {
+      setDeleting(true);
+      const response = await fetch(
+        `http://localhost:3001/api/admin/leads/${leadToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Lead deleted successfully");
+        setDeleteDialogOpen(false);
+        setLeadToDelete(null);
+        fetchLeads();
+      } else {
+        toast.error(result.error || "Failed to delete lead");
+      }
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast.error("Failed to delete lead");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleViewDetails = (lead: Lead) => {
+    setSelectedLead(lead);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditClick = (lead: Lead) => {
+    setLeadToEdit({ ...lead });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!leadToEdit) return;
+
+    try {
+      setSaving(true);
+      const response = await fetch(
+        `http://localhost:3001/api/admin/leads/${leadToEdit.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(leadToEdit),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Lead updated successfully");
+        setEditDialogOpen(false);
+        setLeadToEdit(null);
+        fetchLeads();
+      } else {
+        toast.error(result.error || "Failed to update lead");
+      }
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      toast.error("Failed to update lead");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -47,8 +200,6 @@ const LeadManagement = () => {
         return <Badge className="bg-yellow-100 text-yellow-800">Contacted</Badge>;
       case 'qualified':
         return <Badge className="bg-green-100 text-green-800">Qualified</Badge>;
-      case 'proposal_sent':
-        return <Badge className="bg-purple-100 text-purple-800">Proposal Sent</Badge>;
       case 'lost':
         return <Badge variant="destructive">Lost</Badge>;
       default:
@@ -56,40 +207,19 @@ const LeadManagement = () => {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <Badge variant="destructive">High</Badge>;
-      case 'medium':
-        return <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>;
-      case 'low':
-        return <Badge variant="secondary">Low</Badge>;
-      default:
-        return <Badge variant="outline">{priority}</Badge>;
-    }
-  };
+  const getSourceBadge = (source: string) => {
+    const sourceLabels: Record<string, string> = {
+      'loan_comparison': 'Loan Comparison',
+      'loan_preapproval': 'Loan Pre-approval',
+      'request_quote': 'Request Quote',
+      'get_best_price': 'Get Best Price',
+      'website': 'Website',
+      'comparison': 'Comparison',
+      'emi_calculator': 'EMI Calculator',
+    };
 
-  const getWebhookStatusBadge = (status: string) => {
-    switch (status) {
-      case 'success':
-        return <Badge className="bg-green-100 text-green-800">✓ Sent</Badge>;
-      case 'failed':
-        return <Badge variant="destructive">✗ Failed</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800">⏳ Pending</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    return <Badge variant="outline">{sourceLabels[source] || source}</Badge>;
   };
-
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         lead.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-    const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
-    
-    return matchesSearch && matchesStatus && matchesSource;
-  });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -101,27 +231,92 @@ const LeadManagement = () => {
     });
   };
 
-  const sendToAPI = (leadId: string) => {
-    // This would integrate with actual API
-    console.log(`Sending lead ${leadId} to API...`);
+  const formatCurrency = (amount: number) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(2)} Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)} Lakh`;
+    }
+    return `₹${amount.toLocaleString()}`;
+  };
+
+  const filteredLeads = leads;
+
+  const renderLeadTypeDetails = (lead: Lead) => {
+    switch (lead.source) {
+      case 'loan_comparison':
+      case 'loan_preapproval':
+        return (
+          <div className="space-y-2 text-sm">
+            {lead.employment_type && (
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-muted-foreground" />
+                <span className="capitalize">{lead.employment_type}</span>
+              </div>
+            )}
+            {lead.monthly_income && (
+              <div className="flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-muted-foreground" />
+                <span>Income: {formatCurrency(lead.monthly_income)}/month</span>
+              </div>
+            )}
+            {lead.loan_amount && (
+              <p className="text-muted-foreground">Loan: {formatCurrency(lead.loan_amount)}</p>
+            )}
+            {lead.emi_amount && (
+              <p className="text-muted-foreground">EMI: ₹{lead.emi_amount}</p>
+            )}
+          </div>
+        );
+
+      case 'request_quote':
+      case 'get_best_price':
+        return (
+          <div className="space-y-2 text-sm">
+            {lead.interested_car_id && (
+              <div className="flex items-center gap-2">
+                <Car className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground text-xs">{lead.interested_car_id}</span>
+              </div>
+            )}
+            {(lead.budget_min || lead.budget_max) && (
+              <div className="flex items-center gap-2">
+                <IndianRupee className="w-4 h-4 text-muted-foreground" />
+                <span>
+                  {lead.budget_min && lead.budget_max
+                    ? `${formatCurrency(lead.budget_min)} - ${formatCurrency(lead.budget_max)}`
+                    : lead.budget_min
+                    ? formatCurrency(lead.budget_min)
+                    : formatCurrency(lead.budget_max!)}
+                </span>
+              </div>
+            )}
+            {lead.timeline && (
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="capitalize">{lead.timeline}</span>
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-sm text-muted-foreground">
+            {lead.interested_car_id && <p>Car ID: {lead.interested_car_id}</p>}
+            {lead.timeline && <p className="capitalize">{lead.timeline}</p>}
+          </div>
+        );
+    }
   };
 
   return (
     <AdminLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Lead Management</h1>
-            <p className="text-muted-foreground">Track and manage customer inquiries and API integrations</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              API Settings
-            </Button>
-            <ExportLeadsButton />
-          </div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Lead Management</h1>
+          <p className="text-muted-foreground">Track and manage customer inquiries and API integrations</p>
         </div>
 
         {/* Stats Cards */}
@@ -133,7 +328,7 @@ const LeadManagement = () => {
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{leads.length}</p>
+                  <p className="text-2xl font-bold">{totalLeads}</p>
                   <p className="text-sm text-muted-foreground">Total Leads</p>
                 </div>
               </div>
@@ -186,7 +381,7 @@ const LeadManagement = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">
-                    {((leads.filter(l => l.status === 'qualified').length / leads.length) * 100).toFixed(1)}%
+                    {totalLeads > 0 ? ((leads.filter(l => l.status === 'qualified').length / totalLeads) * 100).toFixed(1) : '0.0'}%
                   </p>
                   <p className="text-sm text-muted-foreground">Conversion</p>
                 </div>
@@ -205,12 +400,18 @@ const LeadManagement = () => {
                   <Input
                     placeholder="Search leads..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
                     className="pl-10"
                   />
                 </div>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -219,21 +420,23 @@ const LeadManagement = () => {
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
                   <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="proposal_sent">Proposal Sent</SelectItem>
                   <SelectItem value="lost">Lost</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-40">
+              <Select value={sourceFilter} onValueChange={(value) => {
+                setSourceFilter(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="loan_comparison">Loan Comparison</SelectItem>
+                  <SelectItem value="loan_preapproval">Loan Pre-approval</SelectItem>
+                  <SelectItem value="request_quote">Request Quote</SelectItem>
+                  <SelectItem value="get_best_price">Get Best Price</SelectItem>
                   <SelectItem value="website">Website</SelectItem>
-                  <SelectItem value="comparison">Comparison</SelectItem>
-                  <SelectItem value="emi_calculator">EMI Calculator</SelectItem>
-                  <SelectItem value="loan_application">Loan Application</SelectItem>
-                  <SelectItem value="reviews">Reviews</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -246,178 +449,425 @@ const LeadManagement = () => {
             <CardTitle>Leads ({filteredLeads.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lead Info</TableHead>
-                  <TableHead>Interested Car</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>API Status</TableHead>
-                  <TableHead>Timeline</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.map((lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-medium">{lead.name}</p>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail className="w-3 h-3" />
-                          <span>{lead.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          <span>{lead.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="w-3 h-3" />
-                          <span>{lead.city}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-medium">Car Interest</p>
-                        <p className="text-sm text-muted-foreground">ID: {lead.interested_car_id}</p>
-                        <p className="text-sm text-muted-foreground">{lead.budget}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(lead.status)}
-                    </TableCell>
-                    <TableCell>
-                      {getPriorityBadge(lead.priority)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {getWebhookStatusBadge(lead.webhook_status)}
-                        <p className="text-xs text-muted-foreground">
-                          {lead.api_sent ? 'Sent to API' : 'Not sent'}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="text-sm">{lead.timeline}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Created: {formatDate(lead.created_at)}
-                        </p>
-                        {lead.last_contact && (
-                          <p className="text-xs text-muted-foreground">
-                            Last contact: {formatDate(lead.last_contact)}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedLead(lead)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Lead Details - {lead.name}</DialogTitle>
-                            </DialogHeader>
-                            {selectedLead && (
-                              <div className="space-y-6">
-                                <div className="grid md:grid-cols-2 gap-4">
-                                  <div>
-                                    <Label className="text-sm font-medium">Contact Information</Label>
-                                    <div className="mt-2 space-y-2">
-                                      <p><strong>Name:</strong> {selectedLead.name}</p>
-                                      <p><strong>Email:</strong> {selectedLead.email}</p>
-                                      <p><strong>Phone:</strong> {selectedLead.phone}</p>
-                                      <p><strong>City:</strong> {selectedLead.city}</p>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm font-medium">Interest Details</Label>
-                                    <div className="mt-2 space-y-2">
-                                       <p><strong>Car ID:</strong> {selectedLead.interested_car_id}</p>
-                                       <p><strong>Variant:</strong> N/A</p>
-                                      <p><strong>Budget:</strong> {selectedLead.budget}</p>
-                                      <p><strong>Timeline:</strong> {selectedLead.timeline}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div>
-                                  <Label className="text-sm font-medium">Notes</Label>
-                                  <Textarea 
-                                    value={selectedLead.notes} 
-                                    className="mt-2"
-                                    rows={3}
-                                    readOnly
-                                  />
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-4">
-                                  <div>
-                                    <Label className="text-sm font-medium">Lead Management</Label>
-                                    <div className="mt-2 space-y-2">
-                                      <p><strong>Status:</strong> {selectedLead.status}</p>
-                                      <p><strong>Priority:</strong> {selectedLead.priority}</p>
-                                      <p><strong>Source:</strong> {selectedLead.source}</p>
-                                      <p><strong>Assigned to:</strong> {selectedLead.assigned_to}</p>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <Label className="text-sm font-medium">API Integration</Label>
-                                    <div className="mt-2 space-y-2">
-                                       <p><strong>API Sent:</strong> {selectedLead.api_sent ? 'Yes' : 'No'}</p>
-                                       <p><strong>Webhook Status:</strong> {selectedLead.webhook_status}</p>
-                                       {!selectedLead.api_sent && (
-                                        <Button size="sm" onClick={() => sendToAPI(selectedLead.id)} className="mt-2">
-                                          Send to API
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Phone className="w-4 h-4 mr-2" />
-                              Call Customer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Send to API
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <MessageSquare className="w-4 h-4 mr-2" />
-                              Add Note
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Lead Info</TableHead>
+                    <TableHead>Interest Details</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>API Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium">{lead.name}</p>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Mail className="w-3 h-3" />
+                            <span>{lead.email}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Phone className="w-3 h-3" />
+                            <span>{lead.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <MapPin className="w-3 h-3" />
+                            <span>{lead.city}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {renderLeadTypeDetails(lead)}
+                        {lead.message && (
+                          <p className="text-xs text-muted-foreground mt-2 italic">"{lead.message}"</p>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getSourceBadge(lead.source)}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(lead.status)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={lead.api_sent ? "default" : "outline"}>
+                          {lead.api_sent ? '✓ Sent' : '⏳ Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{formatDate(lead.created_at)}</p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(lead)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => window.location.href = `tel:${lead.phone}`}>
+                                <Phone className="w-4 h-4 mr-2" />
+                                Call Customer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => window.location.href = `mailto:${lead.email}`}>
+                                <Mail className="w-4 h-4 mr-2" />
+                                Send Email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Send to API
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <MessageSquare className="w-4 h-4 mr-2" />
+                                Add Note
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditClick(lead)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Lead
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleDeleteClick(lead)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Lead
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            {/* Pagination */}
+            {!loading && filteredLeads.length > 0 && (
+              <div className="flex items-center justify-between border-t px-6 py-4 mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(page - 1) * limit + 1} to{" "}
+                  {Math.min(page * limit, totalLeads)} of {totalLeads} leads
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  <div className="text-sm">
+                    Page {page} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* View Details Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Lead Details - {selectedLead?.name}</DialogTitle>
+            </DialogHeader>
+            {selectedLead && (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">Contact Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Name:</strong> {selectedLead.name}</p>
+                      <p><strong>Email:</strong> {selectedLead.email}</p>
+                      <p><strong>Phone:</strong> {selectedLead.phone}</p>
+                      <p><strong>City:</strong> {selectedLead.city}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-3">Lead Details</h3>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Source:</strong> {selectedLead.source}</p>
+                      <p><strong>Status:</strong> {selectedLead.status}</p>
+                      <p><strong>API Sent:</strong> {selectedLead.api_sent ? 'Yes' : 'No'}</p>
+                      <p><strong>Created:</strong> {formatDate(selectedLead.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Type-specific details */}
+                {(selectedLead.source === 'loan_comparison' || selectedLead.source === 'loan_preapproval') && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Loan Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      {selectedLead.employment_type && (
+                        <p><strong>Employment:</strong> <span className="capitalize">{selectedLead.employment_type}</span></p>
+                      )}
+                      {selectedLead.monthly_income && (
+                        <p><strong>Monthly Income:</strong> {formatCurrency(selectedLead.monthly_income)}</p>
+                      )}
+                      {selectedLead.loan_amount && (
+                        <p><strong>Loan Amount:</strong> {formatCurrency(selectedLead.loan_amount)}</p>
+                      )}
+                      {selectedLead.emi_amount && (
+                        <p><strong>EMI:</strong> ₹{selectedLead.emi_amount}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(selectedLead.source === 'request_quote' || selectedLead.source === 'get_best_price') && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Car Interest</h3>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      {selectedLead.interested_car_id && (
+                        <p><strong>Car ID:</strong> {selectedLead.interested_car_id}</p>
+                      )}
+                      {(selectedLead.budget_min || selectedLead.budget_max) && (
+                        <p><strong>Budget:</strong>{' '}
+                          {selectedLead.budget_min && selectedLead.budget_max
+                            ? `${formatCurrency(selectedLead.budget_min)} - ${formatCurrency(selectedLead.budget_max)}`
+                            : selectedLead.budget_min
+                            ? formatCurrency(selectedLead.budget_min)
+                            : formatCurrency(selectedLead.budget_max!)}
+                        </p>
+                      )}
+                      {selectedLead.timeline && (
+                        <p><strong>Timeline:</strong> <span className="capitalize">{selectedLead.timeline}</span></p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedLead.message && (
+                  <div>
+                    <h3 className="font-semibold mb-3">Message</h3>
+                    <p className="text-sm bg-muted p-3 rounded">{selectedLead.message}</p>
+                  </div>
+                )}
+
+                {selectedLead.api_response && (
+                  <div>
+                    <h3 className="font-semibold mb-3">API Response</h3>
+                    <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                      {JSON.stringify(selectedLead.api_response, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Lead Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Lead</DialogTitle>
+            </DialogHeader>
+            {leadToEdit && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Name</label>
+                    <Input
+                      value={leadToEdit.name}
+                      onChange={(e) => setLeadToEdit({ ...leadToEdit, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Email</label>
+                    <Input
+                      type="email"
+                      value={leadToEdit.email}
+                      onChange={(e) => setLeadToEdit({ ...leadToEdit, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Phone</label>
+                    <Input
+                      value={leadToEdit.phone}
+                      onChange={(e) => setLeadToEdit({ ...leadToEdit, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">City</label>
+                    <Input
+                      value={leadToEdit.city}
+                      onChange={(e) => setLeadToEdit({ ...leadToEdit, city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Status</label>
+                    <Select
+                      value={leadToEdit.status}
+                      onValueChange={(value) => setLeadToEdit({ ...leadToEdit, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="contacted">Contacted</SelectItem>
+                        <SelectItem value="qualified">Qualified</SelectItem>
+                        <SelectItem value="lost">Lost</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Source</label>
+                    <Input
+                      value={leadToEdit.source}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+                </div>
+
+                {(leadToEdit.source === 'loan_comparison' || leadToEdit.source === 'loan_preapproval') && (
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-3">Loan Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Employment Type</label>
+                        <Input
+                          value={leadToEdit.employment_type || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, employment_type: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Monthly Income</label>
+                        <Input
+                          type="number"
+                          value={leadToEdit.monthly_income || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, monthly_income: parseInt(e.target.value) || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Loan Amount</label>
+                        <Input
+                          type="number"
+                          value={leadToEdit.loan_amount || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, loan_amount: parseInt(e.target.value) || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">EMI Amount</label>
+                        <Input
+                          value={leadToEdit.emi_amount || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, emi_amount: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(leadToEdit.source === 'request_quote' || leadToEdit.source === 'get_best_price') && (
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-3">Car Interest</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Budget Min</label>
+                        <Input
+                          type="number"
+                          value={leadToEdit.budget_min || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, budget_min: parseInt(e.target.value) || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Budget Max</label>
+                        <Input
+                          type="number"
+                          value={leadToEdit.budget_max || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, budget_max: parseInt(e.target.value) || null })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Timeline</label>
+                        <Input
+                          value={leadToEdit.timeline || ''}
+                          onChange={(e) => setLeadToEdit({ ...leadToEdit, timeline: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {leadToEdit.message && (
+                  <div className="border-t pt-4">
+                    <label className="text-sm font-medium">Message</label>
+                    <textarea
+                      className="w-full mt-2 p-2 border rounded-md"
+                      rows={3}
+                      value={leadToEdit.message || ''}
+                      onChange={(e) => setLeadToEdit({ ...leadToEdit, message: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleEditSave} disabled={saving}>
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the lead for "{leadToDelete?.name}".
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
