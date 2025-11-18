@@ -25,11 +25,74 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface Activity {
+  id: string;
+  action_type: string;
+  action_title: string;
+  action_details: string;
+  entity_type: string;
+  created_at: string;
+  metadata?: any;
+}
+
+interface NewLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  source: string;
+  created_at: string;
+}
+
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [newLeads, setNewLeads] = useState<NewLead[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
+  const [loadingLeads, setLoadingLeads] = useState(true);
   const liveStats = useStats();
   const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // Fetch recent activities
+  const fetchActivities = async () => {
+    try {
+      setLoadingActivities(true);
+      const response = await fetch('http://localhost:3001/api/admin/activities?limit=20');
+      const result = await response.json();
+
+      if (result.success) {
+        setActivities(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  // Fetch new leads
+  const fetchNewLeads = async () => {
+    try {
+      setLoadingLeads(true);
+      const response = await fetch('http://localhost:3001/api/admin/new-leads?limit=20');
+      const result = await response.json();
+
+      if (result.success) {
+        setNewLeads(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching new leads:', error);
+    } finally {
+      setLoadingLeads(false);
+    }
+  };
+
+  // Load activities and leads on mount
+  useEffect(() => {
+    fetchActivities();
+    fetchNewLeads();
+  }, []);
 
   // Prevent auto-scroll on page load
   useEffect(() => {
@@ -61,6 +124,37 @@ const AdminDashboard = () => {
     return `₹${(price / 1000).toFixed(0)}K`;
   };
 
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+    const months = Math.floor(days / 30);
+    return `${months} month${months > 1 ? 's' : ''} ago`;
+  };
+
+  const getActivityColor = (entityType: string) => {
+    switch (entityType) {
+      case 'car':
+        return 'bg-blue-500';
+      case 'lead':
+        return 'bg-green-500';
+      case 'content':
+        return 'bg-purple-500';
+      case 'dealer':
+        return 'bg-orange-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
   const stats = [
     {
       title: "Total Cars",
@@ -89,62 +183,6 @@ const AdminDashboard = () => {
       change: "+15%",
       trend: "up",
       icon: TrendingUp,
-    },
-  ];
-
-  const recentActivity = [
-    {
-      action: "New car added",
-      details: "2024 Tata Nexon EV Max",
-      time: "2 hours ago",
-      type: "car",
-    },
-    {
-      action: "Lead assigned",
-      details: "Rajesh Kumar - Swift inquiry",
-      time: "4 hours ago",
-      type: "lead",
-    },
-    {
-      action: "Article published",
-      details: "Electric Vehicle Sales Surge",
-      time: "1 day ago",
-      type: "content",
-    },
-    {
-      action: "Price updated",
-      details: "Hyundai Creta variants",
-      time: "2 days ago",
-      type: "car",
-    },
-    {
-      action: "New dealer registered",
-      details: "Prime Motors, Chennai",
-      time: "3 days ago",
-      type: "dealer",
-    },
-  ];
-
-  const pendingTasks = [
-    {
-      task: "Review 15 pending car listings",
-      priority: "high",
-      deadline: "Today",
-    },
-    {
-      task: "Approve dealer responses to reviews",
-      priority: "medium",
-      deadline: "Tomorrow",
-    },
-    {
-      task: "Update festival pricing offers",
-      priority: "high",
-      deadline: "This week",
-    },
-    {
-      task: "Generate monthly analytics report",
-      priority: "low",
-      deadline: "End of month",
     },
   ];
 
@@ -347,69 +385,84 @@ const AdminDashboard = () => {
                 <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full mt-2 ${
-                          activity.type === "car"
-                            ? "bg-blue-500"
-                            : activity.type === "lead"
-                            ? "bg-green-500"
-                            : activity.type === "content"
-                            ? "bg-purple-500"
-                            : "bg-orange-500"
-                        }`}
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{activity.action}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activity.details}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {activity.time}
-                        </p>
-                      </div>
+                <div className="h-[400px] overflow-y-auto pr-2 space-y-4">
+                  {loadingActivities ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                  ))}
+                  ) : activities.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No recent activity
+                    </div>
+                  ) : (
+                    activities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full mt-2 ${getActivityColor(
+                            activity.entity_type
+                          )}`}
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{activity.action_title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {activity.action_details}
+                          </p>
+                          {activity.metadata?.count && (
+                            <p className="text-xs text-muted-foreground">
+                              {activity.metadata.count} items
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatTimeAgo(activity.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Pending Tasks */}
+            {/* Pending New Leads */}
             <Card>
               <CardHeader>
-                <CardTitle>Pending Tasks</CardTitle>
+                <CardTitle>Pending New Leads</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {pendingTasks.map((task, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{task.task}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Due: {task.deadline}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          task.priority === "high"
-                            ? "destructive"
-                            : task.priority === "medium"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {task.priority}
-                      </Badge>
+                <div className="h-[400px] overflow-y-auto pr-2 space-y-4">
+                  {loadingLeads ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                  ))}
+                  ) : newLeads.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No pending new leads
+                    </div>
+                  ) : (
+                    newLeads.map((lead) => (
+                      <Link
+                        key={lead.id}
+                        to="/admin/leads"
+                        className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors block"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {lead.phone} • {lead.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeAgo(lead.created_at)}
+                          </p>
+                        </div>
+                        <Badge variant="default" className="bg-blue-100 text-blue-800">
+                          {lead.source}
+                        </Badge>
+                      </Link>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

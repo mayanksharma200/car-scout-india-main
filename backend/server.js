@@ -3317,6 +3317,124 @@ app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// Get recent admin activities
+app.get("/api/admin/activities", async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const { data, error } = await supabase
+      .from("admin_activities")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(parseInt(limit));
+
+    if (error) {
+      console.error('[Admin] Error fetching activities:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch activities',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data: data || []
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in get activities:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Get new leads (status = 'new')
+app.get("/api/admin/new-leads", async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const { data, error } = await supabase
+      .from("leads")
+      .select("*")
+      .eq('status', 'new')
+      .order("created_at", { ascending: false })
+      .limit(parseInt(limit));
+
+    if (error) {
+      console.error('[Admin] Error fetching new leads:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch new leads',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data: data || [],
+      count: data?.length || 0
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in get new leads:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Log admin activity (helper endpoint)
+app.post("/api/admin/log-activity", async (req, res) => {
+  try {
+    const { action_type, action_title, action_details, entity_type, entity_id, metadata } = req.body;
+
+    const activityData = {
+      action_type,
+      action_title,
+      action_details,
+      entity_type,
+      entity_id,
+      metadata,
+      admin_user_id: req.user?.userId || null, // From auth token if available
+      created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from("admin_activities")
+      .insert([activityData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error logging activity:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to log activity',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data: data
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in log activity:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 // Development-only endpoints
 if (IS_DEVELOPMENT) {
   app.post("/api/auth/create-test-user", async (req, res) => {
