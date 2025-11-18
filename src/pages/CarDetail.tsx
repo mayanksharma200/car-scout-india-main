@@ -564,7 +564,6 @@ const CarDetail = () => {
                 })()}
                 carName={`${car.brand} ${car.model}`}
                 isLoading={isColorChanging}
-                show360View={true}
                 car={{
                   brand: car.brand,
                   model: car.model,

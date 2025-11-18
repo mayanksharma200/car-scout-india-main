@@ -189,28 +189,6 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         
-        {/* View Mode Toggle Buttons */}
-        {show360View && (
-          <div className="flex flex-wrap gap-2 max-w-full overflow-hidden mb-4">
-            <Button
-              variant={!active360View ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleViewModeToggle(false)}
-              className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0"
-            >
-              Images
-            </Button>
-            <Button
-              variant={active360View ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleViewModeToggle(true)}
-              className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0 flex items-center gap-2"
-            >
-              <RotateCcw className="w-3 h-3 md:w-4 md:h-4" />
-              360° View
-            </Button>
-          </div>
-        )}
 
         {/* Current Selected Color */}
         {activeColor && (

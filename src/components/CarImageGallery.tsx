@@ -7,12 +7,10 @@ import {
   Download,
   Share2,
   Maximize2,
-  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ShareModal from "./ShareModal";
-import Car360View from "./Car360View";
 
 interface CarImageGalleryProps {
   images: (
@@ -26,7 +24,6 @@ interface CarImageGalleryProps {
   )[];
   carName: string;
   isLoading?: boolean;
-  show360View?: boolean;
   car?: {
     brand: string;
     model: string;
@@ -47,12 +44,10 @@ const CarImageGallery = ({
   images,
   carName,
   isLoading = false,
-  show360View = false,
   car,
   currentColor,
   colorVariantImages,
 }: CarImageGalleryProps) => {
-  const [is360ViewActive, setIs360ViewActive] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -239,85 +234,39 @@ const CarImageGallery = ({
         {categories.length > 1 && categories.map((category) => (
           <Button
             key={category}
-            variant={activeCategory === category && !is360ViewActive ? "default" : "outline"}
+            variant={activeCategory === category ? "default" : "outline"}
             size="sm"
             onClick={() => {
               setActiveCategory(category);
               setCurrentIndex(0);
-              setIs360ViewActive(false);
             }}
             className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0"
           >
             {category === "all" ? "All Photos" : category}
           </Button>
         ))}
-        
-        {/* 360° View Toggle Button */}
-        {show360View && (
-          <Button
-            variant={is360ViewActive ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIs360ViewActive(!is360ViewActive)}
-            className="capitalize text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-auto flex-shrink-0 flex items-center gap-2"
-          >
-            <RotateCcw className="w-3 h-3 md:w-4 md:h-4" />
-            360° View
-          </Button>
-        )}
-        
       </div>
 
       {/* Main Display Area */}
       <div className="relative group w-full max-w-full">
-        {is360ViewActive ? (
-          /* 360° View */
-          <div className="w-full">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800 mb-4">
-              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-3">
-                🚗 360° Interactive View - {car?.brand || "Car"} {car?.model || "Model"}
-              </h3>
-              {car && currentColor ? (
-                <Car360View
-                  car={{
-                    brand: car.brand,
-                    model: car.model,
-                    variant: car.variant,
-                  }}
-                  paintId={currentColor.paintId}
-                  paintDescription={currentColor.paintDescription}
-                  height={400}
-                  autoRotate={false}
-                  className="w-full"
-                />
-              ) : (
-                <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-                  <p className="text-sm">
-                    <strong>Missing data:</strong> Car info or color data not provided. 
-                    Need car={"{brand, model, variant}"} and currentColor={"{paintId, paintDescription}"} props.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Regular Image Gallery */
-          <div
-            className="aspect-video bg-muted rounded-lg overflow-hidden w-full max-w-full"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            <img
-              src={currentImage?.url || "/placeholder.svg"}
-              alt={currentImage?.alt || carName}
-              className={`w-full h-full object-cover transition-all duration-300 ${
-                isLoading ? "opacity-60" : "group-hover:scale-105"
-              }`}
-              
-            />
+        {/* Regular Image Gallery */}
+        <div
+          className="aspect-video bg-muted rounded-lg overflow-hidden w-full max-w-full"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <img
+            src={currentImage?.url || "/placeholder.svg"}
+            alt={currentImage?.alt || carName}
+            className={`w-full h-full object-cover transition-all duration-300 ${
+              isLoading ? "opacity-60" : "group-hover:scale-105"
+            }`}
+            
+          />
 
-            {/* Overlay Controls */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300">
+          {/* Overlay Controls */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300">
             {/* Navigation Arrows */}
             {filteredImages.length > 1 && (
               <>
@@ -373,7 +322,7 @@ const CarImageGallery = ({
             {/* Image Counter */}
             <div
               className="absolute bottom-3 left-3 bg-black/60 text-white px-2.5 py-1.5 rounded-md text-xs md:text-sm font-medium
-                          opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"
+                           opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"
             >
               {currentIndex + 1} / {filteredImages.length}
             </div>
@@ -389,81 +338,80 @@ const CarImageGallery = ({
                 <ChevronRight className="w-3 h-3" />
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Thumbnail Navigation */}
+        {filteredImages.length > 1 && (
+          <div className="w-full">
+            {/* Horizontal Scrolling Thumbnails */}
+            <div
+              ref={thumbnailRef}
+              className={`flex gap-2 md:gap-3 overflow-x-auto pb-2 w-full transition-opacity duration-300 ${
+                isLoading ? "opacity-50 pointer-events-none" : ""
+              }`}
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                scrollBehavior: "smooth",
+              }}
+            >
+              {filteredImages.map((image, index) => (
+                <button
+                  key={image.id}
+                  onClick={() => goToImage(index)}
+                  className={`relative flex-shrink-0 w-16 h-12 md:w-20 md:h-16 rounded-md overflow-hidden 
+                            border-2 transition-all duration-200 hover:scale-105 active:scale-95 
+                            ${
+                              index === currentIndex
+                                ? "border-primary shadow-lg scale-105 ring-1 ring-primary/20"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                >
+                  <img
+                    src={image.url}
+                    alt={image.alt}
+                    className="w-full h-full object-cover"
+                    
+                  />
+                  {/* Individual Loading State */}
+                  {isLoading && index === currentIndex && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </button>
+              ))}
             </div>
+
+            {/* Dot Indicators for Mobile */}
+            {filteredImages.length > 3 && (
+              <div className="flex justify-center mt-3 md:mt-2">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted/80 backdrop-blur-sm rounded-full border">
+                  {filteredImages
+                    .slice(0, Math.min(6, filteredImages.length))
+                    .map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => goToImage(index)}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 hover:scale-125 ${
+                          index === currentIndex
+                            ? "bg-primary scale-125"
+                            : "bg-muted-foreground/50 hover:bg-muted-foreground/70"
+                        }`}
+                      />
+                    ))}
+                  {filteredImages.length > 6 && (
+                    <span className="text-xs text-muted-foreground ml-1 font-medium">
+                      +{filteredImages.length - 6}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Thumbnail Navigation - Only show when not in 360° view */}
-      {!is360ViewActive && filteredImages.length > 1 && (
-        <div className="w-full">
-          {/* Horizontal Scrolling Thumbnails */}
-          <div
-            ref={thumbnailRef}
-            className={`flex gap-2 md:gap-3 overflow-x-auto pb-2 w-full transition-opacity duration-300 ${
-              isLoading ? "opacity-50 pointer-events-none" : ""
-            }`}
-            style={{
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-              scrollBehavior: "smooth",
-            }}
-          >
-            {filteredImages.map((image, index) => (
-              <button
-                key={image.id}
-                onClick={() => goToImage(index)}
-                className={`relative flex-shrink-0 w-16 h-12 md:w-20 md:h-16 rounded-md overflow-hidden 
-                          border-2 transition-all duration-200 hover:scale-105 active:scale-95 
-                          ${
-                            index === currentIndex
-                              ? "border-primary shadow-lg scale-105 ring-1 ring-primary/20"
-                              : "border-border hover:border-primary/50"
-                          }`}
-              >
-                <img
-                  src={image.url}
-                  alt={image.alt}
-                  className="w-full h-full object-cover"
-                  
-                />
-                {/* Individual Loading State */}
-                {isLoading && index === currentIndex && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Dot Indicators for Mobile */}
-          {filteredImages.length > 3 && (
-            <div className="flex justify-center mt-3 md:mt-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-muted/80 backdrop-blur-sm rounded-full border">
-                {filteredImages
-                  .slice(0, Math.min(6, filteredImages.length))
-                  .map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => goToImage(index)}
-                      className={`w-2 h-2 rounded-full transition-all duration-200 hover:scale-125 ${
-                        index === currentIndex
-                          ? "bg-primary scale-125"
-                          : "bg-muted-foreground/50 hover:bg-muted-foreground/70"
-                      }`}
-                    />
-                  ))}
-                {filteredImages.length > 6 && (
-                  <span className="text-xs text-muted-foreground ml-1 font-medium">
-                    +{filteredImages.length - 6}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Fullscreen Modal */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
