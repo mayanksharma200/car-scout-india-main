@@ -35,7 +35,12 @@ interface CarImageGalleryProps {
   currentColor?: {
     paintId: string;
     paintDescription: string;
+    name?: string; // Add color name
   };
+  colorVariantImages?: Record<string, {
+    color_code: string;
+    images: Record<string, string>; // angle: url mapping
+  }>;
 }
 
 const CarImageGallery = ({
@@ -45,6 +50,7 @@ const CarImageGallery = ({
   show360View = false,
   car,
   currentColor,
+  colorVariantImages,
 }: CarImageGalleryProps) => {
   const [is360ViewActive, setIs360ViewActive] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -56,9 +62,24 @@ const CarImageGallery = ({
   );
   const thumbnailRef = useRef<HTMLDivElement>(null);
 
+  // Get images for the selected color variant
+  const colorSpecificImages = useMemo(() => {
+    if (colorVariantImages && currentColor?.name) {
+      const colorData = colorVariantImages[currentColor.name];
+      if (colorData && colorData.images) {
+        // Convert angle-mapped object to array
+        return Object.entries(colorData.images).map(([angle, url]) => url);
+      }
+    }
+    return null;
+  }, [colorVariantImages, currentColor]);
+
   // Transform images to normalized format
   const normalizedImages = useMemo(() => {
-    let normalized = (images || []).map((img, index) => {
+    // Use color-specific images if available, otherwise use provided images
+    const imagesToUse = colorSpecificImages || images || [];
+
+    let normalized = imagesToUse.map((img, index) => {
       if (typeof img === "string") {
         return {
           id: `image-${index}`,
@@ -82,7 +103,7 @@ const CarImageGallery = ({
     }
 
     return normalized;
-  }, [images, carName]);
+  }, [colorSpecificImages, images, carName]);
 
   // Get unique categories
   const categories = [

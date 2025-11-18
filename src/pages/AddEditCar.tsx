@@ -100,6 +100,7 @@ const AddEditCar = () => {
   const [saving, setSaving] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+  const [selectedColorForGeneration, setSelectedColorForGeneration] = useState<string>("");
   const [formData, setFormData] = useState<CarFormData>({
     // Basic Information
     external_id: "",
@@ -391,6 +392,21 @@ const AddEditCar = () => {
         "interior_steering"
       ];
 
+      // Parse colors to get selected color code
+      let selectedColorName = selectedColorForGeneration;
+      let selectedColorCode = null;
+
+      if (formData.colors && formData.color_codes && selectedColorName) {
+        const colorNames = formData.colors.split(';').map(c => c.trim());
+        const colorCodes = formData.color_codes.split(';').map(c => c.trim());
+        const colorIndex = colorNames.indexOf(selectedColorName);
+        if (colorIndex !== -1 && colorCodes[colorIndex]) {
+          selectedColorCode = colorCodes[colorIndex].startsWith('#')
+            ? colorCodes[colorIndex]
+            : `#${colorCodes[colorIndex]}`;
+        }
+      }
+
       const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-generate-single', {
         method: 'POST',
         headers: {
@@ -407,6 +423,8 @@ const AddEditCar = () => {
             color_codes: formData.color_codes || ''
           },
           angle: angleNames[imageIndex - 1], // 1-indexed to 0-indexed
+          colorName: selectedColorName || null,
+          colorCode: selectedColorCode || null,
           options: {
             num_images: 1,
             aspect_ratio: '16x9',
@@ -1228,6 +1246,49 @@ const AddEditCar = () => {
             <p className="text-sm text-muted-foreground">
               Upload or generate professional studio images for different car angles using Ideogram AI
             </p>
+            {/* Color Selector for Generation */}
+            {formData.colors && (
+              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <Label htmlFor="color-selector" className="text-sm font-medium mb-2 block">
+                  Select Color for AI Generation
+                </Label>
+                <Select
+                  value={selectedColorForGeneration}
+                  onValueChange={setSelectedColorForGeneration}
+                >
+                  <SelectTrigger id="color-selector" className="w-full md:w-1/2 bg-white">
+                    <SelectValue placeholder="Choose a color variant..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.colors.split(';').map((color, index) => {
+                      const colorName = color.trim();
+                      const colorCodes = formData.color_codes?.split(';') || [];
+                      const colorCode = colorCodes[index]?.trim() || '';
+                      const hexCode = colorCode.startsWith('#') ? colorCode : `#${colorCode}`;
+
+                      return (
+                        <SelectItem key={colorName} value={colorName}>
+                          <div className="flex items-center gap-2">
+                            {colorCode && (
+                              <div
+                                className="w-4 h-4 rounded-full border border-gray-300"
+                                style={{ backgroundColor: hexCode }}
+                              />
+                            )}
+                            <span>{colorName}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {selectedColorForGeneration && (
+                  <p className="text-xs text-purple-700 mt-2">
+                    All generated images will be in <strong>{selectedColorForGeneration}</strong> color
+                  </p>
+                )}
+              </div>
+            )}
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((index) => {

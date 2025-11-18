@@ -1457,20 +1457,21 @@ app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
 
     const ideogramResult = await ideogramAPI.generateCarImages(carData, generationOptions);
 
-    if (ideogramResult.success && ideogramResult.images.length > 0) {
-      console.log(`✅ Successfully generated ${ideogramResult.totalImages} Ideogram images for: ${carData.brand} ${carData.model}`);
+    if (ideogramResult.success && ideogramResult.totalImages > 0) {
+      console.log(`✅ Successfully generated ${ideogramResult.totalImages} Ideogram images across ${ideogramResult.totalColors} colors for: ${carData.brand} ${carData.model}`);
 
-      // Return images for preview - DO NOT save to database yet
+      // Return images grouped by color for preview - DO NOT save to database yet
       // User will review and approve images before uploading to S3
       res.json({
         success: true,
         carId,
         carName: `${carData.brand} ${carData.model}`,
-        images: ideogramResult.images,
-        imagesCount: ideogramResult.totalImages,
-        primaryImage: ideogramResult.primaryImage,
+        colorResults: ideogramResult.colorResults, // Images grouped by color
+        totalColors: ideogramResult.totalColors,
+        totalImages: ideogramResult.totalImages,
         created: ideogramResult.created,
-        message: 'Images generated successfully. Please review and approve before saving.'
+        errors: ideogramResult.errors,
+        message: `Generated ${ideogramResult.totalImages} images across ${ideogramResult.totalColors} colors. Please review and approve before saving.`
       });
     } else {
       console.log(`❌ Ideogram generation failed for: ${carData.brand} ${carData.model}`);
@@ -1508,16 +1509,22 @@ app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
 // Admin endpoint to upload approved Ideogram images to S3 and save to car
 app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
   try {
-    const { carId, approvedImages } = req.body;
+    const { carId, approvedColorImages } = req.body;
 
-    if (!carId || !approvedImages || !Array.isArray(approvedImages) || approvedImages.length === 0) {
+    // Support both old format (approvedImages array) and new format (approvedColorImages object)
+    if (!carId || !approvedColorImages) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: carId and approvedImages array'
+        error: 'Missing required parameters: carId and approvedColorImages'
       });
     }
 
-    console.log(`📤 Uploading ${approvedImages.length} approved images to S3 for car ${carId}`);
+    // Count total images across all colors
+    const totalApprovedImages = Object.values(approvedColorImages).reduce((sum, colorData) => {
+      return sum + (colorData.images ? colorData.images.length : 0);
+    }, 0);
+
+    console.log(`📤 Uploading ${totalApprovedImages} approved images across ${Object.keys(approvedColorImages).length} colors to S3 for car ${carId}`);
 
     // Check if S3 is configured
     if (!s3UploadService.isConfigured()) {
@@ -1527,28 +1534,10 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
       });
     }
 
-    // Upload approved images to S3
-    const uploadResults = await s3UploadService.uploadMultipleImages(approvedImages, carId);
-
-    // Filter successful uploads
-    const successfulUploads = uploadResults.filter(result => result.success);
-    const failedUploads = uploadResults.filter(result => !result.success);
-
-    if (successfulUploads.length === 0) {
-      return res.status(500).json({
-        success: false,
-        error: 'All image uploads failed',
-        failedUploads
-      });
-    }
-
-    // Extract S3 URLs
-    const s3ImageUrls = successfulUploads.map(result => result.s3Url);
-
     // Fetch current car data
     const { data: currentCar, error: fetchError } = await supabase
       .from('cars')
-      .select('images')
+      .select('color_variant_images, images')
       .eq('id', carId)
       .single();
 
@@ -1561,60 +1550,127 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
       });
     }
 
-    // Merge existing images with new S3 images (avoid duplicates)
-    const existingImages = currentCar.images || [];
-    const mergedImages = [...new Set([...existingImages, ...s3ImageUrls])];
+    // Initialize color_variant_images structure
+    const colorVariantImages = currentCar.color_variant_images || {};
+    let totalUploaded = 0;
+    let totalFailed = 0;
+    const colorUploadResults = {};
 
-    // Prepare update data
-    const updateData = {
-      images: mergedImages,
-      ideogram_images: {
-        source: 'ideogram',
-        primary: s3ImageUrls[0],
-        angles: successfulUploads.map(upload => ({
-          angle: upload.angle,
-          url: upload.s3Url,
-          resolution: upload.resolution,
-          is_safe: upload.is_safe,
-          original_url: upload.originalUrl
-        })),
-        total_images: successfulUploads.length,
-        valid: true,
-        last_updated: new Date().toISOString()
-      },
-      image_last_updated: new Date().toISOString()
-    };
+    // Process each color
+    for (const [colorName, colorData] of Object.entries(approvedColorImages)) {
+      const { colorCode, images: approvedImages } = colorData;
 
-    // Update car in database
-    const { error: updateError } = await supabase
-      .from('cars')
-      .update(updateData)
-      .eq('id', carId);
+      if (!approvedImages || approvedImages.length === 0) {
+        console.log(`⏭️ Skipping ${colorName}: no images to upload`);
+        continue;
+      }
 
-    if (updateError) {
-      console.error(`Failed to update car ${carId}:`, updateError);
+      console.log(`📤 Uploading ${approvedImages.length} images for ${colorName}...`);
+
+      // Add color info to S3 folder path
+      const colorSlug = colorName.toLowerCase().replace(/\s+/g, '-');
+      const uploadResults = await s3UploadService.uploadMultipleImages(
+        approvedImages,
+        `${carId}/${colorSlug}`
+      );
+
+      const successfulUploads = uploadResults.filter(r => r.success);
+      const failedUploads = uploadResults.filter(r => !r.success);
+
+      totalUploaded += successfulUploads.length;
+      totalFailed += failedUploads.length;
+
+      // Build images object for this color { angle: url }
+      const imagesObject = {};
+      successfulUploads.forEach(upload => {
+        if (upload.angle) {
+          imagesObject[upload.angle] = upload.s3Url;
+        }
+      });
+
+      // Store in color_variant_images structure
+      colorVariantImages[colorName] = {
+        color_code: colorCode || null,
+        images: imagesObject
+      };
+
+      colorUploadResults[colorName] = {
+        uploaded: successfulUploads.length,
+        failed: failedUploads.length,
+        successfulUploads,
+        failedUploads
+      };
+
+      console.log(`✅ ${colorName}: ${successfulUploads.length} uploaded, ${failedUploads.length} failed`);
+    }
+
+    if (totalUploaded === 0) {
       return res.status(500).json({
         success: false,
-        error: 'Database update failed',
-        details: updateError.message,
-        uploadedUrls: s3ImageUrls // Return URLs even if DB update fails
+        error: 'All image uploads failed',
+        colorUploadResults
       });
     }
 
-    console.log(`✅ Successfully uploaded ${successfulUploads.length} images and updated car ${carId}`);
+    // Also update the legacy images field with first color's front_3_4 for backward compatibility
+    const firstColor = Object.keys(colorVariantImages)[0];
+    const legacyImages = currentCar.images || {};
+    if (firstColor && colorVariantImages[firstColor].images.front_3_4) {
+      // Convert to angle-mapped object if needed
+      const imagesObject = typeof legacyImages === 'object' && !Array.isArray(legacyImages)
+        ? legacyImages
+        : {};
 
-    res.json({
-      success: true,
-      carId,
-      uploadedCount: successfulUploads.length,
-      failedCount: failedUploads.length,
-      s3ImageUrls,
-      totalImages: mergedImages.length,
-      uploadResults: {
-        successful: successfulUploads,
-        failed: failedUploads
+      // Merge first color images into legacy images field
+      Object.assign(imagesObject, colorVariantImages[firstColor].images);
+
+      // Prepare update data
+      const updateData = {
+        color_variant_images: colorVariantImages,
+        images: imagesObject, // Legacy format for backward compatibility
+        ideogram_images: {
+          source: 'ideogram',
+          total_colors: Object.keys(colorVariantImages).length,
+          total_images: totalUploaded,
+          valid: true,
+          last_updated: new Date().toISOString()
+        },
+        image_last_updated: new Date().toISOString()
+      };
+
+      // Update car in database
+      const { error: updateError } = await supabase
+        .from('cars')
+        .update(updateData)
+        .eq('id', carId);
+
+      if (updateError) {
+        console.error(`Failed to update car ${carId}:`, updateError);
+        return res.status(500).json({
+          success: false,
+          error: 'Database update failed',
+          details: updateError.message,
+          colorUploadResults
+        });
       }
-    });
+
+      console.log(`✅ Successfully uploaded ${totalUploaded} images across ${Object.keys(colorVariantImages).length} colors and updated car ${carId}`);
+
+      res.json({
+        success: true,
+        carId,
+        totalUploaded,
+        totalFailed,
+        totalColors: Object.keys(colorVariantImages).length,
+        colorUploadResults
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        error: 'No images to save',
+        colorUploadResults
+      });
+    }
 
   } catch (error) {
     console.error('Error uploading approved images:', error);
@@ -1629,7 +1685,7 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
 // Generate a single image for a specific angle using Ideogram AI
 app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
   try {
-    const { carData, angle, options = {} } = req.body;
+    const { carData, angle, colorName, colorCode, options = {} } = req.body;
 
     if (!carData || !angle) {
       return res.status(400).json({
@@ -1638,7 +1694,8 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
       });
     }
 
-    console.log(`🎨 Generating single Ideogram AI image for: ${carData.brand} ${carData.model} - ${angle}`);
+    const colorInfo = colorName ? ` in ${colorName}` : '';
+    console.log(`🎨 Generating single Ideogram AI image for: ${carData.brand} ${carData.model} - ${angle}${colorInfo}`);
 
     // Check if Ideogram is configured
     if (!ideogramAPI.isConfigured()) {
@@ -1668,7 +1725,9 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
       num_images: 1,
       aspect_ratio: options.aspect_ratio || '16x9',
       rendering_speed: options.rendering_speed || 'TURBO',
-      style_type: options.style_type || 'REALISTIC'
+      style_type: options.style_type || 'REALISTIC',
+      colorName: colorName || null,
+      colorCode: colorCode || null
     };
 
     // Generate only the specific angle we need
@@ -1679,9 +1738,13 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
 
       // Upload directly to S3
       if (s3UploadService.isConfigured()) {
+        // Include color in folder path if provided
+        const colorSlug = colorName ? colorName.toLowerCase().replace(/\s+/g, '-') : 'default';
+        const carIdentifier = `${carData.brand} ${carData.model}`;
+
         const uploadResults = await s3UploadService.uploadMultipleImages(
           [ideogramResult],
-          `${carData.brand} ${carData.model}`
+          `${carIdentifier}/${colorSlug}`
         );
 
         // Find the first successful upload

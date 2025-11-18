@@ -11,30 +11,52 @@ import path from 'path';
 const IDEOGRAM_API_BASE_URL = 'https://api.ideogram.ai/v1/ideogram-v3';
 
 /**
- * Generate individual prompt for a specific car angle
+ * Parse colors and color codes from semicolon-separated strings
+ * @param {string} colors - Semicolon-separated color names
+ * @param {string} colorCodes - Semicolon-separated color codes
+ * @returns {Array<Object>} - Array of {name, code} objects
+ */
+function parseColors(colors, colorCodes) {
+  if (!colors || typeof colors !== 'string') {
+    return [];
+  }
+
+  const colorNames = colors.split(';').map(c => c.trim()).filter(c => c);
+  const codes = colorCodes && typeof colorCodes === 'string'
+    ? colorCodes.split(';').map(c => c.trim()).filter(c => c)
+    : [];
+
+  return colorNames.map((name, index) => ({
+    name,
+    code: codes[index] ? (codes[index].startsWith('#') ? codes[index] : `#${codes[index]}`) : null
+  }));
+}
+
+/**
+ * Generate individual prompt for a specific car angle and color
  * @param {Object} carData - Car data object
  * @param {string} carData.brand - Car brand/make
  * @param {string} carData.model - Car model
  * @param {string} carData.variant - Car variant/trim
  * @param {number} angleIndex - Index of the angle (0-7)
+ * @param {string} specificColor - Specific color name for this generation
+ * @param {string} colorCode - Hex color code for reference
  * @returns {string} - Specific Ideogram prompt for that angle
  */
-function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
-  const { brand, model, variant, colors } = carData;
+function generateCarPrompt(carData, angleIndex = 0, specificColor = '', colorCode = '') {
+  const { brand, model, variant } = carData;
   const carName = `${brand} ${model} ${variant || ''}`.trim();
 
-  // Extract first color from the colors field (e.g., "Caviar Black;Linen Beige;..." -> "Caviar Black")
-  let specificColor = '';
-  if (colors && typeof colors === 'string') {
-    const colorList = colors.split(';');
-    specificColor = colorList[0].trim(); // Get first color
+  // Use provided specific color or extract from carData
+  let colorToUse = specificColor;
+  if (!colorToUse && carData.colors && typeof carData.colors === 'string') {
+    const colorList = carData.colors.split(';');
+    colorToUse = colorList[0].trim(); // Get first color
   }
 
-  // Use specific color from database, or the passed colorReference, or generic instruction
-  const colorInstruction = specificColor
-    ? `The car must be painted in ${specificColor} color. Exact ${specificColor} paint finish, consistent across all angles. `
-    : colorReference
-    ? `The car must be in ${colorReference} color, exactly matching the reference. Same paint color, same finish, consistent across all angles. `
+  // Use specific color instruction
+  const colorInstruction = colorToUse
+    ? `The car must be painted in ${colorToUse} color${colorCode ? ` (${colorCode})` : ''}. Exact ${colorToUse} paint finish, consistent across all angles. `
     : 'Use the car\'s original factory color. ';
 
   // Common lighting instruction for color consistency
@@ -44,19 +66,19 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
   // Each prompt is focused on ONE view only to avoid collages
   const anglePrompts = [
     // 0: Front 3/4 view (hero shot)
-    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the front 3/4 view. The camera should focus on the car's dynamic angle showing both the front grille and the side profile, creating a heroic perspective. The car should be positioned against a clean white background, showcasing its bold front profile and side lines with no distortion. In the image frame: the front bumper/bonnet on the left side of the image, and the rear boot visible on the right side of the image.`,
+    `A professional image of a ${carName} in ${colorToUse || 'its original color'}, captured from the front 3/4 view. The camera should focus on the car's dynamic angle showing both the front grille and the side profile, creating a heroic perspective. The car should be positioned against a clean white background, showcasing its bold front profile and side lines with no distortion. In the image frame: the front bumper/bonnet on the left side of the image, and the rear boot visible on the right side of the image.`,
 
     // 1: Front view
-    `A professional automotive photograph of a ${carName} in ${specificColor || 'its original color'}, captured from directly in front. Centered composition showing the front grille, headlights, and front fascia symmetrically. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
+    `A professional automotive photograph of a ${carName} in ${colorToUse || 'its original color'}, captured from directly in front. Centered composition showing the front grille, headlights, and front fascia symmetrically. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
 
     // 2: Left side profile
-    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the left side view. The camera should focus on the car's side profile from a slightly elevated angle, showing the smooth curves of the body, door handles, and wheels. The left side should be in profile, with a white background accentuating the car's length and shape. In the image frame: the front bonnet on the extreme left of the image, and the rear boot on the extreme right of the image.`,
+    `A professional image of a ${carName} in ${colorToUse || 'its original color'}, captured from the left side view. The camera should focus on the car's side profile from a slightly elevated angle, showing the smooth curves of the body, door handles, and wheels. The left side should be in profile, with a white background accentuating the car's length and shape. In the image frame: the front bonnet on the extreme left of the image, and the rear boot on the extreme right of the image.`,
 
     // 3: Right side profile
-    `A professional image of a ${carName} in ${specificColor || 'its original color'}, captured from the right side view. The camera should be positioned to clearly showcase the car's side profile, including the door lines, side mirrors, and wheel design. The car should be shown in profile, with the full right side visible against a clean white background. In the image frame: the rear boot on the extreme left edge of the image, and the front bonnet on the extreme right edge of the image.`,
+    `A professional image of a ${carName} in ${colorToUse || 'its original color'}, captured from the right side view. The camera should be positioned to clearly showcase the car's side profile, including the door lines, side mirrors, and wheel design. The car should be shown in profile, with the full right side visible against a clean white background. In the image frame: the rear boot on the extreme left edge of the image, and the front bonnet on the extreme right edge of the image.`,
 
     // 4: Rear view
-    `A professional automotive photograph of a ${carName} in ${specificColor || 'its original color'}, captured from directly behind. Centered composition showing the rear bumper, tail lights, and rear fascia. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
+    `A professional automotive photograph of a ${carName} in ${colorToUse || 'its original color'}, captured from directly behind. Centered composition showing the rear bumper, tail lights, and rear fascia. Clean white studio background. Professional commercial automotive photography. Sharp focus, photorealistic, 4K quality.`,
 
     // 5: Interior dashboard
     `Professional automotive interior photograph of a ${carName}. PRIORITY: The steering wheel MUST always be on the RIGHT side. View from driver's seat showing dashboard, steering wheel, and instrument cluster. Single interior angle showing the dashboard and controls. Clean, well-lit interior. Premium commercial photography quality. Sharp focus, photorealistic, 4K quality. CRITICAL: The steering wheel MUST be positioned on the RIGHT side of the interior (right-hand drive configuration). IMPORTANT: Show ONLY ONE interior view. NO collage, NO grid, NO multiple views, NO text, NO watermarks.`,
@@ -77,7 +99,8 @@ function generateCarPrompt(carData, angleIndex = 0, colorReference = '') {
  * @param {number} angleIndex - Index of the angle (0-7)
  * @param {Object} options - Generation options
  * @param {number} options.seed - Optional seed from first image for consistency
- * @param {string} options.colorReference - Optional color description from first image
+ * @param {string} options.colorName - Specific color name for this generation
+ * @param {string} options.colorCode - Hex color code for reference
  * @returns {Promise<Object>} - Single image result
  */
 async function generateSingleAngleImage(carData, angleIndex, options = {}) {
@@ -87,7 +110,7 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
     throw new Error('IDEOGRAM_API_KEY not found in environment variables');
   }
 
-  const prompt = generateCarPrompt(carData, angleIndex, options.colorReference || '');
+  const prompt = generateCarPrompt(carData, angleIndex, options.colorName || '', options.colorCode || '');
   const angleName = getAngleLabel(angleIndex);
 
   const formData = new FormData();
@@ -108,7 +131,8 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
   const negativePrompt = 'collage, multiple views, grid layout, multiple angles, multiple cars, different colors, color variations, color mismatch, different paint color, warm lighting, yellow tint, orange tint, cool lighting, blue tint, dramatic shadows, inconsistent lighting, different shade, darker color, lighter color, blurry, low quality, distorted, text overlay, watermark, logo, branding, people, hands, deformed car, unrealistic proportions, cartoon, wrong side view, reversed image, mirrored view, flipped image, mirror flip, left-hand drive, LHD, steering wheel on left, steering on left side, left side steering wheel';
   formData.append('negative_prompt', negativePrompt);
 
-  console.log(`[Ideogram] Generating ${angleName} (index ${angleIndex}) for ${carData.brand} ${carData.model}`);
+  const colorInfo = options.colorName ? ` in ${options.colorName}` : '';
+  console.log(`[Ideogram] Generating ${angleName} (index ${angleIndex}) for ${carData.brand} ${carData.model}${colorInfo}`);
   console.log(`[Ideogram] Prompt: ${prompt.substring(0, 100)}...`);
 
   const response = await axios.post(
@@ -135,7 +159,9 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
     seed: imageData.seed,
     resolution: imageData.resolution,
     angle: angleName,
-    prompt: imageData.prompt
+    prompt: imageData.prompt,
+    colorName: options.colorName || null,
+    colorCode: options.colorCode || null
   };
 }
 
@@ -143,11 +169,12 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
  * Generate all 8 car images using separate API calls for each angle
  * @param {Object} carData - Car data object
  * @param {Object} options - Generation options
- * @param {number} options.num_images - Number of images to generate (default 8 for all angles)
+ * @param {number} options.num_images - Number of images to generate per color (default 8 for all angles)
  * @param {string} options.aspect_ratio - Aspect ratio (default 16x9)
  * @param {string} options.rendering_speed - FLASH, TURBO, DEFAULT, or QUALITY (default TURBO)
  * @param {string} options.style_type - AUTO, GENERAL, REALISTIC, DESIGN, or FICTION (default REALISTIC)
- * @returns {Promise<Object>} - Generation result with image URLs
+ * @param {boolean} options.generateAllColors - Generate images for all colors (default true)
+ * @returns {Promise<Object>} - Generation result with image URLs grouped by color
  */
 async function generateCarImages(carData, options = {}) {
   try {
@@ -157,74 +184,113 @@ async function generateCarImages(carData, options = {}) {
       throw new Error('IDEOGRAM_API_KEY not found in environment variables');
     }
 
-    const numImages = options.num_images || 8;
-    console.log(`[Ideogram] Starting generation of ${numImages} individual images for ${carData.brand} ${carData.model}`);
+    const numAngles = options.num_images || 8;
+    const generateAllColors = options.generateAllColors !== false; // Default true
 
-    const images = [];
-    const errors = [];
-    let masterSeed = null; // Seed from first image for color consistency
-    let colorReference = ''; // Color description from first image
+    // Parse colors from carData
+    const colorVariants = parseColors(carData.colors, carData.color_codes);
 
-    // Generate each angle separately to avoid collages
-    for (let i = 0; i < numImages; i++) {
-      try {
-        // For images after the first one, use the seed from the first image
-        const angleOptions = { ...options };
-        if (i > 0 && masterSeed) {
-          angleOptions.seed = masterSeed;
-          angleOptions.colorReference = colorReference;
-        }
+    if (colorVariants.length === 0) {
+      throw new Error('No colors found in car data. Please add colors to the car.');
+    }
 
-        const imageResult = await generateSingleAngleImage(carData, i, angleOptions);
-        images.push(imageResult);
+    console.log(`[Ideogram] Found ${colorVariants.length} color variants for ${carData.brand} ${carData.model}`);
+    console.log(`[Ideogram] Colors: ${colorVariants.map(c => c.name).join(', ')}`);
 
-        // Save seed from first image to use for consistency in all other angles
-        if (i === 0 && imageResult.seed) {
-          masterSeed = imageResult.seed;
+    const colorResults = {};
+    const globalErrors = [];
+    let totalImagesGenerated = 0;
 
-          // Extract specific color from carData colors field
-          if (carData.colors && typeof carData.colors === 'string') {
-            const colorList = carData.colors.split(';');
-            colorReference = colorList[0].trim(); // Use first color name
-            console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed}, Color: ${colorReference}`);
-          } else {
-            colorReference = 'the same';
-            console.log(`[Ideogram] 🎨 Master seed set: ${masterSeed} for color consistency`);
+    // Generate images for each color
+    for (const colorVariant of colorVariants) {
+      const { name: colorName, code: colorCode } = colorVariant;
+
+      console.log(`\n[Ideogram] 🎨 Generating ${numAngles} angles for color: ${colorName}${colorCode ? ` (${colorCode})` : ''}`);
+
+      const images = [];
+      const errors = [];
+      let masterSeed = null; // Seed from first image for this color
+
+      // Generate each angle for this specific color
+      for (let i = 0; i < numAngles; i++) {
+        try {
+          // For images after the first one, use the seed from the first image of this color
+          const angleOptions = {
+            ...options,
+            colorName,
+            colorCode
+          };
+
+          if (i > 0 && masterSeed) {
+            angleOptions.seed = masterSeed;
           }
-        }
 
-        console.log(`[Ideogram] ✅ Generated ${imageResult.angle} (${i + 1}/${numImages})`);
+          const imageResult = await generateSingleAngleImage(carData, i, angleOptions);
+          images.push(imageResult);
 
-        // Small delay to avoid rate limiting
-        if (i < numImages - 1) {
+          // Save seed from first image to use for consistency in all other angles of this color
+          if (i === 0 && imageResult.seed) {
+            masterSeed = imageResult.seed;
+            console.log(`[Ideogram] 🎨 Master seed for ${colorName}: ${masterSeed}`);
+          }
+
+          console.log(`[Ideogram] ✅ Generated ${imageResult.angle} for ${colorName} (${i + 1}/${numAngles})`);
+
+          // Small delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+        } catch (error) {
+          console.error(`[Ideogram] ❌ Failed to generate ${getAngleLabel(i)} for ${colorName}:`, error.message);
+          errors.push({
+            angle: getAngleLabel(i),
+            color: colorName,
+            error: error.message
+          });
         }
-      } catch (error) {
-        console.error(`[Ideogram] ❌ Failed to generate angle ${i}:`, error.message);
-        errors.push({
-          angle: getAngleLabel(i),
-          error: error.message
+      }
+
+      // Store results for this color
+      if (images.length > 0) {
+        colorResults[colorName] = {
+          colorCode,
+          images,
+          masterSeed,
+          totalImages: images.length,
+          primaryImage: images[0]?.url || null,
+          errors: errors.length > 0 ? errors : undefined
+        };
+        totalImagesGenerated += images.length;
+        console.log(`[Ideogram] ✅ Completed ${colorName}: ${images.length} images generated`);
+      } else {
+        globalErrors.push({
+          color: colorName,
+          error: 'Failed to generate any images for this color'
         });
+        console.error(`[Ideogram] ❌ Failed to generate any images for ${colorName}`);
+      }
+
+      // Delay between colors to avoid rate limiting
+      if (colorVariants.indexOf(colorVariant) < colorVariants.length - 1) {
+        console.log(`[Ideogram] ⏳ Waiting 3 seconds before next color...`);
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay between colors
       }
     }
 
-    if (images.length === 0) {
-      throw new Error('Failed to generate any images');
+    if (Object.keys(colorResults).length === 0) {
+      throw new Error('Failed to generate any images for any color');
     }
 
     const results = {
       success: true,
       created: new Date().toISOString(),
-      images: images,
-      totalImages: images.length,
-      primaryImage: images[0]?.url || null,
-      masterSeed: masterSeed, // Include master seed in results
-      errors: errors.length > 0 ? errors : undefined
+      colorResults, // Grouped by color name
+      totalColors: Object.keys(colorResults).length,
+      totalImages: totalImagesGenerated,
+      errors: globalErrors.length > 0 ? globalErrors : undefined
     };
 
-    console.log(`[Ideogram] ✅ Successfully generated ${results.totalImages} individual images with consistent styling`);
-    if (errors.length > 0) {
-      console.log(`[Ideogram] ⚠️ ${errors.length} images failed to generate`);
+    console.log(`\n[Ideogram] 🎉 Successfully generated ${results.totalImages} images across ${results.totalColors} colors`);
+    if (globalErrors.length > 0) {
+      console.log(`[Ideogram] ⚠️ ${globalErrors.length} colors failed completely`);
     }
 
     return results;
@@ -389,5 +455,6 @@ export default {
   formatForDatabase,
   isConfigured,
   testConnection,
-  getAngleLabel
+  getAngleLabel,
+  parseColors
 };

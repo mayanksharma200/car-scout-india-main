@@ -43,6 +43,17 @@ interface GeneratedImage {
   resolution: string;
   is_safe: boolean;
   seed: number;
+  colorName?: string;
+  colorCode?: string;
+}
+
+interface ColorResult {
+  colorCode: string;
+  images: GeneratedImage[];
+  masterSeed: number;
+  totalImages: number;
+  primaryImage: string;
+  errors?: any[];
 }
 
 interface ProcessedCar {
@@ -50,10 +61,12 @@ interface ProcessedCar {
   name: string;
   status: 'success' | 'failed' | 'pending_approval';
   images_count?: number;
+  total_colors?: number;
   error?: string;
   processed_at: string;
   primary_image?: string;
-  generated_images?: GeneratedImage[];
+  generated_images?: GeneratedImage[]; // Legacy format
+  color_results?: Record<string, ColorResult>; // New multi-color format
 }
 
 interface GenerationOptions {
@@ -79,6 +92,7 @@ const IdeogramCarImageGenerator = () => {
   // Image preview and selection state
   const [currentCarForReview, setCurrentCarForReview] = useState<ProcessedCar | null>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedColorImages, setSelectedColorImages] = useState<Record<string, string[]>>({});
   const [isUploading, setIsUploading] = useState(false);
 
   // Generation options
@@ -270,15 +284,16 @@ const IdeogramCarImageGenerator = () => {
             id: car.id,
             name: `${car.brand} ${car.model}`,
             status: 'pending_approval',
-            images_count: result.imagesCount || 0,
-            primary_image: result.primaryImage,
-            generated_images: result.images,
+            images_count: result.totalImages || 0,
+            total_colors: result.totalColors || 0,
+            primary_image: result.colorResults ? Object.values(result.colorResults)[0]?.primaryImage : null,
+            color_results: result.colorResults, // New multi-color format
             processed_at: new Date().toISOString()
           };
 
           setProcessedCars(prev => [...prev, processedCar]);
 
-          toast.success(`✅ Generated ${result.imagesCount} images for ${car.brand} ${car.model} - Ready for review`);
+          toast.success(`✅ Generated ${result.totalImages} images across ${result.totalColors} colors for ${car.brand} ${car.model} - Ready for review`);
         } catch (error) {
           console.error(`Error processing car ${car.id}:`, error);
 
@@ -324,17 +339,28 @@ const IdeogramCarImageGenerator = () => {
   // Open image review modal
   const openImageReview = (car: ProcessedCar) => {
     setCurrentCarForReview(car);
-    // Pre-select all images by default
-    setSelectedImages(car.generated_images?.map(img => img.url) || []);
+
+    // Pre-select all images by default for multi-color format
+    if (car.color_results) {
+      const colorSelections: Record<string, string[]> = {};
+      Object.entries(car.color_results).forEach(([colorName, colorData]) => {
+        colorSelections[colorName] = colorData.images.map(img => img.url);
+      });
+      setSelectedColorImages(colorSelections);
+    } else {
+      // Legacy format fallback
+      setSelectedImages(car.generated_images?.map(img => img.url) || []);
+    }
   };
 
   // Close review modal
   const closeImageReview = () => {
     setCurrentCarForReview(null);
     setSelectedImages([]);
+    setSelectedColorImages({});
   };
 
-  // Toggle image selection
+  // Toggle image selection (legacy)
   const toggleImageSelection = (imageUrl: string) => {
     setSelectedImages(prev =>
       prev.includes(imageUrl)
@@ -343,32 +369,100 @@ const IdeogramCarImageGenerator = () => {
     );
   };
 
-  // Select all images
+  // Toggle image selection for specific color
+  const toggleColorImageSelection = (colorName: string, imageUrl: string) => {
+    setSelectedColorImages(prev => {
+      const colorImages = prev[colorName] || [];
+      const newColorImages = colorImages.includes(imageUrl)
+        ? colorImages.filter(url => url !== imageUrl)
+        : [...colorImages, imageUrl];
+
+      return {
+        ...prev,
+        [colorName]: newColorImages
+      };
+    });
+  };
+
+  // Select all images for a color
+  const selectAllColorImages = (colorName: string) => {
+    if (!currentCarForReview?.color_results) return;
+
+    const colorData = currentCarForReview.color_results[colorName];
+    if (colorData) {
+      setSelectedColorImages(prev => ({
+        ...prev,
+        [colorName]: colorData.images.map(img => img.url)
+      }));
+    }
+  };
+
+  // Clear all selections for a color
+  const clearColorSelections = (colorName: string) => {
+    setSelectedColorImages(prev => ({
+      ...prev,
+      [colorName]: []
+    }));
+  };
+
+  // Select all images (legacy)
   const selectAllImages = () => {
     setSelectedImages(currentCarForReview?.generated_images?.map(img => img.url) || []);
   };
 
-  // Clear all selections
+  // Clear all selections (legacy)
   const clearAllSelections = () => {
     setSelectedImages([]);
   };
 
   // Upload approved images to S3 and save to car
   const uploadApprovedImages = async () => {
-    if (!currentCarForReview || selectedImages.length === 0) {
-      toast.error('Please select at least one image to upload');
-      return;
-    }
-
     setIsUploading(true);
 
     try {
-      // Filter selected images from generated images
-      const approvedImages = currentCarForReview.generated_images?.filter(img =>
-        selectedImages.includes(img.url)
-      ) || [];
+      let approvedData: any;
+      let totalImages = 0;
 
-      toast.info(`Uploading ${approvedImages.length} images to S3...`);
+      // Check if using new multi-color format
+      if (currentCarForReview?.color_results) {
+        // Build approvedColorImages structure
+        const approvedColorImages: Record<string, any> = {};
+
+        Object.entries(currentCarForReview.color_results).forEach(([colorName, colorData]) => {
+          const selectedUrls = selectedColorImages[colorName] || [];
+          if (selectedUrls.length > 0) {
+            const approvedImages = colorData.images.filter(img => selectedUrls.includes(img.url));
+            approvedColorImages[colorName] = {
+              colorCode: colorData.colorCode,
+              images: approvedImages
+            };
+            totalImages += approvedImages.length;
+          }
+        });
+
+        if (totalImages === 0) {
+          toast.error('Please select at least one image to upload');
+          setIsUploading(false);
+          return;
+        }
+
+        approvedData = { approvedColorImages };
+        toast.info(`Uploading ${totalImages} images across ${Object.keys(approvedColorImages).length} colors to S3...`);
+      } else {
+        // Legacy format
+        if (selectedImages.length === 0) {
+          toast.error('Please select at least one image to upload');
+          setIsUploading(false);
+          return;
+        }
+
+        const approvedImages = currentCarForReview?.generated_images?.filter(img =>
+          selectedImages.includes(img.url)
+        ) || [];
+        totalImages = approvedImages.length;
+        approvedData = { approvedImages };
+        toast.info(`Uploading ${totalImages} images to S3...`);
+      }
 
       const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-approve-images', {
         method: 'POST',
@@ -377,7 +471,7 @@ const IdeogramCarImageGenerator = () => {
         },
         body: JSON.stringify({
           carId: currentCarForReview.id,
-          approvedImages: approvedImages
+          ...approvedData
         })
       });
 
@@ -388,7 +482,14 @@ const IdeogramCarImageGenerator = () => {
 
       const result = await response.json();
 
-      toast.success(`✅ Successfully uploaded ${result.uploadedCount} images!`);
+      const uploadedCount = result.totalUploaded || result.uploadedCount || 0;
+      const uploadedColors = result.totalColors || 0;
+
+      if (uploadedColors > 0) {
+        toast.success(`✅ Successfully uploaded ${uploadedCount} images across ${uploadedColors} colors!`);
+      } else {
+        toast.success(`✅ Successfully uploaded ${uploadedCount} images!`);
+      }
 
       // Update the processed car status
       setProcessedCars(prev => prev.map(car =>
@@ -731,19 +832,24 @@ const IdeogramCarImageGenerator = () => {
                 </Button>
               </div>
               <div className="flex items-center gap-4 mt-4">
-                <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                  {selectedImages.length} of {currentCarForReview.images_count} selected
-                </Badge>
-                <Button size="sm" variant="outline" onClick={selectAllImages}>
-                  Select All
-                </Button>
-                <Button size="sm" variant="outline" onClick={clearAllSelections}>
-                  Clear All
-                </Button>
+                {currentCarForReview.color_results ? (
+                  <>
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                      {Object.values(selectedColorImages).reduce((sum, imgs) => sum + imgs.length, 0)} of {currentCarForReview.images_count} selected
+                    </Badge>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      {currentCarForReview.total_colors} Colors
+                    </Badge>
+                  </>
+                ) : (
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    {selectedImages.length} of {currentCarForReview.images_count} selected
+                  </Badge>
+                )}
                 <Button
                   size="sm"
                   onClick={uploadApprovedImages}
-                  disabled={selectedImages.length === 0 || isUploading}
+                  disabled={isUploading}
                   className="ml-auto bg-purple-600 hover:bg-purple-700"
                 >
                   {isUploading ? (
@@ -754,53 +860,145 @@ const IdeogramCarImageGenerator = () => {
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Upload {selectedImages.length} Images to S3
+                      Upload to S3
                     </>
                   )}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {currentCarForReview.generated_images?.map((image, index) => (
-                  <div
-                    key={index}
-                    className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                      selectedImages.includes(image.url)
-                        ? 'border-purple-500 ring-2 ring-purple-200'
-                        : 'border-gray-200 hover:border-gray-400'
-                    }`}
-                    onClick={() => toggleImageSelection(image.url)}
-                  >
-                    <div className="aspect-video bg-gray-100 relative">
-                      <img
-                        src={image.url}
-                        alt={`${currentCarForReview.name} - ${image.angle}`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      {selectedImages.includes(image.url) && (
-                        <div className="absolute top-2 right-2 bg-purple-600 text-white rounded-full p-1">
-                          <CheckCircle className="h-5 w-5" />
+              {/* Multi-color format */}
+              {currentCarForReview.color_results ? (
+                <div className="space-y-6">
+                  {Object.entries(currentCarForReview.color_results).map(([colorName, colorData]) => {
+                    const colorSelectedImages = selectedColorImages[colorName] || [];
+                    return (
+                      <div key={colorName} className="border rounded-lg p-4 bg-gray-50">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-6 h-6 rounded-full border-2 border-gray-300"
+                              style={{ backgroundColor: colorData.colorCode }}
+                            />
+                            <h3 className="font-semibold text-lg">{colorName}</h3>
+                            <Badge variant="outline">
+                              {colorSelectedImages.length} of {colorData.totalImages} selected
+                            </Badge>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => selectAllColorImages(colorName)}
+                            >
+                              Select All
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => clearColorSelections(colorName)}
+                            >
+                              Clear
+                            </Button>
+                          </div>
                         </div>
-                      )}
-                      {!image.is_safe && (
-                        <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs">
-                          ⚠️ Unsafe
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {colorData.images.map((image, index) => (
+                            <div
+                              key={index}
+                              className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                                colorSelectedImages.includes(image.url)
+                                  ? 'border-purple-500 ring-2 ring-purple-200'
+                                  : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleColorImageSelection(colorName, image.url)}
+                            >
+                              <div className="aspect-video bg-gray-100 relative">
+                                <img
+                                  src={image.url}
+                                  alt={`${currentCarForReview.name} - ${colorName} - ${image.angle}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                                {colorSelectedImages.includes(image.url) && (
+                                  <div className="absolute top-2 right-2 bg-purple-600 text-white rounded-full p-1">
+                                    <CheckCircle className="h-5 w-5" />
+                                  </div>
+                                )}
+                                {!image.is_safe && (
+                                  <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs">
+                                    ⚠️ Unsafe
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2 bg-white">
+                                <div className="font-medium text-sm capitalize">
+                                  {image.angle.replace(/_/g, ' ')}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {image.resolution}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                    </div>
-                    <div className="p-2 bg-white">
-                      <div className="font-medium text-sm capitalize">
-                        {image.angle.replace(/_/g, ' ')}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {image.resolution}
-                      </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Legacy format */
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Button size="sm" variant="outline" onClick={selectAllImages}>
+                      Select All
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={clearAllSelections}>
+                      Clear All
+                    </Button>
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {currentCarForReview.generated_images?.map((image, index) => (
+                      <div
+                        key={index}
+                        className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                          selectedImages.includes(image.url)
+                            ? 'border-purple-500 ring-2 ring-purple-200'
+                            : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                        onClick={() => toggleImageSelection(image.url)}
+                      >
+                        <div className="aspect-video bg-gray-100 relative">
+                          <img
+                            src={image.url}
+                            alt={`${currentCarForReview.name} - ${image.angle}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          {selectedImages.includes(image.url) && (
+                            <div className="absolute top-2 right-2 bg-purple-600 text-white rounded-full p-1">
+                              <CheckCircle className="h-5 w-5" />
+                            </div>
+                          )}
+                          {!image.is_safe && (
+                            <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs">
+                              ⚠️ Unsafe
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 bg-white">
+                          <div className="font-medium text-sm capitalize">
+                            {image.angle.replace(/_/g, ' ')}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {image.resolution}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

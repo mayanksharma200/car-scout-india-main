@@ -557,6 +557,8 @@ const CarDetail = () => {
                     imageDataLength: imageData?.length,
                     firstItem: imageData?.[0],
                     isColorChanging: isColorChanging,
+                    colorVariantImages: car.color_variant_images,
+                    selectedColor: selectedColor,
                   });
                   return imageData;
                 })()}
@@ -569,24 +571,32 @@ const CarDetail = () => {
                   variant: car.variant || car.body_type || 'suv',
                 }}
                 currentColor={(() => {
-                  // Get current color information for 360° view
-                  const getCurrentColorInfo = () => {
-                    const colorMap = {
-                      white: { paintId: "1", paintDescription: "white" },
-                      black: { paintId: "2", paintDescription: "black" },
-                      silver: { paintId: "3", paintDescription: "silver" },
-                      red: { paintId: "4", paintDescription: "red" },
-                      blue: { paintId: "5", paintDescription: "blue" },
-                      grey: { paintId: "3", paintDescription: "silver" },
-                      gray: { paintId: "3", paintDescription: "silver" },
+                  // Get current color information including name for color-variant images
+                  if (selectedColor) {
+                    return {
+                      paintId: selectedColor.paintId || "1",
+                      paintDescription: selectedColor.paintDescription || selectedColor.name || "white",
+                      name: selectedColor.name || selectedColor.paintDescription
                     };
-                    
-                    const currentColorName = (selectedColor?.paintDescription || car.color || "white").toLowerCase();
-                    return colorMap[currentColorName] || colorMap["white"];
+                  }
+
+                  // Default to first color if available
+                  if (car.colors) {
+                    const firstColor = car.colors.split(';')[0]?.trim();
+                    return {
+                      paintId: "1",
+                      paintDescription: firstColor.toLowerCase(),
+                      name: firstColor
+                    };
+                  }
+
+                  return {
+                    paintId: "1",
+                    paintDescription: "white",
+                    name: "White"
                   };
-                  
-                  return getCurrentColorInfo();
                 })()}
+                colorVariantImages={car.color_variant_images}
               />
 
               {/* Color Change Loading Overlay */}
@@ -618,6 +628,8 @@ const CarDetail = () => {
                     variant: car.variant,
                     bodyType: car.bodyType,
                     year: car.year,
+                    colors: car.colors,
+                    color_codes: car.color_codes,
                   }}
                 />
               </div>
@@ -1019,6 +1031,8 @@ const CarDetail = () => {
                   variant: car.variant,
                   bodyType: car.bodyType,
                   year: car.year,
+                  colors: car.colors,
+                  color_codes: car.color_codes,
                 }}
               />
             </div>

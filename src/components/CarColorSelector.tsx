@@ -53,6 +53,8 @@ interface CarColorSelectorProps {
     variant?: string;
     bodyType?: string;
     year?: string | number;
+    colors?: string; // Semicolon-separated color names
+    color_codes?: string; // Semicolon-separated color codes
   };
   isChanging?: boolean;
   show360View?: boolean;
@@ -93,49 +95,58 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         setLoadingColors(true);
         console.log('🎨 Loading paint options for car:', car);
 
-        // Use static color options (IMAGIN API removed)
-        const options = COLOR_OPTIONS;
-        console.log('🎨 Loaded paint options:', options);
-        console.log('🎨 Paint options length:', options?.length);
-        console.log('🎨 First paint option:', options?.[0]);
+        let options: ColorOption[] = [];
 
+        // Parse colors from car data if available
+        if (car.colors && car.color_codes) {
+          const colorNames = car.colors.split(';').map(c => c.trim()).filter(c => c);
+          const colorCodes = car.color_codes.split(';').map(c => c.trim()).filter(c => c);
+
+          options = colorNames.map((name, index) => {
+            const code = colorCodes[index] || '';
+            const hexCode = code.startsWith('#') ? code : `#${code}`;
+
+            return {
+              id: name.toLowerCase().replace(/\s+/g, '-'),
+              name,
+              hexCode,
+              paintId: (index + 1).toString(),
+              paintDescription: name.toLowerCase(),
+              isPopular: index < 3 // Mark first 3 as popular
+            };
+          });
+
+          console.log('🎨 Parsed colors from car data:', options);
+        } else if (car.colors) {
+          // If only color names available, use default hex codes
+          const colorNames = car.colors.split(';').map(c => c.trim()).filter(c => c);
+          options = colorNames.map((name, index) => ({
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name,
+            hexCode: COLOR_OPTIONS.find(c => c.name.toLowerCase() === name.toLowerCase())?.hexCode || '#808080',
+            paintId: (index + 1).toString(),
+            paintDescription: name.toLowerCase(),
+            isPopular: index < 3
+          }));
+        } else {
+          // Fallback to static color options
+          options = COLOR_OPTIONS;
+          console.log('🎨 Using fallback static colors');
+        }
+
+        console.log('🎨 Loaded paint options:', options);
         setColorOptions(options || []);
       } catch (error) {
         console.error('❌ Error loading paint options:', error);
-        // Fallback to basic colors if API fails
-        setColorOptions([
-          {
-            id: "white",
-            name: "White",
-            hexCode: "#FFFFFF",
-            paintId: "1",
-            paintDescription: "white",
-            isPopular: true,
-          },
-          {
-            id: "black",
-            name: "Black",
-            hexCode: "#000000",
-            paintId: "2",
-            paintDescription: "black",
-            isPopular: true,
-          },
-          {
-            id: "silver",
-            name: "Silver",
-            hexCode: "#C0C0C0",
-            paintId: "3",
-            paintDescription: "silver",
-            isPopular: true,
-          },
-        ]);
+        // Fallback to basic colors if parsing fails
+        setColorOptions(COLOR_OPTIONS.slice(0, 3));
       } finally {
         setLoadingColors(false);
       }
     };
 
     loadPaintOptions();
-  }, [car]);
+  }, [car, car.colors, car.color_codes]);
 
   const currentColorOption = colorOptions.find(
     (color) => color.name.toLowerCase() === currentColor.toLowerCase()
