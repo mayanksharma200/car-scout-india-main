@@ -276,9 +276,10 @@ const Header = () => {
           {/* Logo */}
           <a href="/" className="flex items-center">
             <img
-              src={`${Carlist360Logo}?v=${Date.now()}`}
+              src={Carlist360Logo}
               alt="Carlist360"
               className="w-20 h-20 md:w-20 md:h-20 object-contain hover:scale-105 transition-transform"
+              loading="eager"
             />
           </a>
 

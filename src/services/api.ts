@@ -9,17 +9,23 @@ console.log('🔧 API Configuration:', {
   environment: import.meta.env.MODE
 });
 
-// Helper for API calls
-async function fetchAPI(endpoint: string, options: RequestInit = {}) {
+// Helper for API calls with timeout and abort controller
+async function fetchAPI(endpoint: string, options: RequestInit = {}, timeout: number = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       credentials: 'include', // Important for cookies
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
     });
+
+    clearTimeout(timeoutId);
 
     const data = await response.json();
 
@@ -29,6 +35,15 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 
     return data;
   } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        console.error(`API Timeout (${endpoint}): Request took longer than ${timeout}ms`);
+        throw new Error(`Request timeout - server is not responding`);
+      }
+    }
+
     console.error(`API Error (${endpoint}):`, error);
     throw error;
   }

@@ -50,6 +50,7 @@ const CarListing = () => {
   const [searchParams] = useSearchParams();
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [hasSearchResults, setHasSearchResults] = useState(false);
   const [searchInfo, setSearchInfo] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -86,13 +87,37 @@ const CarListing = () => {
     features: [] as string[],
   });
 
-  // Check for URL parameters and set up initial state
+  // Load initial cars from database
   useEffect(() => {
-    console.log(
-      "CarListing mounted, checking URL params:",
-      searchParams.toString()
-    );
+    console.log("CarListing mounted, loading initial cars");
+    let isMounted = true;
 
+    // Check if we have search results from navigation
+    if (location.state?.searchResults) {
+      console.log(
+        "Using search results from navigation:",
+        location.state.searchResults
+      );
+      if (isMounted) {
+        handleSearchResults(location.state);
+      }
+      return;
+    }
+
+    // Load all cars from database
+    if (isMounted) {
+      loadCarsFromDB();
+    }
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      console.log("CarListing unmounting, cleaning up...");
+    };
+  }, []);
+
+  // Handle URL parameter changes separately
+  useEffect(() => {
     const brandParam = searchParams.get("brand");
     const modelParam = searchParams.get("model");
     const fuelParam = searchParams.get("fuelType");
@@ -121,17 +146,6 @@ const CarListing = () => {
         error: null,
       });
     }
-
-    if (location.state?.searchResults) {
-      console.log(
-        "Using search results from navigation:",
-        location.state.searchResults
-      );
-      handleSearchResults(location.state);
-      return;
-    }
-
-    loadCarsFromDB();
   }, [searchParams.toString()]);
 
   // UPDATED: Batch check wishlist status when authenticated and cars change
@@ -329,9 +343,13 @@ const CarListing = () => {
   };
 
   const loadCarsFromDB = async () => {
+    // Use AbortController for cleanup
+    const abortController = new AbortController();
+
     try {
       console.log("Loading cars from database...");
       setLoading(true);
+      setError(null);
 
       let carsData = null;
 
@@ -350,10 +368,10 @@ const CarListing = () => {
         } else {
           console.log("API response unsuccessful or no data:", response);
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
         console.warn(
           "API not available, trying Supabase directly:",
-          apiError.message
+          apiError?.message || apiError
         );
       }
 
@@ -479,16 +497,19 @@ const CarListing = () => {
         console.log("No cars found in database");
         setCars([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading cars:", error);
+      setError(error?.message || "Failed to load cars");
       setCars([]);
       toast({
         title: "Error loading cars",
-        description: "Please try again later",
+        description: error?.message || "Please try again later",
         variant: "destructive",
       });
     } finally {
+      // Always ensure loading is set to false
       setLoading(false);
+      console.log("Loading state set to false");
     }
   };
 
@@ -942,6 +963,30 @@ const CarListing = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading cars...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold mb-2">Failed to Load Cars</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                loadCarsFromDB();
+              }}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>
