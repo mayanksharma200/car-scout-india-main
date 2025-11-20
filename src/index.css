@@ -200,7 +200,6 @@ input[type="range"],
 button,
 select,
 .card,
-[role="dialog"],
 [role="menu"] {
   position: relative;
   z-index: 999 !important;
