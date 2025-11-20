@@ -269,7 +269,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-50 shadow-sm">
+    <header className="bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-[5000] shadow-sm">
       {/* Main Header */}
       <div className="container mx-auto px-4 py-0">
         <div className="flex items-center justify-between">
