@@ -174,6 +174,13 @@ const AddEditCar = () => {
     }
   }, [id, isEditMode]);
 
+  // Debugging logs
+  useEffect(() => {
+    console.log("🎨 Active Color Changed:", activeColor);
+    console.log("🖼️ Current Color Images Map:", formData.color_images);
+    console.log("🔍 Images for Active Color:", formData.color_images[activeColor]);
+  }, [activeColor, formData.color_images]);
+
   const fetchCar = async () => {
     try {
       setLoading(true);
@@ -187,10 +194,34 @@ const AddEditCar = () => {
 
       if (result.success) {
         const car = result.data;
+        console.log("🚗 Raw Car Data Images:", car.images);
         // Handle images - support both legacy array/object and new color map
         let colorImages: Record<string, string[]> = { default: Array(8).fill("") };
 
-        if (car.images) {
+        // Check for the new structured format first
+        if (car.color_variant_images && Object.keys(car.color_variant_images).length > 0) {
+          console.log("🌈 Using color_variant_images:", car.color_variant_images);
+
+          const angleOrder = [
+            "front_3_4", "front_view", "left_side", "right_side",
+            "rear_view", "interior_dash", "interior_cabin", "interior_steering"
+          ];
+
+          Object.keys(car.color_variant_images).forEach(color => {
+            const colorData = car.color_variant_images[color];
+            if (colorData && colorData.images) {
+              // Trim the color name to match UI
+              const trimmedColor = color.trim();
+
+              // Convert object to array based on angle order
+              const imagesArray = angleOrder.map(angle => colorData.images[angle] || "");
+              colorImages[trimmedColor] = imagesArray;
+            }
+          });
+        }
+        // Fallback to legacy images field
+        else if (car.images) {
+          console.log("⚠️ Using legacy images field");
           if (Array.isArray(car.images)) {
             // Legacy array format -> assign to default
             colorImages.default = [...car.images, ...Array(8).fill("")].slice(0, 8);
@@ -211,16 +242,19 @@ const AddEditCar = () => {
               // Ensure each color has exactly 8 images
               Object.keys(car.images).forEach(color => {
                 if (Array.isArray(car.images[color])) {
-                  colorImages[color] = [...car.images[color], ...Array(8).fill("")].slice(0, 8);
+                  // Trim the color name to match what we do in the UI (splitting by ; and trimming)
+                  const trimmedColor = color.trim();
+                  colorImages[trimmedColor] = [...car.images[color], ...Array(8).fill("")].slice(0, 8);
                 }
               });
-              // If default is missing but we have other colors, we can keep default empty or set it to first color
-              if (!colorImages.default && Object.keys(colorImages).length > 0) {
-                // Ensure default exists for UI consistency if needed, or just rely on keys
-                colorImages.default = Array(8).fill("");
-              }
             }
           }
+        }
+
+        // If default is missing but we have other colors, we can keep default empty or set it to first color
+        if (!colorImages.default && Object.keys(colorImages).length > 0) {
+          // Ensure default exists for UI consistency if needed
+          colorImages.default = Array(8).fill("");
         }
 
         setFormData({
