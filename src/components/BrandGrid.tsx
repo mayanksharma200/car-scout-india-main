@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 // Import brand logos
 import marutiLogo from "@/assets/brands/maruti-suzuki-logo.png";
@@ -133,10 +134,47 @@ const allBrands = [
 const BrandGrid = () => {
   const navigate = useNavigate();
   const [showAllBrands, setShowAllBrands] = useState(false);
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAvailableBrands = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('cars')
+          .select('brand')
+          .eq('status', 'active');
+
+        if (error) {
+          console.error('Error fetching brands:', error);
+          return;
+        }
+
+        // Extract unique brands and normalize to Title Case for comparison
+        const uniqueBrands = [...new Set(data.map(item => item.brand))];
+        console.log('Available brands from DB:', uniqueBrands);
+        setAvailableBrands(uniqueBrands);
+      } catch (err) {
+        console.error('Failed to fetch brands:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAvailableBrands();
+  }, []);
+
+  // Filter allBrands to only include those present in availableBrands
+  // We compare case-insensitively to be safe
+  const filteredBrands = allBrands.filter(brand =>
+    availableBrands.some(available =>
+      available.toLowerCase() === brand.name.toLowerCase()
+    )
+  );
 
   // Show first 8 brands initially, all brands when expanded
-  const brandsToShow = showAllBrands ? allBrands : allBrands.slice(0, 8);
-  const hasMoreBrands = allBrands.length > 8;
+  const brandsToShow = showAllBrands ? filteredBrands : filteredBrands.slice(0, 8);
+  const hasMoreBrands = filteredBrands.length > 8;
 
   const handleBrandClick = (brandName: string) => {
     // Format brand name: First letter capital, rest lowercase (e.g., "BMW" -> "Bmw")
@@ -151,6 +189,15 @@ const BrandGrid = () => {
 
   const handleToggleBrands = () => {
     setShowAllBrands(!showAllBrands);
+  };
+
+
+  // Dynamic grid columns based on number of items
+  const getGridClassName = (count: number) => {
+    if (count === 1) return "grid-cols-1 max-w-sm mx-auto";
+    if (count === 2) return "grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto";
+    if (count === 3) return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 max-w-6xl mx-auto";
+    return "grid-cols-2 sm:grid-cols-3 md:grid-cols-4";
   };
 
   return (
@@ -190,8 +237,8 @@ const BrandGrid = () => {
           </p>
         </div>
 
-        {/* Ultra-modern brand grid with bigger logos */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 mb-16">
+        {/* Ultra-modern brand grid with dynamic columns */}
+        <div className={`grid ${getGridClassName(brandsToShow.length)} gap-4 sm:gap-6 md:gap-8 mb-16`}>
           {brandsToShow.map((brand, index) => (
             <div
               key={brand.name}
@@ -308,7 +355,7 @@ const BrandGrid = () => {
               <span className="relative z-10">
                 {showAllBrands
                   ? "Show Less Brands"
-                  : `Show More Brands (${allBrands.length - 8} more)`}
+                  : `Show More Brands (${filteredBrands.length - 8} more)`}
               </span>
               {showAllBrands ? (
                 <ChevronUp className="relative z-10 w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 group-hover:-translate-y-1 transition-transform duration-300" />
