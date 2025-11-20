@@ -104,6 +104,9 @@ const IdeogramCarImageGenerator = () => {
   const [selectedColorImages, setSelectedColorImages] = useState<Record<string, string[]>>({});
   const [isUploading, setIsUploading] = useState(false);
 
+  // Car inventory image preview
+  const [carImagePreview, setCarImagePreview] = useState<CarItem | null>(null);
+
   // Generation options
   const [options, setOptions] = useState<GenerationOptions>({
     num_images: 8,
@@ -873,13 +876,40 @@ const IdeogramCarImageGenerator = () => {
                     {(() => {
                       let imageCount = 0;
 
-                      // Check if images is an array
-                      if (Array.isArray(car.images)) {
+                      // Check color_variant_images first (new multi-color format)
+                      const colorVariantImages = (car as any).color_variant_images;
+                      if (colorVariantImages && typeof colorVariantImages === 'object') {
+                        Object.values(colorVariantImages).forEach((colorData: any) => {
+                          if (colorData && colorData.images && typeof colorData.images === 'object') {
+                            imageCount += Object.keys(colorData.images).length;
+                          }
+                        });
+                      }
+                      // Fallback to images field
+                      else if (Array.isArray(car.images)) {
                         imageCount = car.images.length;
                       }
                       // Check if images is an object (angle-mapped format)
                       else if (car.images && typeof car.images === 'object') {
-                        imageCount = Object.keys(car.images).length;
+                        // Check if it's a color-organized structure
+                        const firstKey = Object.keys(car.images)[0];
+                        if (firstKey && typeof car.images[firstKey] === 'object' && !Array.isArray(car.images[firstKey])) {
+                          // Count all images across all colors
+                          Object.values(car.images).forEach((colorImages: any) => {
+                            if (typeof colorImages === 'object') {
+                              imageCount += Object.keys(colorImages).length;
+                            }
+                          });
+                        } else {
+                          // Flat object
+                          imageCount = Object.keys(car.images).length;
+                        }
+                      }
+
+                      // Debug log
+                      if (car.id && imageCount > 0) {
+                        console.log(`Car ${car.brand} ${car.model} images:`, car.images);
+                        console.log(`Car ${car.brand} ${car.model} color_variant_images:`, colorVariantImages);
                       }
 
                       return (
@@ -888,7 +918,15 @@ const IdeogramCarImageGenerator = () => {
                             {imageCount} images
                           </Badge>
                           {imageCount > 0 && (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCarImagePreview(car);
+                              }}
+                              className="p-1 hover:bg-gray-100 rounded"
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                            </button>
                           )}
                         </>
                       );
@@ -1223,6 +1261,266 @@ const IdeogramCarImageGenerator = () => {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Car Images Preview Modal */}
+      {carImagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {carImagePreview.brand} {carImagePreview.model}
+                  {carImagePreview.variant && ` ${carImagePreview.variant}`}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {carImagePreview.year} • {carImagePreview.fuel_type} • {carImagePreview.body_type}
+                </p>
+              </div>
+              <button
+                onClick={() => setCarImagePreview(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <XCircle className="h-6 w-6 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              {(() => {
+                // Debug logging
+                console.log('=== CAR IMAGE PREVIEW DEBUG ===');
+                console.log('Car:', carImagePreview.brand, carImagePreview.model);
+                console.log('color_variant_images:', (carImagePreview as any).color_variant_images);
+                console.log('Images type:', typeof carImagePreview.images);
+                console.log('Is Array:', Array.isArray(carImagePreview.images));
+                console.log('Images data:', carImagePreview.images);
+
+                // Check for color_variant_images first (new multi-color format)
+                const colorVariantImages = (carImagePreview as any).color_variant_images;
+
+                if (colorVariantImages && typeof colorVariantImages === 'object' && Object.keys(colorVariantImages).length > 0) {
+                  console.log('Using color_variant_images structure');
+                  const colors = Object.keys(colorVariantImages);
+
+                  return (
+                    <div className="space-y-6">
+                      {colors.map((colorName) => {
+                        const colorData = colorVariantImages[colorName];
+                        const colorImages = colorData.images || {};
+                        const imageEntries = Object.entries(colorImages);
+
+                        if (imageEntries.length === 0) return null;
+
+                        return (
+                          <div key={colorName} className="border rounded-lg p-4 bg-gray-50">
+                            <h4 className="text-lg font-semibold mb-3 capitalize flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+                              {colorName}
+                              <Badge variant="secondary" className="ml-2">
+                                {imageEntries.length} images
+                              </Badge>
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {imageEntries.map(([angleKey, url]) => (
+                                <div key={angleKey} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
+                                  <div className="aspect-video bg-gray-100 relative">
+                                    <img
+                                      src={url as string}
+                                      alt={`${colorName} - ${angleKey}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="p-2">
+                                    <div className="font-medium text-sm text-gray-700 capitalize">
+                                      {angleKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // Fallback to images field (legacy or single-color format)
+                if (!carImagePreview.images) {
+                  return (
+                    <div className="text-center py-12">
+                      <Car className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500">No images available</p>
+                    </div>
+                  );
+                }
+
+                console.log('Using legacy images field');
+                const imagesObj = carImagePreview.images as any;
+
+                // Check if this is a color-organized structure in images field
+                const firstKey = Object.keys(imagesObj)[0];
+                const isColorOrganized = firstKey && typeof imagesObj[firstKey] === 'object' && !Array.isArray(imagesObj[firstKey]);
+
+                if (isColorOrganized) {
+                  // Color-organized format: {Black: {front_3_4: "url", ...}, White: {...}}
+                  const colors = Object.keys(imagesObj);
+
+                  return (
+                    <div className="space-y-6">
+                      {colors.map((colorName) => {
+                        const colorImages = imagesObj[colorName];
+                        const imageEntries = Object.entries(colorImages);
+
+                        return (
+                          <div key={colorName} className="border rounded-lg p-4 bg-gray-50">
+                            <h4 className="text-lg font-semibold mb-3 capitalize flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+                              {colorName}
+                              <Badge variant="secondary" className="ml-2">
+                                {imageEntries.length} images
+                              </Badge>
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {imageEntries.map(([angleKey, url]) => (
+                                <div key={angleKey} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white">
+                                  <div className="aspect-video bg-gray-100 relative">
+                                    <img
+                                      src={url as string}
+                                      alt={`${colorName} - ${angleKey}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="p-2">
+                                    <div className="font-medium text-sm text-gray-700 capitalize">
+                                      {angleKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                } else if (Array.isArray(carImagePreview.images)) {
+                  // Array format: ["url1", "url2", ...]
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {carImagePreview.images.map((url, index) => (
+                        <div key={index} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="aspect-video bg-gray-100 relative">
+                            <img
+                              src={url}
+                              alt={`Image ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                              }}
+                            />
+                          </div>
+                          <div className="p-2 bg-white">
+                            <div className="font-medium text-sm text-gray-700">
+                              Image {index + 1}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                } else {
+                  // Flat object format: {front_3_4: "url", front_view: "url", ...}
+                  const imageEntries = Object.entries(imagesObj);
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {imageEntries.map(([angleKey, url]) => (
+                        <div key={angleKey} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          <div className="aspect-video bg-gray-100 relative">
+                            <img
+                              src={url as string}
+                              alt={angleKey}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                              }}
+                            />
+                          </div>
+                          <div className="p-2 bg-white">
+                            <div className="font-medium text-sm text-gray-700 capitalize">
+                              {angleKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+
+            <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Total: {(() => {
+                  // Check color_variant_images first
+                  const colorVariantImages = (carImagePreview as any).color_variant_images;
+                  if (colorVariantImages && typeof colorVariantImages === 'object') {
+                    let totalCount = 0;
+                    Object.values(colorVariantImages).forEach((colorData: any) => {
+                      if (colorData && colorData.images && typeof colorData.images === 'object') {
+                        totalCount += Object.keys(colorData.images).length;
+                      }
+                    });
+                    return totalCount;
+                  }
+
+                  // Fallback to images field
+                  if (!carImagePreview.images) return 0;
+
+                  if (Array.isArray(carImagePreview.images)) {
+                    return carImagePreview.images.length;
+                  }
+
+                  const imagesObj = carImagePreview.images as any;
+                  const firstKey = Object.keys(imagesObj)[0];
+
+                  // Check if color-organized (nested objects)
+                  if (firstKey && typeof imagesObj[firstKey] === 'object' && !Array.isArray(imagesObj[firstKey])) {
+                    // Count all images across all colors
+                    let totalCount = 0;
+                    Object.values(imagesObj).forEach((colorImages: any) => {
+                      if (typeof colorImages === 'object') {
+                        totalCount += Object.keys(colorImages).length;
+                      }
+                    });
+                    return totalCount;
+                  }
+
+                  // Flat object format
+                  return Object.keys(imagesObj).length;
+                })()} images
+              </div>
+              <Button onClick={() => setCarImagePreview(null)} variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
