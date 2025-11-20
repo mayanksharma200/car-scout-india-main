@@ -88,7 +88,20 @@ const CarSelectorModal = ({
         // Transform cars to match interface - same pattern as your CarListing
         const transformedCars = carsData.map((car) => {
           let carImage = "/placeholder.svg";
-          if (
+
+          // Check if images is an object with angle keys (new format)
+          if (car.images && typeof car.images === 'object' && !Array.isArray(car.images)) {
+            carImage = (car.images as any).front_3_4 ||
+                      (car.images as any).front_view ||
+                      (car.images as any).left_side ||
+                      (car.images as any).right_side ||
+                      (car.images as any).rear_view ||
+                      (car.images as any).interior_dash ||
+                      (car.images as any).interior_cabin ||
+                      "/placeholder.svg";
+          }
+          // Check if images is an array (old format)
+          else if (
             Array.isArray(car.images) &&
             car.images.length > 0 &&
             car.images[0] !== "/placeholder.svg"
