@@ -19,6 +19,7 @@ import mgLogo from "@/assets/brands/mg-logo.png";
 import nissanLogo from "@/assets/brands/nissan-logo.png";
 import skodaLogo from "@/assets/brands/skoda-logo.png";
 import volkswagenLogo from "@/assets/brands/volkswagen-logo.png";
+import chevroletLogo from "@/assets/brands/cherverolet-logo.png";
 
 const allBrands = [
   {
@@ -118,6 +119,13 @@ const allBrands = [
     logo: volkswagenLogo,
     models: "5+ Models",
     rating: 4.5,
+    popular: false,
+  },
+  {
+    name: "Chevrolet",
+    logo: chevroletLogo,
+    models: "5+ Models",
+    rating: 4.2,
     popular: false,
   },
 ];
