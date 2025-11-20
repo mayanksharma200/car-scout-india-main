@@ -537,7 +537,22 @@ const AddEditCar = () => {
       const colorVariantImages: Record<string, any> = {};
 
       if (formData.color_images) {
+        // Parse colors and color codes to map color names to their codes
+        const colorNames = formData.colors ? formData.colors.split(';').map(c => c.trim()) : [];
+        const colorCodes = formData.color_codes ? formData.color_codes.split(';').map(c => c.trim()) : [];
+        
+        // Create a map of color name to color code
+        const colorCodeMap: Record<string, string> = {};
+        colorNames.forEach((name, index) => {
+          if (name && colorCodes[index]) {
+            colorCodeMap[name] = colorCodes[index].startsWith('#') ? colorCodes[index] : `#${colorCodes[index]}`;
+          }
+        });
+
         Object.keys(formData.color_images).forEach(colorName => {
+          // Skip the default color as it's not a real color
+          if (colorName === 'default') return;
+          
           const imagesArray = formData.color_images[colorName];
           if (Array.isArray(imagesArray) && imagesArray.length > 0) {
             const angleOrder = [
@@ -552,9 +567,11 @@ const AddEditCar = () => {
               }
             });
 
-            // Preserve existing color code if possible, or default to null
+            // Get the color code for this color
+            const colorCode = colorCodeMap[colorName] || null;
+
             colorVariantImages[colorName] = {
-              color_code: null,
+              color_code: colorCode,
               images: imagesObj
             };
           }
@@ -632,6 +649,17 @@ const AddEditCar = () => {
         // Images - send both formats for compatibility, but prioritize color_variant_images
         images: formData.color_images,
         color_variant_images: colorVariantImages,
+        
+        // Add ideogram_images metadata if we have color_variant_images with data
+        ideogram_images: Object.keys(colorVariantImages).length > 0 ? {
+          valid: true,
+          source: 'ideogram',
+          last_updated: new Date().toISOString(),
+          total_colors: Object.keys(colorVariantImages).length,
+          total_images: Object.values(colorVariantImages).reduce((total, color) => {
+            return total + (color.images ? Object.keys(color.images).length : 0);
+          }, 0)
+        } : null,
       };
 
       let response;

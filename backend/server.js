@@ -1147,6 +1147,44 @@ app.post("/api/admin/cars", async (req, res) => {
     carData.images = images;
   }
 
+    // If color_variant_images is provided, ensure it's properly formatted
+    if (carData.color_variant_images) {
+      console.log('[Admin] Processing color_variant_images:', Object.keys(carData.color_variant_images));
+      
+      // Validate and clean up the color_variant_images structure
+      const cleanedColorVariantImages = {};
+      
+      Object.keys(carData.color_variant_images).forEach(colorName => {
+        const colorData = carData.color_variant_images[colorName];
+        
+        // Skip if colorName is 'default' or if colorData is invalid
+        if (colorName === 'default' || !colorData || !colorData.images) {
+          return;
+        }
+        
+        // Ensure the color data has the correct structure
+        cleanedColorVariantImages[colorName] = {
+          color_code: colorData.color_code || null,
+          images: colorData.images || {}
+        };
+      });
+      
+      carData.color_variant_images = cleanedColorVariantImages;
+    }
+
+    // If ideogram_images is provided, ensure it's properly formatted
+    if (carData.ideogram_images) {
+      console.log('[Admin] Processing ideogram_images');
+      // Ensure ideogram_images has the correct structure
+      carData.ideogram_images = {
+        valid: carData.ideogram_images.valid !== undefined ? carData.ideogram_images.valid : true,
+        source: carData.ideogram_images.source || 'ideogram',
+        last_updated: carData.ideogram_images.last_updated || new Date().toISOString(),
+        total_colors: carData.ideogram_images.total_colors || 0,
+        total_images: carData.ideogram_images.total_images || 0
+      };
+    }
+
     console.log('[Admin] Creating new car:', carData.brand, carData.model);
 
     const { data, error } = await supabase
@@ -1229,6 +1267,44 @@ app.put("/api/admin/cars/:id", async (req, res) => {
 
       // Store as images object
       carData.images = images;
+    }
+
+    // If color_variant_images is provided, ensure it's properly formatted
+    if (carData.color_variant_images) {
+      console.log('[Admin] Processing color_variant_images for update:', Object.keys(carData.color_variant_images));
+      
+      // Validate and clean up the color_variant_images structure
+      const cleanedColorVariantImages = {};
+      
+      Object.keys(carData.color_variant_images).forEach(colorName => {
+        const colorData = carData.color_variant_images[colorName];
+        
+        // Skip if colorName is 'default' or if colorData is invalid
+        if (colorName === 'default' || !colorData || !colorData.images) {
+          return;
+        }
+        
+        // Ensure color data has the correct structure
+        cleanedColorVariantImages[colorName] = {
+          color_code: colorData.color_code || null,
+          images: colorData.images || {}
+        };
+      });
+      
+      carData.color_variant_images = cleanedColorVariantImages;
+    }
+
+    // If ideogram_images is provided, ensure it's properly formatted
+    if (carData.ideogram_images) {
+      console.log('[Admin] Processing ideogram_images for update');
+      // Ensure ideogram_images has the correct structure
+      carData.ideogram_images = {
+        valid: carData.ideogram_images.valid !== undefined ? carData.ideogram_images.valid : true,
+        source: carData.ideogram_images.source || 'ideogram',
+        last_updated: carData.ideogram_images.last_updated || new Date().toISOString(),
+        total_colors: carData.ideogram_images.total_colors || 0,
+        total_images: carData.ideogram_images.total_images || 0
+      };
     }
 
     console.log('[Admin] Updating car:', id);
