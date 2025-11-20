@@ -72,7 +72,7 @@ const CarListing = () => {
   const CARS_PER_PAGE = 12;
 
   const api = useAuthenticatedApi();
-  const { toast} = useToast();
+  const { toast } = useToast();
   const { isAuthenticated } = useUserAuth();
 
   const [filters, setFilters] = useState({
@@ -186,8 +186,7 @@ const CarListing = () => {
       // Process all chunks in parallel
       const chunkPromises = chunks.map(async (chunk, index) => {
         console.log(
-          `Processing chunk ${index + 1}/${chunks.length} with ${
-            chunk.length
+          `Processing chunk ${index + 1}/${chunks.length} with ${chunk.length
           } cars`
         );
         return api.wishlist.checkMultiple(chunk);
@@ -282,21 +281,21 @@ const CarListing = () => {
   const handleSearchResults = (navigationState: any) => {
     const transformedCars = navigationState.searchResults.map((car: any) => {
       let carImage = "/placeholder.svg";
-      
+
       // Handle both old array format and new angle-mapped object format
       if (car.images) {
         // If images is an object with angle keys (new format)
         if (typeof car.images === 'object' && !Array.isArray(car.images)) {
           // Try to get the front_3_4 angle first, then any available angle
           carImage = car.images.front_3_4 ||
-                   car.images.front_view ||
-                   car.images.left_side ||
-                   car.images.right_side ||
-                   car.images.rear_view ||
-                   car.images.interior_dash ||
-                   car.images.interior_cabin ||
-                   car.images.interior_steering ||
-                   "/placeholder.svg";
+            car.images.front_view ||
+            car.images.left_side ||
+            car.images.right_side ||
+            car.images.rear_view ||
+            car.images.interior_dash ||
+            car.images.interior_cabin ||
+            car.images.interior_steering ||
+            "/placeholder.svg";
         }
         // If images is an array (old format)
         else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
@@ -390,7 +389,7 @@ const CarListing = () => {
 
         console.log("Supabase total count:", count);
         console.log("Supabase data length:", supabaseData?.length);
-        
+
         // Log first few cars to debug
         if (supabaseData && supabaseData.length > 0) {
           console.log("Sample cars from Supabase:", supabaseData.slice(0, 3).map(car => ({
@@ -412,21 +411,21 @@ const CarListing = () => {
       if (carsData && carsData.length > 0) {
         const transformedCars = carsData.map((car, index) => {
           let carImage = "/placeholder.svg";
-          
+
           // Handle both old array format and new angle-mapped object format
           if (car.images) {
             // If images is an object with angle keys (new format)
             if (typeof car.images === 'object' && !Array.isArray(car.images)) {
               // Try to get the front_3_4 angle first, then any available angle
               carImage = car.images.front_3_4 ||
-                       car.images.front_view ||
-                       car.images.left_side ||
-                       car.images.right_side ||
-                       car.images.rear_view ||
-                       car.images.interior_dash ||
-                       car.images.interior_cabin ||
-                       car.images.interior_steering ||
-                       "/placeholder.svg";
+                car.images.front_view ||
+                car.images.left_side ||
+                car.images.right_side ||
+                car.images.rear_view ||
+                car.images.interior_dash ||
+                car.images.interior_cabin ||
+                car.images.interior_steering ||
+                "/placeholder.svg";
             }
             // If images is an array (old format)
             else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
@@ -541,8 +540,8 @@ const CarListing = () => {
       [filterType]: checked
         ? [...(prev[filterType as keyof typeof prev] as string[]), value]
         : (prev[filterType as keyof typeof prev] as string[]).filter(
-            (item) => item !== value
-          ),
+          (item) => item !== value
+        ),
     }));
   };
 
@@ -720,27 +719,15 @@ const CarListing = () => {
     setDisplayedCars(filteredAndSortedCars.slice(0, endIndex));
   }, [filteredAndSortedCars, page]);
 
-  // Infinite scroll handler
-  useEffect(() => {
-    const handleScroll = () => {
-      // Check if user has scrolled near the bottom
-      const scrollPosition = window.innerHeight + window.scrollY;
-      const bottomPosition = document.documentElement.offsetHeight - 800; // Trigger 800px before bottom
-
-      if (scrollPosition >= bottomPosition && !isLoadingMore && displayedCars.length < filteredAndSortedCars.length) {
-        setIsLoadingMore(true);
-
-        // Add a small delay for better UX
-        setTimeout(() => {
-          setPage(prev => prev + 1);
-          setIsLoadingMore(false);
-        }, 300);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoadingMore, displayedCars.length, filteredAndSortedCars.length]);
+  // Manual load more handler
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Add a small delay for better UX
+    setTimeout(() => {
+      setPage((prev) => prev + 1);
+      setIsLoadingMore(false);
+    }, 300);
+  };
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -1111,11 +1098,10 @@ const CarListing = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`lg:hidden ${
-                        getActiveFiltersCount() > 0
-                          ? "border-primary bg-primary/10"
-                          : ""
-                      }`}
+                      className={`lg:hidden ${getActiveFiltersCount() > 0
+                        ? "border-primary bg-primary/10"
+                        : ""
+                        }`}
                     >
                       <Filter className="w-4 h-4 mr-1" />
                       <span className="text-xs">Filters</span>
@@ -1159,11 +1145,10 @@ const CarListing = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`hidden lg:flex ${
-                    getActiveFiltersCount() > 0
-                      ? "border-primary bg-primary/10"
-                      : ""
-                  }`}
+                  className={`hidden lg:flex ${getActiveFiltersCount() > 0
+                    ? "border-primary bg-primary/10"
+                    : ""
+                    }`}
                 >
                   <Filter className="w-4 h-4 mr-2" />
                   Filters
@@ -1266,9 +1251,8 @@ const CarListing = () => {
         <div className="flex gap-4 lg:gap-8">
           {/* Desktop Sidebar Filters */}
           <div
-            className={`${
-              showFilters ? "block" : "hidden"
-            } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
+            className={`${showFilters ? "block" : "hidden"
+              } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
           >
             {/* Desktop Ad in Sidebar */}
             <div className="hidden xl:block" style={{ maxHeight: '250px', overflow: 'hidden' }}>
@@ -1378,11 +1362,26 @@ const CarListing = () => {
                   ))}
                 </div>
 
-                {/* Loading indicator for infinite scroll */}
-                {isLoadingMore && (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <span className="ml-3 text-muted-foreground">Loading more cars...</span>
+                {/* Load More Button */}
+                {displayedCars.length < filteredAndSortedCars.length && (
+                  <div className="flex justify-center py-8">
+                    {isLoadingMore ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <span className="ml-3 text-muted-foreground">
+                          Loading more cars...
+                        </span>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleLoadMore}
+                        variant="outline"
+                        size="lg"
+                        className="min-w-[200px]"
+                      >
+                        Load More
+                      </Button>
+                    )}
                   </div>
                 )}
 
