@@ -67,6 +67,15 @@ interface ProcessedCar {
   primary_image?: string;
   generated_images?: GeneratedImage[]; // Legacy format
   color_results?: Record<string, ColorResult>; // New multi-color format
+  generationLogs?: GenerationLog[]; // Logs for each angle
+}
+
+interface GenerationLog {
+  angle: string;
+  color: string;
+  status: 'success' | 'failed' | 'generating';
+  message: string;
+  timestamp: string;
 }
 
 interface GenerationOptions {
@@ -246,11 +255,45 @@ const IdeogramCarImageGenerator = () => {
       // Process cars one by one (Ideogram API has rate limits)
       for (let i = 0; i < selectedCarData.length; i++) {
         const car = selectedCarData[i];
+        const carName = `${car.brand} ${car.model}`;
 
-        toast.info(`Processing ${i + 1}/${selectedCarData.length}: ${car.brand} ${car.model}`);
+        toast.info(`Processing ${i + 1}/${selectedCarData.length}: ${carName}`);
+
+        // Initialize processed car with empty logs
+        const processingCarIndex = i;
+        const initialProcessedCar: ProcessedCar = {
+          id: car.id,
+          name: carName,
+          status: 'pending_approval',
+          images_count: 0,
+          total_colors: 0,
+          generationLogs: [],
+          processed_at: new Date().toISOString()
+        };
+
+        setProcessedCars(prev => [...prev, initialProcessedCar]);
 
         try {
-          // Call the Ideogram API endpoint
+          // Parse colors to show in logs
+          const colors = car.colors ? car.colors.split(';').map(c => c.trim()).filter(c => c) : [];
+          const totalAngles = options.num_images;
+
+          // Add initial logs for each color and angle
+          const initialLogs: GenerationLog[] = [];
+          colors.forEach(color => {
+            for (let angleIndex = 0; angleIndex < totalAngles; angleIndex++) {
+              const angleNames = ['Front 3/4', 'Front View', 'Left Side', 'Right Side', 'Rear View', 'Interior Dash', 'Interior Cabin', 'Interior Steering'];
+              initialLogs.push({
+                angle: angleNames[angleIndex] || `Angle ${angleIndex + 1}`,
+                color: color,
+                status: 'generating',
+                message: 'Waiting to generate...',
+                timestamp: new Date().toISOString()
+              });
+            }
+          });
+
+          // Use fetch with streaming for POST request
           const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-generate', {
             method: 'POST',
             headers: {
@@ -265,7 +308,7 @@ const IdeogramCarImageGenerator = () => {
                 body_type: car.body_type,
                 year: car.year,
                 fuel_type: car.fuel_type,
-                colors: car.colors || '', // Pass colors for color consistency
+                colors: car.colors || '',
                 color_codes: car.color_codes || ''
               },
               options: options
@@ -273,44 +316,161 @@ const IdeogramCarImageGenerator = () => {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to process ${car.brand} ${car.model}`);
+            throw new Error(`Failed to process ${carName}`);
           }
 
-          const result = await response.json();
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          let finalResult: any = null;
+          const realtimeLogs: GenerationLog[] = [];
 
-          // Add to processed cars with pending approval status
-          const processedCar: ProcessedCar = {
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+
+                    if (data.type === 'progress') {
+                      // Update logs in real-time based on progress events
+                      if (data.status === 'angle_start') {
+                        realtimeLogs.push({
+                          angle: data.angle.replace(/_/g, ' '),
+                          color: data.color,
+                          status: 'generating',
+                          message: data.message,
+                          timestamp: new Date().toISOString()
+                        });
+                      } else if (data.status === 'angle_success') {
+                        // Update the existing log or add new one
+                        const existingIndex = realtimeLogs.findIndex(
+                          log => log.angle === data.angle.replace(/_/g, ' ') && log.color === data.color
+                        );
+                        if (existingIndex >= 0) {
+                          realtimeLogs[existingIndex] = {
+                            angle: data.angle.replace(/_/g, ' '),
+                            color: data.color,
+                            status: 'success',
+                            message: data.message,
+                            timestamp: new Date().toISOString()
+                          };
+                        } else {
+                          realtimeLogs.push({
+                            angle: data.angle.replace(/_/g, ' '),
+                            color: data.color,
+                            status: 'success',
+                            message: data.message,
+                            timestamp: new Date().toISOString()
+                          });
+                        }
+                      } else if (data.status === 'angle_failed') {
+                        const existingIndex = realtimeLogs.findIndex(
+                          log => log.angle === data.angle.replace(/_/g, ' ') && log.color === data.color
+                        );
+                        if (existingIndex >= 0) {
+                          realtimeLogs[existingIndex] = {
+                            angle: data.angle.replace(/_/g, ' '),
+                            color: data.color,
+                            status: 'failed',
+                            message: data.message,
+                            timestamp: new Date().toISOString()
+                          };
+                        } else {
+                          realtimeLogs.push({
+                            angle: data.angle.replace(/_/g, ' '),
+                            color: data.color,
+                            status: 'failed',
+                            message: data.message,
+                            timestamp: new Date().toISOString()
+                          });
+                        }
+                      }
+
+                      // Update UI in real-time
+                      setProcessedCars(prev => {
+                        const updated = [...prev];
+                        if (updated[processingCarIndex]) {
+                          updated[processingCarIndex] = {
+                            ...updated[processingCarIndex],
+                            generationLogs: [...realtimeLogs]
+                          };
+                        }
+                        return updated;
+                      });
+                    } else if (data.type === 'complete') {
+                      finalResult = data;
+                    } else if (data.type === 'error') {
+                      throw new Error(data.message || 'Generation failed');
+                    }
+                  } catch (e) {
+                    console.error('Error parsing SSE data:', e);
+                  }
+                }
+              }
+            }
+          }
+
+          if (!finalResult) {
+            throw new Error('No final result received');
+          }
+
+          // Update processed car with final results
+          const finalProcessedCar: ProcessedCar = {
             id: car.id,
-            name: `${car.brand} ${car.model}`,
+            name: carName,
             status: 'pending_approval',
-            images_count: result.totalImages || 0,
-            total_colors: result.totalColors || 0,
-            primary_image: result.colorResults ? Object.values(result.colorResults)[0]?.primaryImage : null,
-            color_results: result.colorResults, // New multi-color format
+            images_count: finalResult.totalImages || 0,
+            total_colors: finalResult.totalColors || 0,
+            primary_image: finalResult.colorResults ? Object.values(finalResult.colorResults)[0]?.primaryImage : null,
+            color_results: finalResult.colorResults,
+            generationLogs: realtimeLogs,
             processed_at: new Date().toISOString()
           };
 
-          setProcessedCars(prev => [...prev, processedCar]);
+          setProcessedCars(prev => {
+            const updated = [...prev];
+            updated[processingCarIndex] = finalProcessedCar;
+            return updated;
+          });
 
-          toast.success(`✅ Generated ${result.totalImages} images across ${result.totalColors} colors for ${car.brand} ${car.model} - Ready for review`);
-        } catch (error) {
+          const successCount = realtimeLogs.filter(log => log.status === 'success').length;
+          const failedCount = realtimeLogs.filter(log => log.status === 'failed').length;
+
+          toast.success(`✅ ${carName}: ${successCount} images generated successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`);
+        } catch (error: any) {
           console.error(`Error processing car ${car.id}:`, error);
 
-          setProcessedCars(prev => [...prev, {
-            id: car.id,
-            name: `${car.brand} ${car.model}`,
-            status: 'failed',
-            error: error.message,
-            processed_at: new Date().toISOString()
-          }]);
+          setProcessedCars(prev => {
+            const updated = [...prev];
+            updated[processingCarIndex] = {
+              id: car.id,
+              name: carName,
+              status: 'failed',
+              error: error.message,
+              generationLogs: [{
+                angle: 'All',
+                color: 'All',
+                status: 'failed',
+                message: `❌ ${error.message}`,
+                timestamp: new Date().toISOString()
+              }],
+              processed_at: new Date().toISOString()
+            };
+            return updated;
+          });
 
-          toast.error(`❌ Failed: ${car.brand} ${car.model}`);
+          toast.error(`❌ Failed: ${carName}`);
         }
 
         // Add delay between requests to respect rate limits
         if (i < selectedCarData.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
 
@@ -759,52 +919,97 @@ const IdeogramCarImageGenerator = () => {
               </div>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-96 overflow-y-auto">
               {processedCars.map((car) => (
                 <div
                   key={car.id}
-                  className={`flex items-center justify-between p-3 rounded border ${
+                  className={`rounded border ${
                     car.status === 'pending_approval' ? 'bg-yellow-50 border-yellow-200' :
                     car.status === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                   }`}
                 >
-                  <div className="flex-1">
-                    <div className="font-medium">{car.name}</div>
-                    {car.status === 'pending_approval' ? (
-                      <div className="text-sm text-yellow-600">
-                        {car.images_count} images generated - Click Review to approve
-                      </div>
-                    ) : car.status === 'success' ? (
-                      <div className="text-sm text-green-600">
-                        {car.images_count} images uploaded to S3
-                      </div>
-                    ) : (
-                      <div className="text-sm text-red-600">{car.error}</div>
-                    )}
+                  <div className="flex items-center justify-between p-3">
+                    <div className="flex-1">
+                      <div className="font-medium">{car.name}</div>
+                      {car.status === 'pending_approval' ? (
+                        <div className="text-sm text-yellow-600">
+                          {car.images_count} images generated - Click Review to approve
+                        </div>
+                      ) : car.status === 'success' ? (
+                        <div className="text-sm text-green-600">
+                          {car.images_count} images uploaded to S3
+                        </div>
+                      ) : (
+                        <div className="text-sm text-red-600">{car.error}</div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {car.status === 'pending_approval' && (
+                        <Button
+                          size="sm"
+                          onClick={() => openImageReview(car)}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Review Images
+                        </Button>
+                      )}
+                      {car.status === 'success' && (
+                        <>
+                          <Badge variant="secondary" className="bg-green-100 text-green-700">
+                            {car.images_count} imgs
+                          </Badge>
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        </>
+                      )}
+                      {car.status === 'failed' && (
+                        <XCircle className="h-5 w-5 text-red-500" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {car.status === 'pending_approval' && (
-                      <Button
-                        size="sm"
-                        onClick={() => openImageReview(car)}
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Review Images
-                      </Button>
-                    )}
-                    {car.status === 'success' && (
-                      <>
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">
-                          {car.images_count} imgs
-                        </Badge>
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      </>
-                    )}
-                    {car.status === 'failed' && (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    )}
-                  </div>
+
+                  {/* Generation Logs */}
+                  {car.generationLogs && car.generationLogs.length > 0 && (
+                    <div className="border-t px-3 py-2 bg-white bg-opacity-50">
+                      <div className="text-xs font-semibold text-gray-600 mb-2">Generation Logs:</div>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {car.generationLogs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-start gap-2 text-xs p-1.5 rounded ${
+                              log.status === 'success' ? 'bg-green-100' :
+                              log.status === 'failed' ? 'bg-red-100' : 'bg-gray-100'
+                            }`}
+                          >
+                            {log.status === 'success' ? (
+                              <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
+                            ) : log.status === 'failed' ? (
+                              <XCircle className="h-3 w-3 text-red-600 mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3 text-gray-600 mt-0.5 flex-shrink-0 animate-spin" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium capitalize">
+                                {log.color} - {log.angle}
+                              </div>
+                              <div className={`${
+                                log.status === 'success' ? 'text-green-700' :
+                                log.status === 'failed' ? 'text-red-700' : 'text-gray-600'
+                              }`}>
+                                {log.message}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        ✅ {car.generationLogs.filter(log => log.status === 'success').length} succeeded
+                        {car.generationLogs.filter(log => log.status === 'failed').length > 0 && (
+                          <> • ❌ {car.generationLogs.filter(log => log.status === 'failed').length} failed</>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

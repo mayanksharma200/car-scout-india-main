@@ -1425,7 +1425,7 @@ app.get("/api/admin/cars", async (req, res) => {
   }
 });
 
-// Admin endpoint for generating images with Ideogram AI
+// Admin endpoint for generating images with Ideogram AI (with streaming support)
 app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
   try {
     const { carId, carData, options = {} } = req.body;
@@ -1447,12 +1447,25 @@ app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
       });
     }
 
-    // Generate images using Ideogram API
+    // Setup SSE headers for streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Send initial status
+    res.write(`data: ${JSON.stringify({ type: 'start', message: 'Starting image generation...' })}\n\n`);
+
+    // Generate images using Ideogram API with progress callback
     const generationOptions = {
       num_images: options.num_images || 8, // Generate 8 images for all angles
       aspect_ratio: options.aspect_ratio || '16x9',
       rendering_speed: options.rendering_speed || 'TURBO',
-      style_type: options.style_type || 'REALISTIC'
+      style_type: options.style_type || 'REALISTIC',
+      onProgress: (progressData) => {
+        // Stream progress updates to frontend
+        res.write(`data: ${JSON.stringify({ type: 'progress', ...progressData })}\n\n`);
+      }
     };
 
     const ideogramResult = await ideogramAPI.generateCarImages(carData, generationOptions);
@@ -1460,49 +1473,46 @@ app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
     if (ideogramResult.success && ideogramResult.totalImages > 0) {
       console.log(`✅ Successfully generated ${ideogramResult.totalImages} Ideogram images across ${ideogramResult.totalColors} colors for: ${carData.brand} ${carData.model}`);
 
-      // Return images grouped by color for preview - DO NOT save to database yet
-      // User will review and approve images before uploading to S3
-      res.json({
+      // Send final result
+      res.write(`data: ${JSON.stringify({
+        type: 'complete',
         success: true,
         carId,
         carName: `${carData.brand} ${carData.model}`,
-        colorResults: ideogramResult.colorResults, // Images grouped by color
+        colorResults: ideogramResult.colorResults,
         totalColors: ideogramResult.totalColors,
         totalImages: ideogramResult.totalImages,
         created: ideogramResult.created,
         errors: ideogramResult.errors,
-        message: `Generated ${ideogramResult.totalImages} images across ${ideogramResult.totalColors} colors. Please review and approve before saving.`
-      });
+        message: `Generated ${ideogramResult.totalImages} images across ${ideogramResult.totalColors} colors.`
+      })}\n\n`);
     } else {
       console.log(`❌ Ideogram generation failed for: ${carData.brand} ${carData.model}`);
-      res.status(422).json({
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
         success: false,
         error: 'Ideogram API did not return valid images for this car',
         carId,
         carName: `${carData.brand} ${carData.model}`
-      });
+      })}\n\n`);
     }
+
+    res.end();
 
   } catch (error) {
     console.error('Error generating Ideogram images:', error);
 
     // Handle specific error types
-    let statusCode = 500;
     let errorMessage = error.message;
 
-    if (error.message.includes('Invalid Ideogram API key')) {
-      statusCode = 401;
-    } else if (error.message.includes('Rate limit exceeded')) {
-      statusCode = 429;
-    } else if (error.message.includes('safety check')) {
-      statusCode = 422;
-    }
-
-    res.status(statusCode).json({
+    res.write(`data: ${JSON.stringify({
+      type: 'error',
       success: false,
       error: 'Failed to generate Ideogram images',
       message: errorMessage
-    });
+    })}\n\n`);
+
+    res.end();
   }
 });
 

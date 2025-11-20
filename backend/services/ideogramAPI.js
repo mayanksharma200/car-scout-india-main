@@ -174,6 +174,7 @@ async function generateSingleAngleImage(carData, angleIndex, options = {}) {
  * @param {string} options.rendering_speed - FLASH, TURBO, DEFAULT, or QUALITY (default TURBO)
  * @param {string} options.style_type - AUTO, GENERAL, REALISTIC, DESIGN, or FICTION (default REALISTIC)
  * @param {boolean} options.generateAllColors - Generate images for all colors (default true)
+ * @param {Function} options.onProgress - Callback function for progress updates
  * @returns {Promise<Object>} - Generation result with image URLs grouped by color
  */
 async function generateCarImages(carData, options = {}) {
@@ -186,6 +187,7 @@ async function generateCarImages(carData, options = {}) {
 
     const numAngles = options.num_images || 8;
     const generateAllColors = options.generateAllColors !== false; // Default true
+    const onProgress = options.onProgress || (() => {}); // Progress callback
 
     // Parse colors from carData
     const colorVariants = parseColors(carData.colors, carData.color_codes);
@@ -207,13 +209,34 @@ async function generateCarImages(carData, options = {}) {
 
       console.log(`\n[Ideogram] 🎨 Generating ${numAngles} angles for color: ${colorName}${colorCode ? ` (${colorCode})` : ''}`);
 
+      // Notify color start
+      onProgress({
+        status: 'color_start',
+        color: colorName,
+        colorCode,
+        totalAngles: numAngles,
+        message: `Starting generation for ${colorName}`
+      });
+
       const images = [];
       const errors = [];
       let masterSeed = null; // Seed from first image for this color
 
       // Generate each angle for this specific color
       for (let i = 0; i < numAngles; i++) {
+        const angleName = getAngleLabel(i);
+
         try {
+          // Notify angle start
+          onProgress({
+            status: 'angle_start',
+            color: colorName,
+            angle: angleName,
+            angleIndex: i + 1,
+            totalAngles: numAngles,
+            message: `Generating ${angleName} for ${colorName}...`
+          });
+
           // For images after the first one, use the seed from the first image of this color
           const angleOptions = {
             ...options,
@@ -236,14 +259,38 @@ async function generateCarImages(carData, options = {}) {
 
           console.log(`[Ideogram] ✅ Generated ${imageResult.angle} for ${colorName} (${i + 1}/${numAngles})`);
 
+          // Notify angle success
+          onProgress({
+            status: 'angle_success',
+            color: colorName,
+            angle: angleName,
+            angleIndex: i + 1,
+            totalAngles: numAngles,
+            imageUrl: imageResult.url,
+            message: `✅ Successfully generated ${angleName} for ${colorName}`
+          });
+
           // Small delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
         } catch (error) {
           console.error(`[Ideogram] ❌ Failed to generate ${getAngleLabel(i)} for ${colorName}:`, error.message);
-          errors.push({
+
+          const errorInfo = {
             angle: getAngleLabel(i),
             color: colorName,
             error: error.message
+          };
+          errors.push(errorInfo);
+
+          // Notify angle failure
+          onProgress({
+            status: 'angle_failed',
+            color: colorName,
+            angle: angleName,
+            angleIndex: i + 1,
+            totalAngles: numAngles,
+            error: error.message,
+            message: `❌ Failed to generate ${angleName} for ${colorName}: ${error.message}`
           });
         }
       }
@@ -260,12 +307,28 @@ async function generateCarImages(carData, options = {}) {
         };
         totalImagesGenerated += images.length;
         console.log(`[Ideogram] ✅ Completed ${colorName}: ${images.length} images generated`);
+
+        // Notify color complete
+        onProgress({
+          status: 'color_complete',
+          color: colorName,
+          successCount: images.length,
+          failedCount: errors.length,
+          message: `✅ Completed ${colorName}: ${images.length} images generated${errors.length > 0 ? `, ${errors.length} failed` : ''}`
+        });
       } else {
         globalErrors.push({
           color: colorName,
           error: 'Failed to generate any images for this color'
         });
         console.error(`[Ideogram] ❌ Failed to generate any images for ${colorName}`);
+
+        // Notify color failed
+        onProgress({
+          status: 'color_failed',
+          color: colorName,
+          message: `❌ Failed to generate any images for ${colorName}`
+        });
       }
 
       // Delay between colors to avoid rate limiting
