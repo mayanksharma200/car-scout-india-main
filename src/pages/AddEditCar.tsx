@@ -325,6 +325,14 @@ const AddEditCar = () => {
           // Images
           color_images: colorImages,
         });
+
+        // Set first color as active by default
+        if (car.colors) {
+          const firstColor = car.colors.split(';')[0].trim();
+          if (firstColor) {
+            setActiveColor(firstColor);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching car:", error);
@@ -1283,15 +1291,7 @@ const AddEditCar = () => {
             {/* Color Selector Tabs */}
             <div className="mt-6 border-b">
               <div className="flex gap-2 overflow-x-auto pb-2">
-                <Button
-                  type="button"
-                  variant={activeColor === 'default' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveColor('default')}
-                  className="whitespace-nowrap"
-                >
-                  Default / Main
-                </Button>
+                {/* Default tab removed as per request */}
 
                 {formData.colors && formData.colors.split(';').map((color, index) => {
                   const colorName = color.trim();
@@ -1323,44 +1323,7 @@ const AddEditCar = () => {
               </div>
             </div>
 
-            {/* Color Generation Selector - Only show if we're on default tab or if we want to override */}
-            {activeColor === 'default' && formData.colors && (
-              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <Label htmlFor="color-selector" className="text-sm font-medium mb-2 block">
-                  Select Color for AI Generation (Default Tab)
-                </Label>
-                <Select
-                  value={selectedColorForGeneration}
-                  onValueChange={setSelectedColorForGeneration}
-                >
-                  <SelectTrigger id="color-selector" className="w-full md:w-1/2 bg-white">
-                    <SelectValue placeholder="Choose a color variant..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.colors.split(';').map((color, index) => {
-                      const colorName = color.trim();
-                      const colorCodes = formData.color_codes?.split(';') || [];
-                      const colorCode = colorCodes[index]?.trim() || '';
-                      const hexCode = colorCode.startsWith('#') ? colorCode : `#${colorCode}`;
-
-                      return (
-                        <SelectItem key={colorName} value={colorName}>
-                          <div className="flex items-center gap-2">
-                            {colorCode && (
-                              <div
-                                className="w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: hexCode }}
-                              />
-                            )}
-                            <span>{colorName}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {/* Color Generation Selector - Removed as Default tab is gone */}
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((index) => {
