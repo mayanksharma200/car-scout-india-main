@@ -307,14 +307,71 @@ const CarDetail = () => {
     paintId: string = "1",
     paintDescription: string = "white",
     actualApiPaintId?: string,
-    actualApiDescription?: string
+    actualApiDescription?: string,
+    colorName?: string,
+    colorVariantImages?: Record<string, any>
   ) => {
     if (!car) return [];
 
-    // Handle both old array format and new angle-mapped object format
+    // 1. Check for color_variant_images first (Highest Priority)
+    if (colorVariantImages && colorName) {
+      // Try to find exact match or case-insensitive match
+      const exactKey = Object.keys(colorVariantImages).find(
+        k => k.toLowerCase().trim() === colorName.toLowerCase().trim()
+      );
+
+      if (exactKey && colorVariantImages[exactKey]?.images) {
+        const imagesObj = colorVariantImages[exactKey].images;
+        const angleOrder = [
+          'front_3_4', 'front_view', 'left_side', 'right_side',
+          'rear_view', 'interior_dash', 'interior_cabin', 'interior_steering'
+        ];
+
+        const imageUrls = angleOrder
+          .map(angle => imagesObj[angle])
+          .filter(url => url && url.length > 0);
+
+        if (imageUrls.length > 0) {
+          console.log(`✅ Found ${imageUrls.length} images for color ${colorName} in color_variant_images`);
+          return imageUrls;
+        }
+      }
+    }
+
+    // 2. Fallback to legacy images field
     if (car.images) {
-      // If images is an object with angle keys (new format)
+      // If images is an object (could be angle keys OR color keys)
       if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+
+        // Case A: It's a map of Color Name -> Image Array (The format user provided)
+        // Check if values are arrays
+        const firstKey = Object.keys(car.images)[0];
+        if (firstKey && Array.isArray(car.images[firstKey])) {
+          // Try to find images for the requested color
+          if (colorName) {
+            // Try exact match or trimmed match
+            const exactKey = Object.keys(car.images).find(
+              k => k.toLowerCase().trim() === colorName.toLowerCase().trim()
+            );
+            if (exactKey && car.images[exactKey]?.length > 0) {
+              return car.images[exactKey];
+            }
+          }
+
+          // If no specific color requested or not found, try 'default'
+          if (car.images.default && car.images.default.length > 0 && car.images.default.some((url: string) => url)) {
+            return car.images.default;
+          }
+
+          // Otherwise return the first available color's images
+          for (const key of Object.keys(car.images)) {
+            if (car.images[key] && car.images[key].length > 0 && car.images[key].some((url: string) => url)) {
+              return car.images[key];
+            }
+          }
+        }
+
+        // Case B: It's a flat object with angle keys (Legacy format)
         const angleOrder = [
           'front_3_4', 'front_view', 'left_side', 'right_side',
           'rear_view', 'interior_dash', 'interior_cabin', 'interior_steering'
@@ -322,13 +379,13 @@ const CarDetail = () => {
         const imageUrls = angleOrder
           .filter(angle => car.images[angle])
           .map(angle => car.images[angle]);
-        
+
         if (imageUrls.length > 0) {
           return imageUrls;
         }
       }
-      
-      // If images is an array (old format)
+
+      // Case C: If images is a simple array (Oldest format)
       if (Array.isArray(car.images) && car.images.length > 0) {
         return car.images.map((url: string, index: number) => url);
       }
@@ -356,7 +413,9 @@ const CarDetail = () => {
           colorOption.paintId,
           colorOption.paintDescription,
           colorOption.actualApiPaintId,
-          colorOption.actualApiDescription
+          colorOption.actualApiDescription,
+          colorOption.name,
+          car.color_variant_images
         );
         console.log("🖼️ New images with color:", newImages);
         console.log("🎨 Using actual API paint ID:", colorOption.actualApiPaintId || 'fallback to simple ID');
@@ -396,11 +455,19 @@ const CarDetail = () => {
   // Initialize car images when car loads
   useEffect(() => {
     if (car && !currentCarImages.length) {
+      // Determine initial color name
+      const initialColorName = car.color || (car.colors ? car.colors.split(';')[0].trim() : undefined);
+
       // If car has existing images, use them, otherwise generate new ones
-      const initialImages =
-        Array.isArray(car.images) && car.images.length > 0
-          ? car.images
-          : generateCarImages(car);
+      const initialImages = generateCarImages(
+        car,
+        "1",
+        "white",
+        undefined,
+        undefined,
+        initialColorName,
+        car.color_variant_images
+      );
 
       setCurrentCarImages(initialImages);
       console.log("🚗 Initial car images set:", initialImages);
@@ -512,21 +579,19 @@ const CarDetail = () => {
                 disabled={wishlistLoading}
               >
                 <Heart
-                  className={`w-4 h-4 mr-2 ${
-                    isWishlisted ? "fill-red-500 text-red-500" : ""
-                  }`}
+                  className={`w-4 h-4 mr-2 ${isWishlisted ? "fill-red-500 text-red-500" : ""
+                    }`}
                 />
                 {wishlistLoading
                   ? "Loading..."
                   : isWishlisted
-                  ? "Saved"
-                  : "Save"}
+                    ? "Saved"
+                    : "Save"}
               </Button>
               <ShareModal
                 title={`${car.brand} ${car.model} ${car.variant}`}
-                description={`Check out this ${car.brand} ${
-                  car.model
-                } starting from ${formatPrice(car.price)}`}
+                description={`Check out this ${car.brand} ${car.model
+                  } starting from ${formatPrice(car.price)}`}
                 url={window.location.pathname}
                 image={Array.isArray(car.images) ? car.images[0] : car.image}
               >
@@ -546,8 +611,8 @@ const CarDetail = () => {
                     currentCarImages.length > 0
                       ? currentCarImages
                       : Array.isArray(car.images)
-                      ? car.images
-                      : [car.image];
+                        ? car.images
+                        : [car.image];
 
                   console.log("🎬 Passing to CarImageGallery:", {
                     currentCarImages: currentCarImages,
@@ -614,9 +679,8 @@ const CarDetail = () => {
             {/* Mobile Color Selector - Show below image gallery on mobile only */}
             <div className="lg:hidden w-full max-w-full overflow-hidden">
               <div
-                className={`transition-all duration-300 w-full max-w-full ${
-                  isColorChanging ? "pointer-events-none opacity-75" : ""
-                }`}
+                className={`transition-all duration-300 w-full max-w-full ${isColorChanging ? "pointer-events-none opacity-75" : ""
+                  }`}
               >
                 <CarColorSelector
                   currentColor={car.color}
@@ -664,12 +728,9 @@ const CarDetail = () => {
                   <CardContent>
                     <p className="text-muted-foreground leading-relaxed">
                       {car.description ||
-                        `The ${car.brand} ${car.model} ${
-                          car.variant
-                        } is a premium ${car.bodyType?.toLowerCase()} that combines style, performance, and comfort. With its ${
-                          car.fuelType
-                        } engine and ${
-                          car.transmission
+                        `The ${car.brand} ${car.model} ${car.variant
+                        } is a premium ${car.bodyType?.toLowerCase()} that combines style, performance, and comfort. With its ${car.fuelType
+                        } engine and ${car.transmission
                         } transmission, it delivers an excellent driving experience for urban and highway conditions.`}
                     </p>
                   </CardContent>

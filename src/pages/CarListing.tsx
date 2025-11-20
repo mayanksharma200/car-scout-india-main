@@ -282,22 +282,52 @@ const CarListing = () => {
     const transformedCars = navigationState.searchResults.map((car: any) => {
       let carImage = "/placeholder.svg";
 
-      // Handle both old array format and new angle-mapped object format
-      if (car.images) {
-        // If images is an object with angle keys (new format)
-        if (typeof car.images === 'object' && !Array.isArray(car.images)) {
-          // Try to get the front_3_4 angle first, then any available angle
-          carImage = car.images.front_3_4 ||
-            car.images.front_view ||
-            car.images.left_side ||
-            car.images.right_side ||
-            car.images.rear_view ||
-            car.images.interior_dash ||
-            car.images.interior_cabin ||
-            car.images.interior_steering ||
+      // Handle images - prioritize new color_variant_images, then legacy formats
+      if (car.color_variant_images && Object.keys(car.color_variant_images).length > 0) {
+        const firstColor = Object.keys(car.color_variant_images)[0];
+        const imagesObj = car.color_variant_images[firstColor]?.images;
+        if (imagesObj) {
+          carImage = imagesObj.front_3_4 ||
+            imagesObj.front_view ||
+            imagesObj.left_side ||
+            imagesObj.right_side ||
+            Object.values(imagesObj)[0] as string ||
             "/placeholder.svg";
         }
-        // If images is an array (old format)
+      } else if (car.images) {
+        // If images is an object
+        if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+          // Case A: It's a map of Color Name -> Image Array (The format user provided)
+          const firstKey = Object.keys(car.images)[0];
+          if (firstKey && Array.isArray(car.images[firstKey])) {
+            // Try to find 'default' or use first color
+            const defaultImages = car.images.default;
+            if (defaultImages && Array.isArray(defaultImages) && defaultImages.length > 0 && defaultImages[0]) {
+              carImage = defaultImages[0];
+            } else {
+              // Find first color with valid images
+              for (const key of Object.keys(car.images)) {
+                const imgs = car.images[key];
+                if (Array.isArray(imgs) && imgs.length > 0 && imgs[0]) {
+                  carImage = imgs[0];
+                  break;
+                }
+              }
+            }
+          } else {
+            // Case B: It's a flat object with angle keys (Legacy format)
+            carImage = car.images.front_3_4 ||
+              car.images.front_view ||
+              car.images.left_side ||
+              car.images.right_side ||
+              car.images.rear_view ||
+              car.images.interior_dash ||
+              car.images.interior_cabin ||
+              car.images.interior_steering ||
+              "/placeholder.svg";
+          }
+        }
+        // Case C: If images is an array (old format)
         else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
           carImage = car.images[0] as string;
         }
@@ -412,22 +442,52 @@ const CarListing = () => {
         const transformedCars = carsData.map((car, index) => {
           let carImage = "/placeholder.svg";
 
-          // Handle both old array format and new angle-mapped object format
-          if (car.images) {
-            // If images is an object with angle keys (new format)
-            if (typeof car.images === 'object' && !Array.isArray(car.images)) {
-              // Try to get the front_3_4 angle first, then any available angle
-              carImage = car.images.front_3_4 ||
-                car.images.front_view ||
-                car.images.left_side ||
-                car.images.right_side ||
-                car.images.rear_view ||
-                car.images.interior_dash ||
-                car.images.interior_cabin ||
-                car.images.interior_steering ||
+          // Handle images - prioritize new color_variant_images, then legacy formats
+          if (car.color_variant_images && Object.keys(car.color_variant_images).length > 0) {
+            const firstColor = Object.keys(car.color_variant_images)[0];
+            const imagesObj = car.color_variant_images[firstColor]?.images;
+            if (imagesObj) {
+              carImage = imagesObj.front_3_4 ||
+                imagesObj.front_view ||
+                imagesObj.left_side ||
+                imagesObj.right_side ||
+                Object.values(imagesObj)[0] as string ||
                 "/placeholder.svg";
             }
-            // If images is an array (old format)
+          } else if (car.images) {
+            // If images is an object
+            if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+              // Case A: It's a map of Color Name -> Image Array (The format user provided)
+              const firstKey = Object.keys(car.images)[0];
+              if (firstKey && Array.isArray(car.images[firstKey])) {
+                // Try to find 'default' or use first color
+                const defaultImages = car.images.default;
+                if (defaultImages && Array.isArray(defaultImages) && defaultImages.length > 0 && defaultImages[0]) {
+                  carImage = defaultImages[0];
+                } else {
+                  // Find first color with valid images
+                  for (const key of Object.keys(car.images)) {
+                    const imgs = car.images[key];
+                    if (Array.isArray(imgs) && imgs.length > 0 && imgs[0]) {
+                      carImage = imgs[0];
+                      break;
+                    }
+                  }
+                }
+              } else {
+                // Case B: It's a flat object with angle keys (Legacy format)
+                carImage = car.images.front_3_4 ||
+                  car.images.front_view ||
+                  car.images.left_side ||
+                  car.images.right_side ||
+                  car.images.rear_view ||
+                  car.images.interior_dash ||
+                  car.images.interior_cabin ||
+                  car.images.interior_steering ||
+                  "/placeholder.svg";
+              }
+            }
+            // Case C: If images is an array (old format)
             else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
               carImage = car.images[0] as string;
             }
