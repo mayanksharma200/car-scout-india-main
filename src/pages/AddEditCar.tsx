@@ -28,7 +28,7 @@ interface CarFormData {
   engine_capacity: string;
   status: string;
   api_source: string;
-  
+
   // Pricing
   price_min: string;
   price_max: string;
@@ -44,7 +44,7 @@ interface CarFormData {
   chennai_price: string;
   kolkata_price: string;
   ahmedabad_price: string;
-  
+
   // Specifications
   engine_type: string;
   max_power: string;
@@ -59,7 +59,7 @@ interface CarFormData {
   ground_clearance_mm: string;
   bootspace_litres: string;
   fuel_tank_capacity_litres: string;
-  
+
   // Safety & Features
   airbags: string;
   ncap_rating: string;
@@ -68,27 +68,20 @@ interface CarFormData {
   sunroof: string;
   ac_type: string;
   cruise_control: boolean;
-  
+
   // Warranty
   warranty_years: string;
   warranty_km: string;
   battery_warranty_years: string;
   battery_warranty_km: string;
-  
+
   // Colors & Description
   colors: string;
   color_codes: string;
   description: string;
-  
-  // Images (8 angles)
-  image_url_1: string;
-  image_url_2: string;
-  image_url_3: string;
-  image_url_4: string;
-  image_url_5: string;
-  image_url_6: string;
-  image_url_7: string;
-  image_url_8: string;
+
+  // Images
+  color_images: Record<string, string[]>; // Map of color name to array of 8 images
 }
 
 const AddEditCar = () => {
@@ -100,7 +93,9 @@ const AddEditCar = () => {
   const [saving, setSaving] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+  const [activeColor, setActiveColor] = useState<string>("default");
   const [selectedColorForGeneration, setSelectedColorForGeneration] = useState<string>("");
+
   const [formData, setFormData] = useState<CarFormData>({
     // Basic Information
     external_id: "",
@@ -114,7 +109,7 @@ const AddEditCar = () => {
     engine_capacity: "",
     status: "active",
     api_source: "manual",
-    
+
     // Pricing
     price_min: "",
     price_max: "",
@@ -130,7 +125,7 @@ const AddEditCar = () => {
     chennai_price: "",
     kolkata_price: "",
     ahmedabad_price: "",
-    
+
     // Specifications
     engine_type: "",
     max_power: "",
@@ -145,7 +140,7 @@ const AddEditCar = () => {
     ground_clearance_mm: "",
     bootspace_litres: "",
     fuel_tank_capacity_litres: "",
-    
+
     // Safety & Features
     airbags: "",
     ncap_rating: "",
@@ -154,27 +149,22 @@ const AddEditCar = () => {
     sunroof: "",
     ac_type: "",
     cruise_control: false,
-    
+
     // Warranty
     warranty_years: "",
     warranty_km: "",
     battery_warranty_years: "",
     battery_warranty_km: "",
-    
+
     // Colors & Description
     colors: "",
     color_codes: "",
     description: "",
-    
+
     // Images
-    image_url_1: "",
-    image_url_2: "",
-    image_url_3: "",
-    image_url_4: "",
-    image_url_5: "",
-    image_url_6: "",
-    image_url_7: "",
-    image_url_8: "",
+    color_images: {
+      default: Array(8).fill("")
+    },
   });
 
   // Fetch car data if in edit mode
@@ -197,6 +187,42 @@ const AddEditCar = () => {
 
       if (result.success) {
         const car = result.data;
+        // Handle images - support both legacy array/object and new color map
+        let colorImages: Record<string, string[]> = { default: Array(8).fill("") };
+
+        if (car.images) {
+          if (Array.isArray(car.images)) {
+            // Legacy array format -> assign to default
+            colorImages.default = [...car.images, ...Array(8).fill("")].slice(0, 8);
+          } else if (typeof car.images === 'object') {
+            // Check if it's the old single-object format (keys are angles) or new color map
+            const keys = Object.keys(car.images);
+            const isAngleKeys = keys.some(k => ['front_3_4', 'front_view'].includes(k));
+
+            if (isAngleKeys) {
+              // Old single object format -> convert to array and assign to default
+              const angles = [
+                "front_3_4", "front_view", "left_side", "right_side",
+                "rear_view", "interior_dash", "interior_cabin", "interior_steering"
+              ];
+              colorImages.default = angles.map(angle => car.images[angle] || "");
+            } else {
+              // New color map format -> assign directly
+              // Ensure each color has exactly 8 images
+              Object.keys(car.images).forEach(color => {
+                if (Array.isArray(car.images[color])) {
+                  colorImages[color] = [...car.images[color], ...Array(8).fill("")].slice(0, 8);
+                }
+              });
+              // If default is missing but we have other colors, we can keep default empty or set it to first color
+              if (!colorImages.default && Object.keys(colorImages).length > 0) {
+                // Ensure default exists for UI consistency if needed, or just rely on keys
+                colorImages.default = Array(8).fill("");
+              }
+            }
+          }
+        }
+
         setFormData({
           // Basic Information
           external_id: car.external_id || "",
@@ -210,7 +236,7 @@ const AddEditCar = () => {
           engine_capacity: car.engine_capacity || "",
           status: car.status || "active",
           api_source: car.api_source || "manual",
-          
+
           // Pricing
           price_min: car.price_min?.toString() || "",
           price_max: car.price_max?.toString() || "",
@@ -226,7 +252,7 @@ const AddEditCar = () => {
           chennai_price: car.chennai_price || "",
           kolkata_price: car.kolkata_price || "",
           ahmedabad_price: car.ahmedabad_price || "",
-          
+
           // Specifications
           engine_type: car.engine_type || "",
           max_power: car.max_power || "",
@@ -241,7 +267,7 @@ const AddEditCar = () => {
           ground_clearance_mm: car.ground_clearance_mm || "",
           bootspace_litres: car.bootspace_litres || "",
           fuel_tank_capacity_litres: car.fuel_tank_capacity_litres || "",
-          
+
           // Safety & Features
           airbags: car.airbags || "",
           ncap_rating: car.ncap_rating || "",
@@ -250,43 +276,20 @@ const AddEditCar = () => {
           sunroof: car.sunroof || "",
           ac_type: car.ac_type || "",
           cruise_control: car.cruise_control || false,
-          
+
           // Warranty
           warranty_years: car.warranty_years?.toString() || "",
           warranty_km: car.warranty_km?.toString() || "",
           battery_warranty_years: car.battery_warranty_years?.toString() || "",
           battery_warranty_km: car.battery_warranty_km?.toString() || "",
-          
+
           // Colors & Description
           colors: car.colors || "",
           color_codes: car.color_codes || "",
           description: car.description || "",
-          
-          // Handle both array format (old) and object format (new) for images
-          image_url_1: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.front_3_4 || "")
-            : (car.images?.[0] || ""),
-          image_url_2: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.front_view || "")
-            : (car.images?.[1] || ""),
-          image_url_3: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.left_side || "")
-            : (car.images?.[2] || ""),
-          image_url_4: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.right_side || "")
-            : (car.images?.[3] || ""),
-          image_url_5: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.rear_view || "")
-            : (car.images?.[4] || ""),
-          image_url_6: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.interior_dash || "")
-            : (car.images?.[5] || ""),
-          image_url_7: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.interior_cabin || "")
-            : (car.images?.[6] || ""),
-          image_url_8: (typeof car.images === 'object' && !Array.isArray(car.images))
-            ? (car.images?.interior_steering || "")
-            : (car.images?.[7] || ""),
+
+          // Images
+          color_images: colorImages,
         });
       }
     } catch (error) {
@@ -317,8 +320,10 @@ const AddEditCar = () => {
 
   // Delete specific image
   const handleDeleteImage = async (imageIndex: number) => {
-    const fieldName = `image_url_${imageIndex}` as keyof CarFormData;
-    const imageUrl = formData[fieldName];
+    // 1-based index to 0-based
+    const arrayIndex = imageIndex - 1;
+    const currentImages = formData.color_images[activeColor] || Array(8).fill("");
+    const imageUrl = currentImages[arrayIndex];
 
     // If it's an S3 URL and we're in edit mode, delete from S3
     if (imageUrl && typeof imageUrl === 'string' && isEditMode && id && imageUrl.includes('amazonaws.com')) {
@@ -339,9 +344,15 @@ const AddEditCar = () => {
       }
     }
 
+    const newImages = [...currentImages];
+    newImages[arrayIndex] = "";
+
     setFormData((prev) => ({
       ...prev,
-      [fieldName]: "",
+      color_images: {
+        ...prev.color_images,
+        [activeColor]: newImages
+      }
     }));
     toast.success(`Image ${imageIndex} deleted`);
   };
@@ -357,8 +368,10 @@ const AddEditCar = () => {
     setGeneratingIndex(imageIndex);
 
     try {
-      const fieldName = `image_url_${imageIndex}` as keyof CarFormData;
-      const currentImageUrl = formData[fieldName];
+      // 1-based index to 0-based
+      const arrayIndex = imageIndex - 1;
+      const currentImages = formData.color_images[activeColor] || Array(8).fill("");
+      const currentImageUrl = currentImages[arrayIndex];
 
       // If we're in edit mode and there's an existing image, delete it first
       if (currentImageUrl && typeof currentImageUrl === 'string' && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
@@ -393,7 +406,8 @@ const AddEditCar = () => {
       ];
 
       // Parse colors to get selected color code
-      let selectedColorName = selectedColorForGeneration;
+      // Use activeColor if it's not default, otherwise try selectedColorForGeneration
+      let selectedColorName = activeColor !== 'default' ? activeColor : selectedColorForGeneration;
       let selectedColorCode = null;
 
       if (formData.colors && formData.color_codes && selectedColorName) {
@@ -442,9 +456,15 @@ const AddEditCar = () => {
       const result = await response.json();
 
       if (result.success && result.imageUrl) {
+        const newImages = [...currentImages];
+        newImages[arrayIndex] = result.imageUrl;
+
         setFormData((prev) => ({
           ...prev,
-          [fieldName]: result.imageUrl,
+          color_images: {
+            ...prev.color_images,
+            [activeColor]: newImages
+          }
         }));
         toast.success(`Image ${imageIndex} generated and uploaded successfully!`);
       } else {
@@ -471,28 +491,7 @@ const AddEditCar = () => {
     try {
       setSaving(true);
 
-      // Prepare data with angle-mapped images
-      const angleKeys = [
-        "front_3_4",
-        "front_view",
-        "left_side",
-        "right_side",
-        "rear_view",
-        "interior_dash",
-        "interior_cabin",
-        "interior_steering"
-      ];
-
-      const images = {};
-      if (formData.image_url_1) images[angleKeys[0]] = formData.image_url_1;
-      if (formData.image_url_2) images[angleKeys[1]] = formData.image_url_2;
-      if (formData.image_url_3) images[angleKeys[2]] = formData.image_url_3;
-      if (formData.image_url_4) images[angleKeys[3]] = formData.image_url_4;
-      if (formData.image_url_5) images[angleKeys[4]] = formData.image_url_5;
-      if (formData.image_url_6) images[angleKeys[5]] = formData.image_url_6;
-      if (formData.image_url_7) images[angleKeys[6]] = formData.image_url_7;
-      if (formData.image_url_8) images[angleKeys[7]] = formData.image_url_8;
-
+      // Prepare data
       const carData = {
         // Basic Information
         external_id: formData.external_id || null,
@@ -508,7 +507,7 @@ const AddEditCar = () => {
         engine_capacity: formData.engine_capacity,
         status: formData.status,
         api_source: formData.api_source,
-        
+
         // Pricing
         price_min: formData.price_min ? parseInt(formData.price_min) : null,
         price_max: formData.price_max ? parseInt(formData.price_max) : null,
@@ -524,7 +523,7 @@ const AddEditCar = () => {
         chennai_price: formData.chennai_price || null,
         kolkata_price: formData.kolkata_price || null,
         ahmedabad_price: formData.ahmedabad_price || null,
-        
+
         // Specifications
         engine_type: formData.engine_type,
         max_power: formData.max_power,
@@ -539,7 +538,7 @@ const AddEditCar = () => {
         ground_clearance_mm: formData.ground_clearance_mm,
         bootspace_litres: formData.bootspace_litres,
         fuel_tank_capacity_litres: formData.fuel_tank_capacity_litres,
-        
+
         // Safety & Features
         airbags: formData.airbags || null,
         ncap_rating: formData.ncap_rating || null,
@@ -548,20 +547,20 @@ const AddEditCar = () => {
         sunroof: formData.sunroof || null,
         ac_type: formData.ac_type || null,
         cruise_control: formData.cruise_control,
-        
+
         // Warranty
         warranty_years: formData.warranty_years ? parseInt(formData.warranty_years) : null,
         warranty_km: formData.warranty_km ? parseInt(formData.warranty_km) : null,
         battery_warranty_years: formData.battery_warranty_years ? parseInt(formData.battery_warranty_years) : null,
         battery_warranty_km: formData.battery_warranty_km ? parseInt(formData.battery_warranty_km) : null,
-        
+
         // Colors & Description
         colors: formData.colors,
         color_codes: formData.color_codes,
         description: formData.description,
-        
-        // Images
-        images: Object.keys(images).length > 0 ? images : null,
+
+        // Images - send the full map
+        images: formData.color_images,
       };
 
       let response;
@@ -1246,11 +1245,55 @@ const AddEditCar = () => {
             <p className="text-sm text-muted-foreground">
               Upload or generate professional studio images for different car angles using Ideogram AI
             </p>
-            {/* Color Selector for Generation */}
-            {formData.colors && (
+
+            {/* Color Selector Tabs */}
+            <div className="mt-6 border-b">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <Button
+                  type="button"
+                  variant={activeColor === 'default' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveColor('default')}
+                  className="whitespace-nowrap"
+                >
+                  Default / Main
+                </Button>
+
+                {formData.colors && formData.colors.split(';').map((color, index) => {
+                  const colorName = color.trim();
+                  if (!colorName) return null;
+
+                  const colorCodes = formData.color_codes?.split(';') || [];
+                  const colorCode = colorCodes[index]?.trim() || '';
+                  const hexCode = colorCode.startsWith('#') ? colorCode : `#${colorCode}`;
+
+                  return (
+                    <Button
+                      key={index}
+                      type="button"
+                      variant={activeColor === colorName ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveColor(colorName)}
+                      className="whitespace-nowrap flex items-center gap-2"
+                    >
+                      {colorCode && (
+                        <div
+                          className="w-3 h-3 rounded-full border border-gray-300"
+                          style={{ backgroundColor: hexCode }}
+                        />
+                      )}
+                      {colorName}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Color Generation Selector - Only show if we're on default tab or if we want to override */}
+            {activeColor === 'default' && formData.colors && (
               <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                 <Label htmlFor="color-selector" className="text-sm font-medium mb-2 block">
-                  Select Color for AI Generation
+                  Select Color for AI Generation (Default Tab)
                 </Label>
                 <Select
                   value={selectedColorForGeneration}
@@ -1282,11 +1325,6 @@ const AddEditCar = () => {
                     })}
                   </SelectContent>
                 </Select>
-                {selectedColorForGeneration && (
-                  <p className="text-xs text-purple-700 mt-2">
-                    All generated images will be in <strong>{selectedColorForGeneration}</strong> color
-                  </p>
-                )}
               </div>
             )}
           </CardHeader>
@@ -1302,14 +1340,17 @@ const AddEditCar = () => {
                 "Interior Cabin",
                 "Interior Steering"
               ];
-              const fieldName = `image_url_${index}` as keyof CarFormData;
-              const imageUrl = formData[fieldName];
+
+              // Get current image for active color
+              const currentImages = formData.color_images[activeColor] || Array(8).fill("");
+              const imageUrl = currentImages[index - 1];
+
               const isGenerating = generatingImage && generatingIndex === index;
 
               return (
                 <div key={index} className="space-y-2 p-4 border rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={fieldName} className="font-medium">
+                    <Label className="font-medium">
                       {index}. {angleNames[index - 1]}
                       {index === 1 && <span className="text-xs text-purple-600 ml-1">(Primary)</span>}
                     </Label>
@@ -1354,11 +1395,21 @@ const AddEditCar = () => {
 
                   {/* Image URL Input */}
                   <Input
-                    id={fieldName}
-                    name={fieldName}
                     type="url"
                     value={typeof imageUrl === 'string' ? imageUrl : ''}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const newUrl = e.target.value;
+                      const newImages = [...currentImages];
+                      newImages[index - 1] = newUrl;
+
+                      setFormData(prev => ({
+                        ...prev,
+                        color_images: {
+                          ...prev.color_images,
+                          [activeColor]: newImages
+                        }
+                      }));
+                    }}
                     placeholder={`https://example.com/${angleNames[index - 1].toLowerCase().replace(/ /g, '-')}.jpg`}
                     className="text-sm"
                   />
