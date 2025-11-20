@@ -92,13 +92,13 @@ const CarSelectorModal = ({
           // Check if images is an object with angle keys (new format)
           if (car.images && typeof car.images === 'object' && !Array.isArray(car.images)) {
             carImage = (car.images as any).front_3_4 ||
-                      (car.images as any).front_view ||
-                      (car.images as any).left_side ||
-                      (car.images as any).right_side ||
-                      (car.images as any).rear_view ||
-                      (car.images as any).interior_dash ||
-                      (car.images as any).interior_cabin ||
-                      "/placeholder.svg";
+              (car.images as any).front_view ||
+              (car.images as any).left_side ||
+              (car.images as any).right_side ||
+              (car.images as any).rear_view ||
+              (car.images as any).interior_dash ||
+              (car.images as any).interior_cabin ||
+              "/placeholder.svg";
           }
           // Check if images is an array (old format)
           else if (
@@ -185,7 +185,7 @@ const CarSelectorModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-4">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -283,7 +283,7 @@ const CarSelectorModal = ({
                     src={car.image}
                     alt={`${car.brand} ${car.model}`}
                     className="w-16 h-12 object-cover rounded bg-gray-100"
-                    
+
                   />
 
                   <div className="flex-1">
@@ -455,21 +455,21 @@ const CompareSection = () => {
           if (typeof comparison.car1.images === 'object' && !Array.isArray(comparison.car1.images)) {
             // Try to get front_3_4 angle first, then any available angle
             return (comparison.car1.images as any).front_3_4 ||
-                   (comparison.car1.images as any).front_view ||
-                   (comparison.car1.images as any).left_side ||
-                   (comparison.car1.images as any).right_side ||
-                   (comparison.car1.images as any).rear_view ||
-                   (comparison.car1.images as any).interior_dash ||
-                   (comparison.car1.images as any).interior_cabin ||
-                   (comparison.car1.images as any).interior_steering ||
-                   "/placeholder.svg";
+              (comparison.car1.images as any).front_view ||
+              (comparison.car1.images as any).left_side ||
+              (comparison.car1.images as any).right_side ||
+              (comparison.car1.images as any).rear_view ||
+              (comparison.car1.images as any).interior_dash ||
+              (comparison.car1.images as any).interior_cabin ||
+              (comparison.car1.images as any).interior_steering ||
+              "/placeholder.svg";
           }
           // If images is an array (old format)
           else if (Array.isArray(comparison.car1.images) && comparison.car1.images.length > 0) {
             return comparison.car1.images[0];
           }
         }
-        
+
         // Fallback to placeholder
         return "/placeholder.svg";
       })(),
@@ -487,21 +487,21 @@ const CompareSection = () => {
           if (typeof comparison.car2.images === 'object' && !Array.isArray(comparison.car2.images)) {
             // Try to get front_3_4 angle first, then any available angle
             return (comparison.car2.images as any).front_3_4 ||
-                   (comparison.car2.images as any).front_view ||
-                   (comparison.car2.images as any).left_side ||
-                   (comparison.car2.images as any).right_side ||
-                   (comparison.car2.images as any).rear_view ||
-                   (comparison.car2.images as any).interior_dash ||
-                   (comparison.car2.images as any).interior_cabin ||
-                   (comparison.car2.images as any).interior_steering ||
-                   "/placeholder.svg";
+              (comparison.car2.images as any).front_view ||
+              (comparison.car2.images as any).left_side ||
+              (comparison.car2.images as any).right_side ||
+              (comparison.car2.images as any).rear_view ||
+              (comparison.car2.images as any).interior_dash ||
+              (comparison.car2.images as any).interior_cabin ||
+              (comparison.car2.images as any).interior_steering ||
+              "/placeholder.svg";
           }
           // If images is an array (old format)
           else if (Array.isArray(comparison.car2.images) && comparison.car2.images.length > 0) {
             return comparison.car2.images[0];
           }
         }
-        
+
         // Fallback to placeholder
         return "/placeholder.svg";
       })(),
@@ -551,7 +551,7 @@ const CompareSection = () => {
                         src={selectedCar1.image}
                         alt={`${selectedCar1.brand} ${selectedCar1.model}`}
                         className="w-full h-20 object-contain rounded mb-2 bg-gray-200"
-                        
+
                       />
                       <h4 className="font-bold text-sm">
                         {selectedCar1.brand} {selectedCar1.model}
@@ -604,7 +604,7 @@ const CompareSection = () => {
                         src={selectedCar2.image}
                         alt={`${selectedCar2.brand} ${selectedCar2.model}`}
                         className="w-full h-20 object-contain rounded mb-2 bg-gray-200"
-                        
+
                       />
                       <h4 className="font-bold text-sm">
                         {selectedCar2.brand} {selectedCar2.model}
@@ -682,7 +682,7 @@ const CompareSection = () => {
                     src={selectedCar1.image}
                     alt={`${selectedCar1.brand} ${selectedCar1.model}`}
                     className="w-full h-40 object-contain rounded-lg mb-4 bg-white"
-                    
+
                   />
                   <h3 className="font-bold text-2xl text-blue-800">
                     {selectedCar1.brand} {selectedCar1.model}
@@ -704,7 +704,7 @@ const CompareSection = () => {
                     src={selectedCar2.image}
                     alt={`${selectedCar2.brand} ${selectedCar2.model}`}
                     className="w-full h-40 object-contain rounded-lg mb-4 bg-white"
-                    
+
                   />
                   <h3 className="font-bold text-2xl text-orange-800">
                     {selectedCar2.brand} {selectedCar2.model}
@@ -1046,15 +1046,15 @@ const CompareSection = () => {
                               </h6>
                               <div className="space-y-1">
                                 {(selectedCar1.features &&
-                                selectedCar1.features.length > 0
+                                  selectedCar1.features.length > 0
                                   ? selectedCar1.features.slice(0, 5)
                                   : [
-                                      "Power Steering",
-                                      "Air Conditioning",
-                                      "Power Windows",
-                                      "Adjustable Seats",
-                                      "Digital Odometer",
-                                    ]
+                                    "Power Steering",
+                                    "Air Conditioning",
+                                    "Power Windows",
+                                    "Adjustable Seats",
+                                    "Digital Odometer",
+                                  ]
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
@@ -1129,15 +1129,15 @@ const CompareSection = () => {
                               </h6>
                               <div className="space-y-1">
                                 {(selectedCar2.features &&
-                                selectedCar2.features.length > 0
+                                  selectedCar2.features.length > 0
                                   ? selectedCar2.features.slice(0, 5)
                                   : [
-                                      "Climate Control",
-                                      "Leather Seats",
-                                      "Sunroof",
-                                      "Cruise Control",
-                                      "Auto Lights",
-                                    ]
+                                    "Climate Control",
+                                    "Leather Seats",
+                                    "Sunroof",
+                                    "Cruise Control",
+                                    "Auto Lights",
+                                  ]
                                 ).map((feature, index) => (
                                   <div
                                     key={index}
@@ -1538,7 +1538,7 @@ const CompareSection = () => {
             </div>
           )}
         </div> */}
-{/* 
+        {/* 
         <div className="text-center mt-8">
           <Button
             variant="outline"
