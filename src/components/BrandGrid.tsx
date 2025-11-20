@@ -131,7 +131,14 @@ const BrandGrid = () => {
   const hasMoreBrands = allBrands.length > 8;
 
   const handleBrandClick = (brandName: string) => {
-    navigate(`/cars?brand=${encodeURIComponent(brandName)}`);
+    // Format brand name: First letter capital, rest lowercase (e.g., "BMW" -> "Bmw")
+    // Handles multi-word brands like "Maruti Suzuki" -> "Maruti Suzuki"
+    const formattedBrand = brandName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+
+    navigate(`/cars?brand=${encodeURIComponent(formattedBrand)}`);
   };
 
   const handleToggleBrands = () => {
@@ -234,11 +241,10 @@ const BrandGrid = () => {
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 ${
-                              i < Math.floor(brand.rating)
-                                ? "text-yellow-400 fill-yellow-400 scale-100"
-                                : "text-muted-foreground scale-75"
-                            }`}
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 ${i < Math.floor(brand.rating)
+                              ? "text-yellow-400 fill-yellow-400 scale-100"
+                              : "text-muted-foreground scale-75"
+                              }`}
                             style={{
                               animationDelay: `${i * 0.1}s`,
                               animation:
