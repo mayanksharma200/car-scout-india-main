@@ -166,13 +166,13 @@ const IdeogramCarImageGenerator = () => {
           price: car.price_min || car.price || 0,
           fuelType: car.fuel_type || car.fuelType || 'Petrol',
           bodyType: car.body_type || car.bodyType || 'Hatchback',
-          images: Array.isArray(car.images) ? car.images : []
+          images: car.images || [] // Preserve images in their original format (array or object)
         }));
 
         setCars(transformedCars);
         console.log("Transformed cars for Ideogram generation:", transformedCars.length);
 
-        const brands = [...new Set(transformedCars.map((car) => car.brand))].sort();
+        const brands = [...new Set(transformedCars.map((car) => car.brand))].sort() as string[];
         setAvailableBrands(brands);
 
         setTotalCars(totalCount);
@@ -427,7 +427,7 @@ const IdeogramCarImageGenerator = () => {
             status: 'pending_approval',
             images_count: finalResult.totalImages || 0,
             total_colors: finalResult.totalColors || 0,
-            primary_image: finalResult.colorResults ? Object.values(finalResult.colorResults)[0]?.primaryImage : null,
+            primary_image: finalResult.colorResults ? (Object.values(finalResult.colorResults)[0] as ColorResult)?.primaryImage : null,
             color_results: finalResult.colorResults,
             generationLogs: realtimeLogs,
             processed_at: new Date().toISOString()
@@ -870,12 +870,29 @@ const IdeogramCarImageGenerator = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Badge variant={car.images && car.images.length > 0 ? "default" : "destructive"}>
-                      {car.images?.length || 0} images
-                    </Badge>
-                    {car.images && car.images.length > 0 && (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    {(() => {
+                      let imageCount = 0;
+
+                      // Check if images is an array
+                      if (Array.isArray(car.images)) {
+                        imageCount = car.images.length;
+                      }
+                      // Check if images is an object (angle-mapped format)
+                      else if (car.images && typeof car.images === 'object') {
+                        imageCount = Object.keys(car.images).length;
+                      }
+
+                      return (
+                        <>
+                          <Badge variant={imageCount > 0 ? "default" : "destructive"}>
+                            {imageCount} images
+                          </Badge>
+                          {imageCount > 0 && (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
