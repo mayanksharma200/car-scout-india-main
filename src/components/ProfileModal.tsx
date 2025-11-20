@@ -35,54 +35,48 @@ const ProfileModal = () => {
 
   useEffect(() => {
     if (user && open) {
-      // Handle Google users who might have different data structure
-      const googleFirstName =
-        user.firstName || user.given_name || user.name?.split(" ")[0] || "";
-      const googleLastName =
-        user.lastName || user.family_name || user.name?.split(" ")[1] || "";
-
       setProfile({
-        first_name: googleFirstName,
-        last_name: googleLastName,
+        first_name: user.firstName || "",
+        last_name: user.lastName || "",
         phone: user.phone || "",
         city: user.city || "",
       });
     }
   }, [user, open]);
 
-const handleUpdateProfile = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const result = await api.user.updateProfile(profile);
+    try {
+      const result = await api.user.updateProfile(profile);
 
-    if (!result.success) {
-      throw new Error(result.error || "Failed to update profile");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update profile");
+      }
+
+      // After updating profile, fetch the complete user data again
+      const userResponse = await api.user.getProfile();
+      if (userResponse.success && userResponse.data && userResponse.data.user) {
+        // Update the user context with the complete data
+        updateUser(userResponse.data.user);
+      }
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully",
+      });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update profile",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    // After updating profile, fetch the complete user data again
-    const userResponse = await api.user.getProfile();
-    if (userResponse.success && userResponse.data && userResponse.data.user) {
-      // Update the user context with the complete data
-      updateUser(userResponse.data.user);
-    }
-
-    toast({
-      title: "Profile Updated",
-      description: "Your profile has been updated successfully",
-    });
-  } catch (error) {
-    console.error("Profile update error:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: error.message || "Failed to update profile",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleSignOut = async () => {
     try {
@@ -108,12 +102,6 @@ const handleUpdateProfile = async (e) => {
   const getDisplayName = () => {
     if (user.firstName && user.lastName) {
       return `${user.firstName} ${user.lastName}`;
-    }
-    if (user.name) {
-      return user.name;
-    }
-    if (user.given_name && user.family_name) {
-      return `${user.given_name} ${user.family_name}`;
     }
     return user.email?.split("@")[0] || "User";
   };
