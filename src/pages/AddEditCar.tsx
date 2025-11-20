@@ -407,7 +407,7 @@ const AddEditCar = () => {
         }
       }
 
-      const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-generate-single', {
+      const response = await fetch('/api/admin/cars/ideogram-generate-single', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

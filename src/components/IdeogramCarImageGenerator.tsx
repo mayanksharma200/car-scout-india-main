@@ -294,7 +294,7 @@ const IdeogramCarImageGenerator = () => {
           });
 
           // Use fetch with streaming for POST request
-          const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-generate', {
+          const response = await fetch('/api/admin/cars/ideogram-generate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -624,7 +624,7 @@ const IdeogramCarImageGenerator = () => {
         toast.info(`Uploading ${totalImages} images to S3...`);
       }
 
-      const response = await fetch('http://localhost:3001/api/admin/cars/ideogram-approve-images', {
+      const response = await fetch('/api/admin/cars/ideogram-approve-images', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

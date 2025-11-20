@@ -14,7 +14,7 @@ import {
   Database,
 } from "lucide-react";
 import ImageDebugTest from "@/components/ImageDebugTest";
-import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
+// import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
 import IdeogramCarImageGenerator from "@/components/IdeogramCarImageGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
