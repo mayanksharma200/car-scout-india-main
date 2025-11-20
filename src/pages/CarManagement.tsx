@@ -490,19 +490,31 @@ const CarManagement = () => {
                       {getStatusBadge(car.status)}
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Eye className="w-3 h-3" />
-                          <span>{car.views?.toLocaleString() || 0} views</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <IndianRupee className="w-3 h-3" />
-                          <span>{car.leads || 0} leads</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Image className="w-3 h-3" />
-                          <span>{car.images?.length || 0} photos</span>
-                        </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Image className="w-3 h-3" />
+                        <span>{(() => {
+                          // Calculate total image count checking color_variant_images first
+                          let imageCount = 0;
+
+                          // Check color_variant_images first (new multi-color format)
+                          const colorVariantImages = (car as any).color_variant_images;
+                          if (colorVariantImages && typeof colorVariantImages === 'object') {
+                            Object.values(colorVariantImages).forEach((colorData: any) => {
+                              if (colorData && colorData.images && typeof colorData.images === 'object') {
+                                imageCount += Object.keys(colorData.images).length;
+                              }
+                            });
+                          }
+                          // Fallback to images field
+                          else if (Array.isArray(car.images)) {
+                            imageCount = car.images.length;
+                          }
+                          else if (car.images && typeof car.images === 'object') {
+                            imageCount = Object.keys(car.images).length;
+                          }
+
+                          return imageCount;
+                        })()} photos</span>
                       </div>
                     </TableCell>
                     <TableCell>
