@@ -1,7 +1,7 @@
 // src/services/api.ts
 // Updated API service with proper TypeScript types
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Log the API configuration
 console.log('🔧 API Configuration:', {

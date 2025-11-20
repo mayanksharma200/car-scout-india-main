@@ -87,7 +87,7 @@ const LeadManagement = () => {
       if (sourceFilter !== "all") params.append("source", sourceFilter);
 
       const response = await fetch(
-        `http://localhost:3001/api/admin/leads?${params.toString()}`
+        `/api/admin/leads?${params.toString()}`
       );
 
       if (!response.ok) {
@@ -124,7 +124,7 @@ const LeadManagement = () => {
     try {
       setDeleting(true);
       const response = await fetch(
-        `http://localhost:3001/api/admin/leads/${leadToDelete.id}`,
+        `/api/admin/leads/${leadToDelete.id}`,
         {
           method: "DELETE",
         }
@@ -164,7 +164,7 @@ const LeadManagement = () => {
     try {
       setSaving(true);
       const response = await fetch(
-        `http://localhost:3001/api/admin/leads/${leadToEdit.id}`,
+        `/api/admin/leads/${leadToEdit.id}`,
         {
           method: "PUT",
           headers: {

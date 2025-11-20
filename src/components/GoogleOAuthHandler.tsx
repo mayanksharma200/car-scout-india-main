@@ -11,7 +11,7 @@ const GoogleOAuthHandler = () => {
   const { saveTokens, clearTokens } = useUserAuth();
 
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   useEffect(() => {
     const handleGoogleOAuth = async () => {

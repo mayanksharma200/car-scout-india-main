@@ -175,7 +175,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const profileLoaded = useRef(false);
 
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
 
     const updateUser = useCallback((userData: Partial<User>) => {
@@ -718,7 +718,7 @@ export const withUserAuth = (WrappedComponent: React.ComponentType<any>) => {
 export const useUserAuthenticatedFetch = () => {
   const { getAuthHeaders, isTokenExpired, refreshTokens } = useUserAuth();
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   return useCallback(
     async (endpoint: string, options: RequestInit = {}) => {

@@ -42,7 +42,7 @@ const AdminSetup = () => {
 
     try {
       const backendUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+        import.meta.env.VITE_API_URL || "/api";
       const response = await fetch(`${backendUrl}/auth/create-admin`, {
         method: "POST",
         headers: {

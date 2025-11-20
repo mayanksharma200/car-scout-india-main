@@ -81,7 +81,7 @@ const CarManagement = () => {
     try {
       setLoadingStats(true);
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars?limit=10000&sort_by=brand`
+        `/api/admin/cars?limit=10000&sort_by=brand`
       );
 
       if (!response.ok) {
@@ -148,7 +148,7 @@ const CarManagement = () => {
   const fetchAllBrands = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars?limit=1000&sort_by=brand`
+        `/api/admin/cars?limit=1000&sort_by=brand`
       );
 
       if (!response.ok) {
@@ -184,7 +184,7 @@ const CarManagement = () => {
       if (brandFilter !== "all") params.append("brand", brandFilter);
 
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars?${params.toString()}`
+        `/api/admin/cars?${params.toString()}`
       );
 
       if (!response.ok) {
@@ -270,7 +270,7 @@ const CarManagement = () => {
     try {
       setDeleting(true);
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars/${carToDelete.id}`,
+        `/api/admin/cars/${carToDelete.id}`,
         {
           method: "DELETE",
         }

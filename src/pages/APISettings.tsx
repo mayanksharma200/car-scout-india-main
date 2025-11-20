@@ -65,7 +65,7 @@ const APISettings = () => {
   const { getAuthHeaders, isAuthenticated } = useAdminAuth();
 
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   // State for different API configurations
   const [carwaleConfig, setCarwaleConfig] = useState<APIConfig>({

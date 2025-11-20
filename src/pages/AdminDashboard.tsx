@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   const fetchActivities = async () => {
     try {
       setLoadingActivities(true);
-      const response = await fetch('http://localhost:3001/api/admin/activities?limit=20');
+      const response = await fetch('/api/admin/activities?limit=20');
       const result = await response.json();
 
       if (result.success) {
@@ -80,7 +80,7 @@ const AdminDashboard = () => {
   const fetchNewLeads = async () => {
     try {
       setLoadingLeads(true);
-      const response = await fetch('http://localhost:3001/api/admin/new-leads?limit=20');
+      const response = await fetch('/api/admin/new-leads?limit=20');
       const result = await response.json();
 
       if (result.success) {
@@ -108,12 +108,12 @@ const AdminDashboard = () => {
       }
 
       // Fetch recent activities count using the API endpoint
-      const activitiesResponse = await fetch('http://localhost:3001/api/admin/activities?limit=1000');
+      const activitiesResponse = await fetch('/api/admin/activities?limit=1000');
       const activitiesResult = await activitiesResponse.json();
       const recentActivitiesCount = activitiesResult.success ? activitiesResult.data.length : 0;
 
       // Fetch pending new leads count using the API endpoint
-      const newLeadsResponse = await fetch('http://localhost:3001/api/admin/new-leads?limit=1000');
+      const newLeadsResponse = await fetch('/api/admin/new-leads?limit=1000');
       const newLeadsResult = await newLeadsResponse.json();
       const pendingNewLeadsCount = newLeadsResult.success ? newLeadsResult.data.length : 0;
 

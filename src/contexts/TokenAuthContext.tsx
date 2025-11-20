@@ -88,7 +88,7 @@ export const TokenAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshPromise = useRef<Promise<boolean> | null>(null);
 
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   // Secure storage for access token (in-memory only)
   const saveTokens = useCallback((tokenData: TokenData, userData: User) => {
@@ -401,7 +401,7 @@ export const withAuth = (WrappedComponent: React.ComponentType<any>) => {
 export const useAuthenticatedFetch = () => {
   const { getAuthHeaders, isTokenExpired, refreshTokens } = useTokenAuth();
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   return useCallback(
     async (endpoint: string, options: RequestInit = {}) => {

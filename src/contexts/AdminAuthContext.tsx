@@ -44,7 +44,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
   const [loading, setLoading] = useState(true);
 
   const backendUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+    import.meta.env.VITE_API_URL || "/api";
 
   // Check for existing session on mount
   useEffect(() => {

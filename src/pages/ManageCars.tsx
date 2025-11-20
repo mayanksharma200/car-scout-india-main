@@ -106,7 +106,7 @@ const ManageCars = () => {
       if (fuelFilter !== "all") params.append("fuel_type", fuelFilter);
 
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars?${params.toString()}`
+        `/api/admin/cars?${params.toString()}`
       );
 
       if (!response.ok) {
@@ -144,7 +144,7 @@ const ManageCars = () => {
     try {
       setDeleting(true);
       const response = await fetch(
-        `http://localhost:3001/api/admin/cars/${carToDelete.id}`,
+        `/api/admin/cars/${carToDelete.id}`,
         {
           method: "DELETE",
         }

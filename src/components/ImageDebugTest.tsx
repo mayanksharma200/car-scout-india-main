@@ -9,7 +9,7 @@ const ImageDebugTest = () => {
   ];
 
   const proxyImages = [
-    "http://localhost:3001/api/imagin-proxy?url=https%3A%2F%2Fcdn.imagin.studio%2Fgetimage%3Fcustomer%3Dsg-zorbitads%26make%3Dnissan%26modelFamily%3Dmagnite%26modelVariant%3Dsuv%26angle%3D21%26fileType%3Dpng%26width%3D800%26zoomType%3Dfullscreen%26safeMode%3Dtrue%26randomPaint%3Dtrue%26modelYear%3D2024"
+    "/api/imagin-proxy?url=https%3A%2F%2Fcdn.imagin.studio%2Fgetimage%3Fcustomer%3Dsg-zorbitads%26make%3Dnissan%26modelFamily%3Dmagnite%26modelVariant%3Dsuv%26angle%3D21%26fileType%3Dpng%26width%3D800%26zoomType%3Dfullscreen%26safeMode%3Dtrue%26randomPaint%3Dtrue%26modelYear%3D2024"
   ];
 
   return (

@@ -187,7 +187,7 @@ const AddEditCar = () => {
   const fetchCar = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/cars/${id}`);
+      const response = await fetch(`/api/cars/${id}`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch car");
@@ -323,7 +323,7 @@ const AddEditCar = () => {
     // If it's an S3 URL and we're in edit mode, delete from S3
     if (imageUrl && typeof imageUrl === 'string' && isEditMode && id && imageUrl.includes('amazonaws.com')) {
       try {
-        const response = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
+        const response = await fetch(`/api/admin/cars/${id}/delete-image`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -363,7 +363,7 @@ const AddEditCar = () => {
       // If we're in edit mode and there's an existing image, delete it first
       if (currentImageUrl && typeof currentImageUrl === 'string' && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
         try {
-          const deleteResponse = await fetch(`http://localhost:3001/api/admin/cars/${id}/delete-image`, {
+          const deleteResponse = await fetch(`/api/admin/cars/${id}/delete-image`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -566,7 +566,7 @@ const AddEditCar = () => {
 
       let response;
       if (isEditMode) {
-        response = await fetch(`http://localhost:3001/api/admin/cars/${id}`, {
+        response = await fetch(`/api/admin/cars/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -574,7 +574,7 @@ const AddEditCar = () => {
           body: JSON.stringify(carData),
         });
       } else {
-        response = await fetch("http://localhost:3001/api/admin/cars", {
+        response = await fetch("/api/admin/cars", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
