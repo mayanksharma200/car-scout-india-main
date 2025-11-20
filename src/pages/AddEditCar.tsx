@@ -533,6 +533,34 @@ const AddEditCar = () => {
     try {
       setSaving(true);
 
+      // Construct color_variant_images from formData.color_images
+      const colorVariantImages: Record<string, any> = {};
+
+      if (formData.color_images) {
+        Object.keys(formData.color_images).forEach(colorName => {
+          const imagesArray = formData.color_images[colorName];
+          if (Array.isArray(imagesArray) && imagesArray.length > 0) {
+            const angleOrder = [
+              'front_3_4', 'front_view', 'left_side', 'right_side',
+              'rear_view', 'interior_dash', 'interior_cabin', 'interior_steering'
+            ];
+
+            const imagesObj: Record<string, string> = {};
+            angleOrder.forEach((angle, index) => {
+              if (imagesArray[index]) {
+                imagesObj[angle] = imagesArray[index];
+              }
+            });
+
+            // Preserve existing color code if possible, or default to null
+            colorVariantImages[colorName] = {
+              color_code: null,
+              images: imagesObj
+            };
+          }
+        });
+      }
+
       // Prepare data
       const carData = {
         // Basic Information
@@ -601,8 +629,9 @@ const AddEditCar = () => {
         color_codes: formData.color_codes,
         description: formData.description,
 
-        // Images - send the full map
+        // Images - send both formats for compatibility, but prioritize color_variant_images
         images: formData.color_images,
+        color_variant_images: colorVariantImages,
       };
 
       let response;
