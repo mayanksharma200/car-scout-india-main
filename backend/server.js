@@ -4381,35 +4381,64 @@ app.post("/api/auth/supabase-token", async (req, res) => {
       });
     }
 
-    // Check if user profile exists
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", supabaseUserId)
-      .single();
+    // Check if user profile exists using direct REST API to bypass RLS
+    const profileResponse = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/profiles?id=eq.${supabaseUserId}&select=*`,
+      {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-    // If profile doesn't exist, create it
+    const profiles = await profileResponse.json();
+    const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+    const profileError = !profile ? { code: 'PGRST116' } : null;
+
+    // If profile doesn't exist, create it using direct REST API to bypass RLS
     if (profileError && profileError.code === "PGRST116") {
       const firstName = userData?.first_name || userData?.given_name || userData?.name?.split(' ')[0] || '';
       const lastName = userData?.last_name || userData?.family_name || userData?.name?.split(' ').slice(1).join(' ') || '';
 
-      const { error: createError } = await supabase.from("profiles").insert({
-        id: supabaseUserId,
-        email: email,
-        first_name: firstName,
-        last_name: lastName,
-        role: "user",
-        is_active: true,
-        email_verified: true,
-      });
+      console.log(`[Supabase Token] Creating profile for ${email}:`, { firstName, lastName });
 
-      if (createError) {
-        console.error("Failed to create profile:", createError);
+      const createResponse = await fetch(
+        `${process.env.SUPABASE_URL}/rest/v1/profiles`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            id: supabaseUserId,
+            email: email,
+            first_name: firstName,
+            last_name: lastName,
+            role: "user",
+            is_active: true,
+            email_verified: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
+      );
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json();
+        console.error("Failed to create profile via REST API:", errorData);
         return res.status(500).json({
           success: false,
           error: "Failed to create user profile",
+          details: errorData
         });
       }
+
+      console.log(`[Supabase Token] Profile created successfully for ${email}`);
     }
 
     // Generate JWT tokens
