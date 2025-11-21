@@ -3333,6 +3333,16 @@ app.post("/api/auth/google-oauth", async (req, res) => {
           profile?.first_name || userData?.firstName || email.split("@")[0],
         lastName: profile?.last_name || userData?.lastName || "",
         provider: "google",
+        // Include additional Google OAuth fields for frontend compatibility
+        given_name: userData?.firstName || profile?.first_name || email.split("@")[0],
+        family_name: userData?.lastName || profile?.last_name || "",
+        name: `${userData?.firstName || profile?.first_name || email.split("@")[0]} ${userData?.lastName || profile?.last_name || ""}`.trim(),
+        user_metadata: {
+          given_name: userData?.firstName || profile?.first_name || email.split("@")[0],
+          family_name: userData?.lastName || profile?.last_name || "",
+          full_name: `${userData?.firstName || profile?.first_name || email.split("@")[0]} ${userData?.lastName || profile?.last_name || ""}`.trim(),
+          provider: "google",
+        },
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -3999,8 +4009,19 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
       role: "user",
       phone: userProfile.phone,
       city: userProfile.city,
-      // Add other profile fields as needed
+      // Preserve Google OAuth fields if they exist
+      given_name: req.user.given_name || userProfile.first_name,
+      family_name: req.user.family_name || userProfile.last_name,
+      name: req.user.name || `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim(),
+      user_metadata: req.user.user_metadata || {
+        given_name: userProfile.first_name,
+        family_name: userProfile.last_name,
+        full_name: `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim(),
+        provider: req.user.provider || "email",
+      },
     };
+
+    console.log("📋 Profile endpoint returning complete user data:", completeUserData);
 
     res.json({
       success: true,

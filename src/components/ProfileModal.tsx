@@ -31,15 +31,31 @@ const ProfileModal = () => {
   // Debug: Log user data to see what's coming from Google
   useEffect(() => {
     console.log("ProfileModal - User data:", user);
+    console.log("ProfileModal - User provider:", user?.provider);
+    console.log("ProfileModal - User metadata:", user?.user_metadata);
   }, [user]);
 
   useEffect(() => {
     if (user && open) {
+      // Handle both regular and Google OAuth users
+      // Google users might have different field names or missing data
+      const firstName = user.firstName || user.given_name || user.name?.split(" ")[0] || user.email?.split("@")[0] || "";
+      const lastName = user.lastName || user.family_name || user.name?.split(" ").slice(1).join(" ") || "";
+      
       setProfile({
-        first_name: user.firstName || "",
-        last_name: user.lastName || "",
+        first_name: firstName,
+        last_name: lastName,
         phone: user.phone || "",
         city: user.city || "",
+      });
+      
+      // Debug: Log the profile data being set
+      console.log("ProfileModal - Setting profile state:", {
+        first_name: firstName,
+        last_name: lastName,
+        phone: user.phone || "",
+        city: user.city || "",
+        originalUser: user
       });
     }
   }, [user, open]);
@@ -49,6 +65,7 @@ const ProfileModal = () => {
     setLoading(true);
 
     try {
+      console.log("ProfileModal - Updating profile with data:", profile);
       const result = await api.user.updateProfile(profile);
 
       if (!result.success) {
@@ -57,9 +74,17 @@ const ProfileModal = () => {
 
       // After updating profile, fetch the complete user data again
       const userResponse = await api.user.getProfile();
-      if (userResponse.success && userResponse.data && userResponse.data.user) {
-        // Update the user context with the complete data
-        updateUser(userResponse.data.user);
+      console.log("ProfileModal - Profile update response:", userResponse);
+      
+      if (userResponse.success && userResponse.data) {
+        // Handle different response structures
+        const userData = userResponse.data.user || userResponse.data.profile || userResponse.data;
+        
+        if (userData) {
+          // Update the user context with the complete data
+          updateUser(userData);
+          console.log("ProfileModal - Updated user context with:", userData);
+        }
       }
 
       toast({
@@ -100,8 +125,15 @@ const ProfileModal = () => {
 
   // Get display name for Google users
   const getDisplayName = () => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
+    // Try multiple field name combinations for Google OAuth users
+    const firstName = user.firstName || user.given_name || user.user_metadata?.given_name || user.name?.split(" ")[0] || user.email?.split("@")[0] || "";
+    const lastName = user.lastName || user.family_name || user.user_metadata?.family_name || user.name?.split(" ").slice(1).join(" ") || "";
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    }
+    if (firstName) {
+      return firstName;
     }
     return user.email?.split("@")[0] || "User";
   };

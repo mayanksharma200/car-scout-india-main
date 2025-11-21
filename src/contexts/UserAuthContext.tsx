@@ -17,6 +17,16 @@ interface User {
   role: string;
   emailVerified: boolean;
   provider?: string;
+  // Google OAuth specific fields
+  given_name?: string;
+  family_name?: string;
+  name?: string;
+  user_metadata?: {
+    given_name?: string;
+    family_name?: string;
+    full_name?: string;
+    provider?: string;
+  };
 }
 
 interface TokenData {
@@ -221,6 +231,16 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         emailVerified:
           userData.emailVerified || userData.email_verified || false,
         provider: userData.provider || "email",
+        // Store original Google OAuth data for reference
+        given_name: userData.given_name,
+        family_name: userData.family_name,
+        name: userData.name,
+        user_metadata: userData.user_metadata || {
+          given_name: userData.given_name,
+          family_name: userData.family_name,
+          full_name: userData.name,
+          provider: userData.provider || "email",
+        },
       };
 
       // Store user data and access token in cookies
