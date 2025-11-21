@@ -3048,6 +3048,44 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         error: "Failed to fetch user profile",
         code: "PROFILE_FETCH_FAILED",
       });
+    } else if (profile) {
+      // Profile exists - update it with latest Google data if name is missing or different
+      const needsUpdate =
+        !profile.first_name ||
+        !profile.last_name ||
+        (userData?.firstName && profile.first_name !== userData.firstName) ||
+        (userData?.lastName && profile.last_name !== userData.lastName);
+
+      if (needsUpdate && userData) {
+        console.log(`Updating profile for existing Google OAuth user: ${email}`);
+        const updateData = {
+          updated_at: new Date().toISOString(),
+        };
+
+        // Update first_name if provided and different
+        if (userData.firstName && (!profile.first_name || profile.first_name !== userData.firstName)) {
+          updateData.first_name = userData.firstName;
+        }
+
+        // Update last_name if provided and different
+        if (userData.lastName && (!profile.last_name || profile.last_name !== userData.lastName)) {
+          updateData.last_name = userData.lastName;
+        }
+
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", supabaseUserId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("Failed to update profile:", updateError);
+          // Don't fail the login, just log the error
+        } else {
+          profile = updatedProfile;
+        }
+      }
     }
 
     // Check account status
