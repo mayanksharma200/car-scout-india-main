@@ -2515,30 +2515,22 @@ app.get("/api/admin/users", async (req, res) => {
       });
     }
 
-    // Get all profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*");
-
-    if (profilesError) {
-      console.error('[Admin] Error fetching profiles:', profilesError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch profiles',
-        details: profilesError.message
-      });
-    }
-
-    // Create a map of profiles by user ID
-    const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-    console.log('[Admin Users] Profiles data:', profilesData?.map(p => ({ id: p.id, email: p.email, first_name: p.first_name, last_name: p.last_name })));
+    // Get profiles for each auth user individually to avoid RLS issues
     console.log('[Admin Users] Auth users count:', authUsersData.users.length);
 
-    // Merge auth users with their profiles
-    let mergedUsers = authUsersData.users.map(authUser => {
-      const profile = profilesMap.get(authUser.id);
-      console.log(`[Admin Users] Merging user ${authUser.email}:`, {
+    const mergedUsersPromises = authUsersData.users.map(async (authUser) => {
+      // Get profile for this specific user
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error(`[Admin Users] Error fetching profile for ${authUser.email}:`, profileError);
+      }
+
+      console.log(`[Admin Users] User ${authUser.email}:`, {
         authUserId: authUser.id,
         hasProfile: !!profile,
         profileFirstName: profile?.first_name,
@@ -2564,6 +2556,11 @@ app.get("/api/admin/users", async (req, res) => {
         city: profile?.city || null
       };
     });
+
+    // Await all profile queries
+    let mergedUsers = await Promise.all(mergedUsersPromises);
+
+    console.log('[Admin Users] Merged users count:', mergedUsers.length);
 
     // Apply filters
     if (role && role !== 'all') {
@@ -2592,7 +2589,6 @@ app.get("/api/admin/users", async (req, res) => {
 
     console.log('[Admin Users] Query result:', {
       totalAuthUsers: authUsersData.users.length,
-      totalProfiles: profilesData?.length,
       mergedTotal: totalUsers,
       paginatedCount: paginatedUsers.length
     });
