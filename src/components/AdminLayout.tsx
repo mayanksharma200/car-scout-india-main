@@ -33,6 +33,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "Dashboard", href: "/admin", icon: BarChart3 },
     { name: "Manage Cars", href: "/admin/cars", icon: Car },
     { name: "Lead Management", href: "/admin/leads", icon: Users },
+    { name: "User Management", href: "/admin/users", icon: Users },
     { name: "Content Management", href: "/admin/content", icon: FileText },
     // { name: "API Settings", href: "/admin/api-settings", icon: Globe },
     // { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
@@ -198,6 +199,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               {location.pathname === "/admin" && "Dashboard"}
               {location.pathname === "/admin/cars" && "Car Management"}
               {location.pathname === "/admin/leads" && "Lead Management"}
+              {location.pathname === "/admin/users" && "User Management"}
               {location.pathname === "/admin/content" && "Content Management"}
               {/* {location.pathname === "/admin/api-settings" && "API Settings"} */}
             </div>

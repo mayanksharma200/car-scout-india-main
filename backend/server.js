@@ -2296,6 +2296,193 @@ app.put("/api/admin/leads/:id", async (req, res) => {
   }
 });
 
+// ===== USER MANAGEMENT ENDPOINTS =====
+
+// Get all users with profiles
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      role,
+      search,
+      sort_by = 'created_at',
+      sort_order = 'desc'
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = supabase
+      .from("profiles")
+      .select("*", { count: 'exact' });
+
+    // Filter by role
+    if (role && role !== 'all') {
+      query = query.eq('role', role);
+    }
+
+    // Search by email, first_name, or last_name
+    if (search) {
+      query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+    }
+
+    // Sorting
+    query = query.order(sort_by, { ascending: sort_order === 'asc' });
+
+    // Pagination
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Admin] Error fetching users:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch users',
+        details: error.message
+      });
+    }
+
+    res.json({
+      success: true,
+      data: data || [],
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in get users:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Update user profile by ID
+app.put("/api/admin/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userData = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    // Remove fields that shouldn't be updated
+    const { id: _, created_at, ...updateData } = userData;
+
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Admin] Error updating user:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update user',
+        details: error.message
+      });
+    }
+
+    // Log activity
+    await logAdminActivity({
+      action_type: 'user_updated',
+      action_title: 'User Profile Updated',
+      action_details: `Updated user profile for ${data.email}`,
+      entity_type: 'user',
+      entity_id: id,
+      metadata: { email: data.email }
+    });
+
+    res.json({
+      success: true,
+      data: data,
+      message: 'User updated successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in update user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+// Delete user by ID
+app.delete("/api/admin/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    // First get user details for logging
+    const { data: user } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq('id', id)
+      .single();
+
+    // Delete from auth.users (this will cascade delete the profile)
+    const { error } = await supabase.auth.admin.deleteUser(id);
+
+    if (error) {
+      console.error('[Admin] Error deleting user:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to delete user',
+        details: error.message
+      });
+    }
+
+    // Log activity
+    if (user) {
+      await logAdminActivity({
+        action_type: 'user_deleted',
+        action_title: 'User Deleted',
+        action_details: `Deleted user account for ${user.email}`,
+        entity_type: 'user',
+        entity_id: id,
+        metadata: { email: user.email }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Error in delete user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
 app.post("/api/leads", optionalAuth, async (req, res) => {
   try {
     const leadData = {

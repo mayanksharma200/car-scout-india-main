@@ -41,6 +41,7 @@ import AdminSetup from "./components/AdminSetup";
 import CarManagement from "./pages/CarManagement";
 import AddEditCar from "./pages/AddEditCar";
 import LeadManagement from "./pages/LeadManagement";
+import AdminUserManagement from "./pages/AdminUserManagement";
 // import APISettings from "./pages/APISettings";
 import ContentManagement from "./pages/ContentManagement";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -172,6 +173,15 @@ const App = () => {
                         element={
                           <AdminRouteGuard>
                             <LeadManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
+
+                      <Route
+                        path="users"
+                        element={
+                          <AdminRouteGuard>
+                            <AdminUserManagement />
                           </AdminRouteGuard>
                         }
                       />
