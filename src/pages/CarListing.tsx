@@ -494,7 +494,7 @@ const CarListing = () => {
           }
 
           // Handle null/undefined prices - set a default price if null
-          const carPrice = car.price_min || car.price || 500000; // Default to 5 lakhs if null
+          const carPrice = car.price_min || car.price || 0; // Default to 0 if null
           const carOnRoadPrice = car.price_max || car.onRoadPrice || carPrice + 50000; // Default on-road price
 
           // Debug logging for first few cars
@@ -741,14 +741,36 @@ const CarListing = () => {
       );
     });
 
-    console.log("Cars after filtering:", filteredCars.length);
+    // console.log("Cars after filtering:", filteredCars.length);
 
     switch (sortBy) {
       case "price-low":
-        filteredCars.sort((a, b) => a.price - b.price);
+        filteredCars.sort((a, b) => {
+          // Debug logging for price sorting
+          // console.log(`Comparing ${a.model} (${a.price}) vs ${b.model} (${b.price})`);
+
+          // Treat null/undefined/NaN as invalid (<= 0 check covers 0 and negative)
+          const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
+          const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
+
+          // Push invalid prices (<= 0) to the bottom
+          if (priceA <= 0 && priceB > 0) return 1;
+          if (priceA > 0 && priceB <= 0) return -1;
+          if (priceA <= 0 && priceB <= 0) return 0;
+          return priceA - priceB;
+        });
         break;
       case "price-high":
-        filteredCars.sort((a, b) => b.price - a.price);
+        filteredCars.sort((a, b) => {
+          const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
+          const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
+
+          // Push invalid prices (<= 0) to the bottom
+          if (priceA <= 0 && priceB > 0) return 1;
+          if (priceA > 0 && priceB <= 0) return -1;
+          if (priceA <= 0 && priceB <= 0) return 0;
+          return priceB - priceA;
+        });
         break;
       case "rating":
         filteredCars.sort((a, b) => b.rating - a.rating);
