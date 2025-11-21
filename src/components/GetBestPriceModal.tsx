@@ -93,7 +93,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
           Get Best Price
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Get Best Price for {carName}</DialogTitle>
         </DialogHeader>
@@ -119,7 +119,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
               />
             </div>
           </div>
-          
+
           <div>
             <Label htmlFor="email">Email *</Label>
             <Input
@@ -171,7 +171,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
             {loading ? "Submitting..." : "Send OTP & Submit"}
           </Button>
         </form>
-        
+
         <OTPVerification
           isOpen={showOTP}
           onClose={() => setShowOTP(false)}

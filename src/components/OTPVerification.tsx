@@ -207,7 +207,7 @@ const OTPVerification = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Verify Your Phone Number</DialogTitle>
         </DialogHeader>

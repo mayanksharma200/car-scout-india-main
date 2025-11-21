@@ -81,7 +81,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Share this car</DialogTitle>
         </DialogHeader>
@@ -91,8 +91,8 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
             <CardContent className="p-4">
               <div className="flex gap-3">
                 {image && (
-                  <img 
-                    src={image} 
+                  <img
+                    src={image}
                     alt={title}
                     className="w-16 h-12 object-cover rounded"
                   />
@@ -116,7 +116,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
               <MessageCircle className="w-4 h-4 mr-2 text-green-600" />
               WhatsApp
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => handleShare('facebook')}
@@ -125,7 +125,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
               <Facebook className="w-4 h-4 mr-2 text-blue-600" />
               Facebook
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => handleShare('twitter')}
@@ -134,7 +134,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
               <Twitter className="w-4 h-4 mr-2 text-blue-400" />
               Twitter
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => handleShare('linkedin')}
@@ -143,7 +143,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
               <Linkedin className="w-4 h-4 mr-2 text-blue-700" />
               LinkedIn
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => handleShare('email')}

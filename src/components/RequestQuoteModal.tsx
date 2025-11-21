@@ -99,7 +99,7 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
           Request Quote
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Request Quote for {carName}</DialogTitle>
         </DialogHeader>
@@ -125,7 +125,7 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
               />
             </div>
           </div>
-          
+
           <div>
             <Label htmlFor="email">Email *</Label>
             <Input
@@ -200,7 +200,7 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
             {loading ? "Submitting..." : "Send OTP & Submit"}
           </Button>
         </form>
-        
+
         <OTPVerification
           isOpen={showOTP}
           onClose={() => setShowOTP(false)}
