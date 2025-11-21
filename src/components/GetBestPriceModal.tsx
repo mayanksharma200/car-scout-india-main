@@ -19,6 +19,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,6 +29,17 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
     message: ""
   });
   const { toast } = useToast();
+
+  // Check if form is valid for submit button state
+  const isFormValid = () => {
+    return (
+      formData.name.length >= 2 &&
+      formData.email.length > 0 &&
+      formData.phone.length === 10 &&
+      formData.city.length >= 2 &&
+      formData.timeline.length > 0
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +75,26 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
       });
       return;
     }
+    // City validation
+    if (formData.city.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid City",
+        description: "City name must be at least 2 characters long"
+      });
+      return;
+    }
+
+    // Timeline validation
+    if (!formData.timeline) {
+      toast({
+        variant: "destructive",
+        title: "Timeline Required",
+        description: "Please select your purchase timeline"
+      });
+      return;
+    }
+
     setShowOTP(true);
   };
 
@@ -90,6 +122,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
 
       setOpen(false);
       setShowOTP(false);
+      setPhoneError("");
       setFormData({
         name: "",
         email: "",
@@ -138,9 +171,28 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                  if (value.length <= 10) {
+                    setFormData(prev => ({ ...prev, phone: value }));
+                    // Clear error when user is typing
+                    if (phoneError) setPhoneError("");
+                  }
+                }}
+                onBlur={() => {
+                  // Validate on blur (when user leaves the field)
+                  if (formData.phone.length > 0 && formData.phone.length < 10) {
+                    setPhoneError("Please enter a valid 10-digit phone number");
+                  }
+                }}
+                maxLength={10}
+                placeholder="10-digit phone number"
+                className={phoneError ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {phoneError && (
+                <p className="text-sm text-red-500 mt-1">{phoneError}</p>
+              )}
             </div>
           </div>
 
@@ -157,20 +209,21 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">City *</Label>
               <Input
                 id="city"
                 value={formData.city}
                 onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                required
               />
             </div>
             <div>
-              <Label htmlFor="timeline">Purchase Timeline</Label>
+              <Label htmlFor="timeline">Purchase Timeline *</Label>
               <Select value={formData.timeline} onValueChange={(value) => setFormData(prev => ({ ...prev, timeline: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select timeline" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="immediate">Immediate</SelectItem>
                   <SelectItem value="within_month">Within a month</SelectItem>
                   <SelectItem value="within_3_months">Within 3 months</SelectItem>
@@ -191,7 +244,7 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading || !isFormValid()} className="w-full">
             {loading ? "Submitting..." : "Send OTP & Submit"}
           </Button>
         </form>
