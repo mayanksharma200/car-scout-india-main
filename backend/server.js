@@ -2532,9 +2532,18 @@ app.get("/api/admin/users", async (req, res) => {
     // Create a map of profiles by user ID
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
+    console.log('[Admin Users] Profiles data:', profilesData?.map(p => ({ id: p.id, email: p.email, first_name: p.first_name, last_name: p.last_name })));
+    console.log('[Admin Users] Auth users count:', authUsersData.users.length);
+
     // Merge auth users with their profiles
     let mergedUsers = authUsersData.users.map(authUser => {
       const profile = profilesMap.get(authUser.id);
+      console.log(`[Admin Users] Merging user ${authUser.email}:`, {
+        authUserId: authUser.id,
+        hasProfile: !!profile,
+        profileFirstName: profile?.first_name,
+        profileLastName: profile?.last_name
+      });
       return {
         id: authUser.id,
         email: authUser.email,
