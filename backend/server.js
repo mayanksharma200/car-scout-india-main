@@ -203,8 +203,8 @@ const generateTokens = async (user) => {
       email: user.email,
       role: profile?.role || "user",
       firstName: profile?.first_name,
-      phone:profile?.phone,
-      city:profile?.city,
+      phone: profile?.phone,
+      city: profile?.city,
       lastName: profile?.last_name,
       emailVerified: user.email_confirmed_at ? true : false,
       iat: Math.floor(Date.now() / 1000),
@@ -254,8 +254,7 @@ const generateTokens = async (user) => {
     };
 
     console.log(
-      `✅ Generated tokens for ${user.email} (${
-        IS_PRODUCTION ? "Production" : "Development"
+      `✅ Generated tokens for ${user.email} (${IS_PRODUCTION ? "Production" : "Development"
       } mode)`
     );
     return tokenResponse;
@@ -474,6 +473,63 @@ app.get("/api/cars/featured", async (req, res) => {
   }
 });
 
+// Get platform statistics
+app.get("/api/stats", async (req, res) => {
+  try {
+    // 1. Count total active cars
+    const { count: totalCars, error: countError } = await supabase
+      .from("cars")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active");
+
+    if (countError) throw countError;
+
+    // 2. Count unique brands
+    const { data: brandsData, error: brandsError } = await supabase
+      .from("cars")
+      .select("brand")
+      .eq("status", "active");
+
+    if (brandsError) throw brandsError;
+
+    const uniqueBrands = new Set(
+      brandsData
+        .map((car) => car.brand)
+        .filter((brand) => brand && brand.trim() !== "")
+    ).size;
+
+    // 3. Count cities
+    // Based on the schema, we have specific price columns for cities
+    const supportedCities = [
+      "mumbai_price",
+      "bangalore_price",
+      "delhi_price",
+      "pune_price",
+      "hyderabad_price",
+      "chennai_price",
+      "kolkata_price",
+      "ahmedabad_price",
+    ];
+
+    const totalCities = supportedCities.length;
+
+    res.json({
+      success: true,
+      data: {
+        totalCars: totalCars || 0,
+        totalBrands: uniqueBrands || 0,
+        totalCities: totalCities,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch statistics",
+    });
+  }
+});
+
 // Replace your existing /api/cars/search endpoint with this improved version
 
 // Enhanced /api/cars/search endpoint with comprehensive filter support
@@ -602,7 +658,7 @@ app.get("/api/cars/search", async (req, res) => {
     if (fuelTypes) {
       const fuelArray = fuelTypes.split(",").map((f) => f.trim());
       console.log(`🔥 Filtering by fuel types:`, fuelArray);
-      
+
       if (fuelArray.length === 1) {
         // Try exact match first, then case-insensitive if needed
         query = query.eq("fuel_type", fuelArray[0]);
@@ -610,7 +666,7 @@ app.get("/api/cars/search", async (req, res) => {
         // For multiple fuel types, use exact matches in array
         query = query.in("fuel_type", fuelArray);
       }
-      
+
       console.log(`🔍 Applied fuel type filter for: ${fuelArray.join(', ')}`);
     }
 
@@ -618,7 +674,7 @@ app.get("/api/cars/search", async (req, res) => {
     if (transmissions) {
       const transmissionArray = transmissions.split(",").map((t) => t.trim());
       console.log(`⚙️ Filtering by transmissions:`, transmissionArray);
-      
+
       if (transmissionArray.length === 1) {
         query = query.eq("transmission", transmissionArray[0]);
       } else {
@@ -630,7 +686,7 @@ app.get("/api/cars/search", async (req, res) => {
     if (bodyTypes) {
       const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
       console.log(`🚗 Filtering by body types:`, bodyTypeArray);
-      
+
       if (bodyTypeArray.length === 1) {
         query = query.eq("body_type", bodyTypeArray[0]);
       } else {
@@ -703,17 +759,17 @@ app.get("/api/cars/search", async (req, res) => {
 
     // Debug: Let's see what we get from the database before applying filters
     console.log(`🗃️ Executing database query...`);
-    
+
     // First, let's see if there's ANY data in the cars table
     const { data: allCars, error: allCarsError } = await supabase
       .from("cars")
       .select("id, brand, model, variant, fuel_type, transmission, body_type, status")
       .eq("status", "active")
       .limit(5);
-      
+
     console.log(`📊 Sample cars in database:`, allCars);
     console.log(`🔢 Total active cars sample:`, allCars ? allCars.length : 0);
-    
+
     if (allCars && allCars.length > 0) {
       console.log(`⛽ Fuel types in sample:`, allCars.map(car => car.fuel_type));
     }
@@ -725,7 +781,7 @@ app.get("/api/cars/search", async (req, res) => {
       .eq("status", "active")
       .eq("fuel_type", "Petrol")
       .limit(3);
-      
+
     console.log(`🧪 Simple fuel type test:`, simpleFuelTest);
     console.log(`🧪 Simple fuel type count:`, simpleFuelTest ? simpleFuelTest.length : 0);
 
@@ -734,9 +790,9 @@ app.get("/api/cars/search", async (req, res) => {
     console.log(`🔍 Query executed. Results count:`, data ? data.length : 0);
     console.log(`🔍 Database error:`, error);
     console.log(`🔍 First few results:`, data ? data.slice(0, 3).map(car => ({
-      id: car.id, 
-      brand: car.brand, 
-      model: car.model, 
+      id: car.id,
+      brand: car.brand,
+      model: car.model,
       fuel_type: car.fuel_type
     })) : []);
 
@@ -1118,57 +1174,57 @@ app.post("/api/admin/cars", async (req, res) => {
     };
 
     // Handle angle-mapped images - convert from individual fields to object
-  if (carData.image_url_1 || carData.image_url_2 || carData.image_url_3 ||
+    if (carData.image_url_1 || carData.image_url_2 || carData.image_url_3 ||
       carData.image_url_4 || carData.image_url_5 || carData.image_url_6 ||
       carData.image_url_7 || carData.image_url_8) {
-    
-    const angleKeys = [
-      "front_3_4",
-      "front_view",
-      "left_side",
-      "right_side",
-      "rear_view",
-      "interior_dash",
-      "interior_cabin",
-      "interior_steering"
-    ];
 
-    const images = {};
-    for (let i = 0; i < 8; i++) {
-      const fieldName = `image_url_${i + 1}`;
-      if (carData[fieldName]) {
-        images[angleKeys[i]] = carData[fieldName];
+      const angleKeys = [
+        "front_3_4",
+        "front_view",
+        "left_side",
+        "right_side",
+        "rear_view",
+        "interior_dash",
+        "interior_cabin",
+        "interior_steering"
+      ];
+
+      const images = {};
+      for (let i = 0; i < 8; i++) {
+        const fieldName = `image_url_${i + 1}`;
+        if (carData[fieldName]) {
+          images[angleKeys[i]] = carData[fieldName];
+        }
+        // Remove individual fields from carData
+        delete carData[fieldName];
       }
-      // Remove individual fields from carData
-      delete carData[fieldName];
-    }
 
-    // Store as images object
-    carData.images = images;
-  }
+      // Store as images object
+      carData.images = images;
+    }
 
     // If color_variant_images is provided, ensure it's properly formatted
     if (carData.color_variant_images) {
       console.log('[Admin] Processing color_variant_images:', Object.keys(carData.color_variant_images));
-      
+
       // Validate and clean up the color_variant_images structure
       const cleanedColorVariantImages = {};
-      
+
       Object.keys(carData.color_variant_images).forEach(colorName => {
         const colorData = carData.color_variant_images[colorName];
-        
+
         // Skip if colorName is 'default' or if colorData is invalid
         if (colorName === 'default' || !colorData || !colorData.images) {
           return;
         }
-        
+
         // Ensure the color data has the correct structure
         cleanedColorVariantImages[colorName] = {
           color_code: colorData.color_code || null,
           images: colorData.images || {}
         };
       });
-      
+
       carData.color_variant_images = cleanedColorVariantImages;
     }
 
@@ -1241,9 +1297,9 @@ app.put("/api/admin/cars/:id", async (req, res) => {
 
     // Handle angle-mapped images - convert from individual fields to object
     if (carData.image_url_1 || carData.image_url_2 || carData.image_url_3 ||
-        carData.image_url_4 || carData.image_url_5 || carData.image_url_6 ||
-        carData.image_url_7 || carData.image_url_8) {
-      
+      carData.image_url_4 || carData.image_url_5 || carData.image_url_6 ||
+      carData.image_url_7 || carData.image_url_8) {
+
       const angleKeys = [
         "front_3_4",
         "front_view",
@@ -1272,25 +1328,25 @@ app.put("/api/admin/cars/:id", async (req, res) => {
     // If color_variant_images is provided, ensure it's properly formatted
     if (carData.color_variant_images) {
       console.log('[Admin] Processing color_variant_images for update:', Object.keys(carData.color_variant_images));
-      
+
       // Validate and clean up the color_variant_images structure
       const cleanedColorVariantImages = {};
-      
+
       Object.keys(carData.color_variant_images).forEach(colorName => {
         const colorData = carData.color_variant_images[colorName];
-        
+
         // Skip if colorName is 'default' or if colorData is invalid
         if (colorName === 'default' || !colorData || !colorData.images) {
           return;
         }
-        
+
         // Ensure color data has the correct structure
         cleanedColorVariantImages[colorName] = {
           color_code: colorData.color_code || null,
           images: colorData.images || {}
         };
       });
-      
+
       carData.color_variant_images = cleanedColorVariantImages;
     }
 
@@ -1802,7 +1858,7 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
       'interior_cabin': 6,
       'interior_steering': 7
     };
-    
+
     const angleIndex = angleMap[angle] || 0;
     console.log(`[Backend] Converting angle '${angle}' to index ${angleIndex}`);
 
@@ -1835,7 +1891,7 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
 
         // Find the first successful upload
         const successfulUpload = uploadResults.find(result => result.success);
-        
+
         if (successfulUpload) {
           const s3Url = successfulUpload.s3Url;
           console.log(`✅ Image uploaded to S3: ${s3Url}`);
@@ -1918,7 +1974,7 @@ app.post("/api/admin/cars/:id/delete-image", async (req, res) => {
     // Delete from S3 if it's an S3 URL
     if (s3UploadService.isConfigured() && imageUrl.includes('amazonaws.com')) {
       const deleted = await s3UploadService.deleteImageFromS3(imageUrl);
-      
+
       if (deleted) {
         console.log(`✅ Deleted image from S3: ${imageUrl}`);
       } else {
@@ -3411,10 +3467,10 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
     // Merge user data with profile data
     const completeUserData = {
       ...req.user,
-      id:userProfile.id,
+      id: userProfile.id,
       firstName: userProfile.first_name,
       lastName: userProfile.last_name,
-      role:"user",
+      role: "user",
       phone: userProfile.phone,
       city: userProfile.city,
       // Add other profile fields as needed
@@ -3445,7 +3501,7 @@ app.put("/api/user/profile", validateToken, async (req, res) => {
     // Remove fields that shouldn't be updated directly
     const allowedFields = [
       'first_name',
-      'last_name', 
+      'last_name',
       'phone',
       'date_of_birth',
       'gender',
@@ -4214,7 +4270,7 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating lead:", error);
-    
+
     // Handle specific database errors
     if (error.code === 'PGRST204') {
       return res.status(400).json({
@@ -4242,7 +4298,7 @@ const encodeURL = (url) => {
 app.post("/api/sms/send-otp", async (req, res) => {
   try {
     const { phoneNumber } = req.body;
-    
+
     if (!phoneNumber) {
       return res.status(400).json({
         success: false,
@@ -4252,13 +4308,13 @@ app.post("/api/sms/send-otp", async (req, res) => {
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Clean phone number (remove +91 if present)
-    const cleanedPhone = phoneNumber.startsWith('+91') 
-      ? phoneNumber.substring(3) 
-      : phoneNumber.startsWith('91') 
-      ? phoneNumber.substring(2)
-      : phoneNumber;
+    const cleanedPhone = phoneNumber.startsWith('+91')
+      ? phoneNumber.substring(3)
+      : phoneNumber.startsWith('91')
+        ? phoneNumber.substring(2)
+        : phoneNumber;
 
     console.log(`📱 Original phone: ${phoneNumber}`);
     console.log(`🧹 Cleaned phone: ${cleanedPhone}`);
@@ -4290,14 +4346,14 @@ app.post("/api/sms/send-otp", async (req, res) => {
     });
 
     // Prepare SMS text - Use the exact same text that worked in the direct test
-const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Team Ventes Avenues`;
-    
+    const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Team Ventes Avenues`;
+
     // Build the SMS gateway URL - DON'T encode the entire URL, just encode the text
     const baseUrl = 'https://web.smsgw.in/smsapi/httpapi.jsp';
-    
+
     // Build URL manually like the working example - minimal encoding
     const smsUrl = `${baseUrl}?username=${SMS_CONFIG.username}&password=${SMS_CONFIG.password}&from=${SMS_CONFIG.from}&to=${cleanedPhone}&text=${encodeURIComponent(smsText)}&coding=0&pe_id=${SMS_CONFIG.pe_id}&template_id=${SMS_CONFIG.template_id}`;
-    
+
     console.log(`📤 SMS URL:`, smsUrl);
     console.log(`📝 SMS Text:`, smsText);
     console.log(`📞 Sending to:`, cleanedPhone);
@@ -4317,7 +4373,7 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
 
     // Store OTP in database with expiration
     const expirationTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    
+
     try {
       // First, cleanup any existing OTPs for this number
       const { error: deleteError } = await supabase
@@ -4360,7 +4416,7 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
       if (responseText.includes('<data>') && responseText.includes('<ack_id>')) {
         smsSuccess = true;
         console.log('✅ SMS sent successfully - found <data> tag in response');
-        
+
         // Extract message ID for logging
         const msgIdMatch = responseText.match(/<msgid>(.*?)<\/msgid>/);
         const ackIdMatch = responseText.match(/<ack_id>(.*?)<\/ack_id>/);
@@ -4370,9 +4426,9 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
         }
       } else if (responseText.includes('<errordesc>')) {
         // Error response format
-        const errorMatch = responseText.match(/<errordesc[^>]*>(.*?)<\/errordesc>/) || 
-                           responseText.match(/<errordesc[^>]*>(.*?),errorcode/);
-        
+        const errorMatch = responseText.match(/<errordesc[^>]*>(.*?)<\/errordesc>/) ||
+          responseText.match(/<errordesc[^>]*>(.*?),errorcode/);
+
         if (errorMatch) {
           gatewayMessage = errorMatch[1];
           console.log(`❌ SMS Gateway Error: ${gatewayMessage}`);
@@ -4381,8 +4437,8 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
     }
 
     if (smsSuccess) {
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         otp: process.env.NODE_ENV === 'development' ? otp : undefined,
         message: 'OTP sent successfully',
         debug: process.env.NODE_ENV === 'development' ? {
@@ -4395,8 +4451,8 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
       // For development, still return success but log the error
       if (process.env.NODE_ENV === 'development') {
         console.error(`❌ SMS Gateway Error but continuing in dev mode: ${gatewayMessage}`);
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           otp: otp,
           message: 'OTP generated (development mode - SMS may have failed)',
           debug: {
@@ -4413,8 +4469,8 @@ const smsText = `Dear User, Thank you for your interest. Your OTP is ${otp}, Tea
 
   } catch (error) {
     console.error('💥 Send OTP error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message || 'Failed to send OTP',
       debug: process.env.NODE_ENV === 'development' ? {
         stack: error.stack,
@@ -4437,11 +4493,11 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     }
 
     // Clean phone number
-    const cleanedPhone = phoneNumber.startsWith('+91') 
-      ? phoneNumber.substring(3) 
-      : phoneNumber.startsWith('91') 
-      ? phoneNumber.substring(2)
-      : phoneNumber;
+    const cleanedPhone = phoneNumber.startsWith('+91')
+      ? phoneNumber.substring(3)
+      : phoneNumber.startsWith('91')
+        ? phoneNumber.substring(2)
+        : phoneNumber;
 
     // Verify OTP from database
     const { data: otpRecord, error } = await supabase
@@ -4463,7 +4519,7 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     // Mark OTP as verified
     await supabase
       .from('otp_verification')
-      .update({ 
+      .update({
         status: 'verified',
         verified_at: new Date().toISOString()
       })
@@ -4529,8 +4585,8 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     const cleanedPhone = phoneNumber.startsWith("+91")
       ? phoneNumber.substring(3)
       : phoneNumber.startsWith("91")
-      ? phoneNumber.substring(2)
-      : phoneNumber;
+        ? phoneNumber.substring(2)
+        : phoneNumber;
 
     // Verify OTP from database
     const { data: otpRecord, error } = await supabase
@@ -4782,8 +4838,7 @@ app.post(
       const { enabled } = req.body;
 
       console.log(
-        `🔔 ${
-          enabled ? "Enabling" : "Disabling"
+        `🔔 ${enabled ? "Enabling" : "Disabling"
         } price alert for car ${carId} for user: ${userId}`
       );
 
