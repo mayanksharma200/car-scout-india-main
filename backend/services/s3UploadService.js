@@ -73,7 +73,7 @@ async function uploadToS3(imageBuffer, fileName, contentType = 'image/jpeg') {
       Body: imageBuffer,
       ContentType: contentType,
       ACL: 'public-read',
-      CacheControl: 'max-age=31536000', // Cache for 1 year
+      CacheControl: 'max-age=600', // Cache for 10 minutes
     });
 
     await s3Client.send(command);

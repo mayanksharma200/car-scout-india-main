@@ -48,7 +48,9 @@
       "Bash(do echo \"Test $i:\")",
       "Bash(for test in 1 2 3 4 5)",
       "Bash(do sleep 2)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(chmod:*)",
+      "Bash(./update-s3-cors.sh:*)"
     ],
     "deny": [],
     "ask": []
