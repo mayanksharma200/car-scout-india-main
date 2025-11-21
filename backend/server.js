@@ -21,10 +21,16 @@ const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 console.log(`🔧 Mode: ${IS_PRODUCTION ? "Production" : "Development"}`);
 
-// Initialize Supabase client
+// Initialize Supabase client with service role (bypasses RLS)
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
 // ===== ENVIRONMENT-AWARE CONFIGURATIONS =====
@@ -2518,24 +2524,41 @@ app.get("/api/admin/users", async (req, res) => {
     // Get profiles for each auth user individually to avoid RLS issues
     console.log('[Admin Users] Auth users count:', authUsersData.users.length);
 
-    const mergedUsersPromises = authUsersData.users.map(async (authUser) => {
-      // Get profile for this specific user
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authUser.id)
-        .single();
+    // Query all profiles ONCE using direct REST API to bypass RLS completely
+    const profilesResponse = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/profiles?select=*`,
+      {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        }
+      }
+    );
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error(`[Admin Users] Error fetching profile for ${authUser.email}:`, profileError);
+    const allProfiles = await profilesResponse.json();
+    console.log('[Admin Users] Direct REST API profiles query:', {
+      totalProfiles: allProfiles?.length,
+      status: profilesResponse.status
+    });
+
+    // Create a map for quick lookup
+    const profilesMap = new Map(allProfiles.map(p => [p.id, p]));
+
+    const mergedUsersPromises = authUsersData.users.map(async (authUser) => {
+      // Get profile from the pre-fetched map
+      const profile = profilesMap.get(authUser.id) || null;
+
+      if (!profile) {
+        console.log(`[Admin Users] No profile found for ${authUser.email} (ID: ${authUser.id})`);
       }
 
       console.log(`[Admin Users] User ${authUser.email}:`, {
         authUserId: authUser.id,
         hasProfile: !!profile,
         profileFirstName: profile?.first_name,
-        profileLastName: profile?.last_name,
-        fullProfile: profile
+        profileLastName: profile?.last_name
       });
       return {
         id: authUser.id,

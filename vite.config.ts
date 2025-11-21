@@ -19,10 +19,6 @@ export default defineConfig(({ mode }) => {
           secure: false,
         }
       },
-      // Add headers for better caching in development
-      headers: {
-        'Cache-Control': 'public, max-age=31536000',
-      },
     },
     plugins: [
       react()

@@ -40,7 +40,14 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "Bash(psql:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(for i in {1..5})",
+      "Bash(do echo \"=== Test $i ===\")",
+      "Bash(done)",
+      "Bash(for i in 1 2 3 4 5)",
+      "Bash(do echo \"Test $i:\")",
+      "Bash(for test in 1 2 3 4 5)",
+      "Bash(do sleep 2)"
     ],
     "deny": [],
     "ask": []
