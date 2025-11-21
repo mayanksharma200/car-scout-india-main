@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Trash2, Edit, UserCheck, UserX, Mail, Calendar } from "lucide-react";
+import { Search, Trash2, Edit, UserCheck, UserX, Mail, Calendar, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface User {
@@ -35,7 +35,11 @@ interface User {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
+  city: string | null;
   role: string;
+  email_verified: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +55,7 @@ const AdminUserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editFormData, setEditFormData] = useState({ first_name: "", last_name: "", role: "" });
+  const [editFormData, setEditFormData] = useState({ first_name: "", last_name: "", phone: "", city: "", role: "" });
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
@@ -223,6 +227,68 @@ const AdminUserManagement = () => {
     }
   };
 
+  // Export to CSV
+  const exportToCSV = () => {
+    try {
+      // Prepare CSV headers
+      const headers = [
+        "Email",
+        "First Name",
+        "Last Name",
+        "Phone",
+        "City",
+        "Role",
+        "Email Verified",
+        "Active",
+        "Created At",
+        "Updated At"
+      ];
+
+      // Prepare CSV rows
+      const rows = users.map(user => [
+        user.email,
+        user.first_name || "",
+        user.last_name || "",
+        user.phone || "",
+        user.city || "",
+        user.role,
+        user.email_verified ? "Yes" : "No",
+        user.is_active ? "Yes" : "No",
+        new Date(user.created_at).toLocaleString(),
+        new Date(user.updated_at).toLocaleString()
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(","),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Success",
+        description: `Exported ${users.length} users to CSV`,
+      });
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to export CSV",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6">
@@ -259,6 +325,15 @@ const AdminUserManagement = () => {
                   <SelectItem value="admin">Admins</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                onClick={exportToCSV}
+                variant="outline"
+                className="w-full md:w-auto"
+                disabled={users.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -332,9 +407,10 @@ const AdminUserManagement = () => {
                       <TableRow>
                         <TableHead>Email</TableHead>
                         <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>City</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Created At</TableHead>
-                        <TableHead>Updated At</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -357,6 +433,20 @@ const AdminUserManagement = () => {
                             )}
                           </TableCell>
                           <TableCell>
+                            {user.phone || (
+                              <span className="text-muted-foreground italic">
+                                Not set
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.city || (
+                              <span className="text-muted-foreground italic">
+                                Not set
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Badge
                               variant="outline"
                               className={getRoleBadgeColor(user.role)}
@@ -370,11 +460,6 @@ const AdminUserManagement = () => {
                               {formatDate(user.created_at)}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-muted-foreground">
-                              {formatDate(user.updated_at)}
-                            </div>
-                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button
@@ -385,6 +470,8 @@ const AdminUserManagement = () => {
                                   setEditFormData({
                                     first_name: user.first_name || "",
                                     last_name: user.last_name || "",
+                                    phone: user.phone || "",
+                                    city: user.city || "",
                                     role: user.role,
                                   });
                                   setShowEditDialog(true);
@@ -467,6 +554,12 @@ const AdminUserManagement = () => {
                     : "Not set"}
                 </p>
                 <p className="text-sm">
+                  <strong>Phone:</strong> {selectedUser.phone || "Not set"}
+                </p>
+                <p className="text-sm">
+                  <strong>City:</strong> {selectedUser.city || "Not set"}
+                </p>
+                <p className="text-sm">
                   <strong>Role:</strong> {selectedUser.role}
                 </p>
               </div>
@@ -535,6 +628,36 @@ const AdminUserManagement = () => {
                       })
                     }
                     placeholder="Enter last name"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Phone
+                  </label>
+                  <Input
+                    value={editFormData.phone}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    City
+                  </label>
+                  <Input
+                    value={editFormData.city}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        city: e.target.value,
+                      })
+                    }
+                    placeholder="Enter city"
                   />
                 </div>
                 <div>
