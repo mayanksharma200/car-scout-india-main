@@ -1226,7 +1226,7 @@ const CarListing = () => {
                   <SelectTrigger className="w-20 sm:w-28 lg:w-40 text-xs lg:text-sm h-9 lg:h-10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[60]" style={{ zIndex: 1001 }}>
                     <SelectItem value="popularity">Popular</SelectItem>
                     <SelectItem value="price-low">Low Price</SelectItem>
                     <SelectItem value="price-high">High Price</SelectItem>
@@ -1354,7 +1354,7 @@ const CarListing = () => {
                 )}
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full sm:w-44 lg:w-48 text-xs lg:text-sm">
+                <SelectTrigger className="w-full sm:w-44 lg:w-48 text-xs lg:text-sm relative z-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">
