@@ -2534,7 +2534,8 @@ app.get("/api/admin/users", async (req, res) => {
         authUserId: authUser.id,
         hasProfile: !!profile,
         profileFirstName: profile?.first_name,
-        profileLastName: profile?.last_name
+        profileLastName: profile?.last_name,
+        fullProfile: profile
       });
       return {
         id: authUser.id,
