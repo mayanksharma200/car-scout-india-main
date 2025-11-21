@@ -1315,7 +1315,7 @@ const CarListing = () => {
               } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
           >
             {/* Desktop Ad in Sidebar */}
-            <div className="hidden xl:block" style={{ maxHeight: '250px', overflow: 'hidden' }}>
+            <div className="hidden xl:block">
               <AdBanner placement="left_sidebar" />
             </div>
 
