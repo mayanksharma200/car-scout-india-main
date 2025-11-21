@@ -33,11 +33,14 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.phone) {
+
+    // Phone validation
+    const phoneRegex = /^\d{10}$/;
+    if (!formData.phone || !phoneRegex.test(formData.phone)) {
       toast({
         variant: "destructive",
-        title: "Phone Required",
-        description: "Please enter your phone number"
+        title: "Invalid Phone Number",
+        description: "Please enter a valid 10-digit phone number"
       });
       return;
     }
