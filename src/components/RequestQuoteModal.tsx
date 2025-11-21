@@ -39,7 +39,9 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
       formData.email.length > 0 &&
       formData.phone.length === 10 &&
       formData.city.length >= 2 &&
-      formData.timeline.length > 0
+      formData.timeline.length > 0 &&
+      formData.budget_min.length > 0 &&
+      formData.budget_max.length > 0
     );
   };
 
@@ -79,23 +81,29 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
     }
 
     // Budget validation
-    if (formData.budget_min && formData.budget_max) {
-      if (parseInt(formData.budget_min) > parseInt(formData.budget_max)) {
-        toast({
-          variant: "destructive",
-          title: "Invalid Budget Range",
-          description: "Minimum budget cannot be greater than maximum budget"
-        });
-        return;
-      }
-    }
-
-    if ((formData.budget_min && parseInt(formData.budget_min) < 0) ||
-      (formData.budget_max && parseInt(formData.budget_max) < 0)) {
+    if (!formData.budget_min || parseInt(formData.budget_min) <= 0) {
       toast({
         variant: "destructive",
-        title: "Invalid Budget",
-        description: "Budget amounts cannot be negative"
+        title: "Budget Required",
+        description: "Please enter minimum budget"
+      });
+      return;
+    }
+
+    if (!formData.budget_max || parseInt(formData.budget_max) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Budget Required",
+        description: "Please enter maximum budget"
+      });
+      return;
+    }
+
+    if (parseInt(formData.budget_min) > parseInt(formData.budget_max)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Budget Range",
+        description: "Minimum budget cannot be greater than maximum budget"
       });
       return;
     }
@@ -265,7 +273,7 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="budget_min">Budget From (₹)</Label>
+              <Label htmlFor="budget_min">Budget From (₹) *</Label>
               <Input
                 id="budget_min"
                 type="text"
@@ -285,7 +293,7 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="budget_max">Budget To (₹)</Label>
+              <Label htmlFor="budget_max">Budget To (₹) *</Label>
               <Input
                 id="budget_max"
                 type="text"
