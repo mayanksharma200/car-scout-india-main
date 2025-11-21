@@ -3006,23 +3006,27 @@ app.post("/api/auth/google-oauth", async (req, res) => {
     // Get or create user profile
     let { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role, first_name, last_name, is_active")
+      .select("email, role, first_name, last_name, is_active")
       .eq("id", supabaseUserId)
       .single();
 
     if (profileError && profileError.code === "PGRST116") {
       // Profile doesn't exist, create it
+      console.log(`Creating new profile for Google OAuth user: ${email}`);
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
         .insert({
           id: supabaseUserId,
+          email: email,
           role: "user",
-          first_name: userData?.firstName,
-          last_name: userData?.lastName,
+          first_name: userData?.firstName || null,
+          last_name: userData?.lastName || null,
           is_active: true,
           email_verified: userData?.emailVerified || true,
           login_count: 0,
           failed_login_attempts: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -3356,15 +3360,21 @@ app.post("/api/auth/signup", async (req, res) => {
     }
 
     if (authData.user) {
+      console.log(`Creating profile for new user: ${email}`);
       await supabase.from("profiles").insert({
         id: authData.user.id,
+        email: email,
         role: "user",
-        first_name: userData?.firstName,
-        last_name: userData?.lastName,
+        first_name: userData?.firstName || null,
+        last_name: userData?.lastName || null,
+        phone: userData?.phone || null,
+        city: userData?.city || null,
         email_verified: false,
         is_active: true,
         login_count: 0,
         failed_login_attempts: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       await logAuthEvent(
