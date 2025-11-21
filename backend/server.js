@@ -2298,6 +2298,144 @@ app.put("/api/admin/leads/:id", async (req, res) => {
 
 // ===== USER MANAGEMENT ENDPOINTS =====
 
+// Backfill missing profile data for Google OAuth users
+app.post("/api/admin/users/backfill-google-profiles", async (req, res) => {
+  try {
+    console.log('[Admin] Starting backfill of Google OAuth profiles...');
+
+    // Get all auth users
+    const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
+
+    if (authError) {
+      console.error('[Admin] Error fetching auth users:', authError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch auth users',
+        details: authError.message
+      });
+    }
+
+    // Get all profiles
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*");
+
+    if (profilesError) {
+      console.error('[Admin] Error fetching profiles:', profilesError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch profiles',
+        details: profilesError.message
+      });
+    }
+
+    const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+    const updates = [];
+    const creates = [];
+
+    // Process each auth user
+    for (const authUser of authUsersData.users) {
+      const profile = profilesMap.get(authUser.id);
+      const isGoogleUser = authUser.app_metadata?.provider === 'google';
+
+      if (!profile) {
+        // Profile doesn't exist - create it
+        const firstName = authUser.user_metadata?.given_name ||
+                         authUser.user_metadata?.full_name?.split(' ')[0] ||
+                         authUser.email?.split('@')[0] || '';
+        const lastName = authUser.user_metadata?.family_name ||
+                        authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
+
+        creates.push({
+          id: authUser.id,
+          email: authUser.email,
+          role: 'user',
+          first_name: firstName,
+          last_name: lastName,
+          email_verified: authUser.email_confirmed_at ? true : false,
+          is_active: true,
+          login_count: 0,
+          failed_login_attempts: 0,
+          created_at: authUser.created_at,
+          updated_at: new Date().toISOString(),
+        });
+      } else if (isGoogleUser && (!profile.first_name || !profile.last_name || !profile.email)) {
+        // Profile exists but is missing name data for Google user
+        const firstName = authUser.user_metadata?.given_name ||
+                         authUser.user_metadata?.full_name?.split(' ')[0] ||
+                         profile.first_name ||
+                         authUser.email?.split('@')[0] || '';
+        const lastName = authUser.user_metadata?.family_name ||
+                        authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+                        profile.last_name || '';
+
+        if (firstName !== profile.first_name || lastName !== profile.last_name || !profile.email) {
+          updates.push({
+            id: authUser.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: authUser.email,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    // Perform creates
+    if (creates.length > 0) {
+      const { error: createError } = await supabase
+        .from("profiles")
+        .insert(creates);
+
+      if (createError) {
+        console.error('[Admin] Error creating profiles:', createError);
+      } else {
+        console.log(`[Admin] Created ${creates.length} missing profiles`);
+      }
+    }
+
+    // Perform updates one by one
+    let updateCount = 0;
+    for (const update of updates) {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          first_name: update.first_name,
+          last_name: update.last_name,
+          email: update.email,
+          updated_at: update.updated_at,
+        })
+        .eq('id', update.id);
+
+      if (updateError) {
+        console.error(`[Admin] Error updating profile ${update.id}:`, updateError);
+      } else {
+        updateCount++;
+      }
+    }
+
+    console.log(`[Admin] Backfill complete: ${creates.length} created, ${updateCount} updated`);
+
+    res.json({
+      success: true,
+      data: {
+        created: creates.length,
+        updated: updateCount,
+        total: creates.length + updateCount,
+      },
+      message: 'Profile backfill completed successfully'
+    });
+
+  } catch (error) {
+    console.error('[Admin] Backfill error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to backfill profiles',
+      details: error.message
+    });
+  }
+});
+
 // Debug endpoint to check total users count
 app.get("/api/admin/users/debug", async (req, res) => {
   try {
@@ -3002,6 +3140,7 @@ app.post("/api/auth/google-oauth", async (req, res) => {
     }
 
     console.log(`🔐 Google OAuth conversion for ${email} from ${ipAddress}`);
+    console.log('📝 Received userData:', JSON.stringify(userData, null, 2));
 
     // Get or create user profile
     let { data: profile, error: profileError } = await supabase
@@ -3010,29 +3149,35 @@ app.post("/api/auth/google-oauth", async (req, res) => {
       .eq("id", supabaseUserId)
       .single();
 
+    console.log('👤 Existing profile:', profile ? JSON.stringify(profile, null, 2) : 'NOT FOUND');
+
     if (profileError && profileError.code === "PGRST116") {
       // Profile doesn't exist, create it
-      console.log(`Creating new profile for Google OAuth user: ${email}`);
+      console.log(`✨ Creating new profile for Google OAuth user: ${email}`);
+      const profileData = {
+        id: supabaseUserId,
+        email: email,
+        role: "user",
+        first_name: userData?.firstName || null,
+        last_name: userData?.lastName || null,
+        is_active: true,
+        email_verified: userData?.emailVerified || true,
+        login_count: 0,
+        failed_login_attempts: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('💾 Creating profile with data:', JSON.stringify(profileData, null, 2));
+
       const { data: newProfile, error: createError } = await supabase
         .from("profiles")
-        .insert({
-          id: supabaseUserId,
-          email: email,
-          role: "user",
-          first_name: userData?.firstName || null,
-          last_name: userData?.lastName || null,
-          is_active: true,
-          email_verified: userData?.emailVerified || true,
-          login_count: 0,
-          failed_login_attempts: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .insert(profileData)
         .select()
         .single();
 
       if (createError) {
-        console.error("Failed to create profile:", createError);
+        console.error("❌ Failed to create profile:", createError);
         return res.status(500).json({
           success: false,
           error: "Failed to create user profile",
@@ -3057,7 +3202,10 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         (userData?.lastName && profile.last_name !== userData.lastName);
 
       if (needsUpdate && userData) {
-        console.log(`Updating profile for existing Google OAuth user: ${email}`);
+        console.log(`🔄 Updating profile for existing Google OAuth user: ${email}`);
+        console.log('📝 Current profile names:', { first_name: profile.first_name, last_name: profile.last_name });
+        console.log('📝 New userData names:', { firstName: userData.firstName, lastName: userData.lastName });
+
         const updateData = {
           updated_at: new Date().toISOString(),
         };
@@ -3065,12 +3213,16 @@ app.post("/api/auth/google-oauth", async (req, res) => {
         // Update first_name if provided and different
         if (userData.firstName && (!profile.first_name || profile.first_name !== userData.firstName)) {
           updateData.first_name = userData.firstName;
+          console.log(`✏️ Updating first_name: "${profile.first_name}" -> "${userData.firstName}"`);
         }
 
         // Update last_name if provided and different
         if (userData.lastName && (!profile.last_name || profile.last_name !== userData.lastName)) {
           updateData.last_name = userData.lastName;
+          console.log(`✏️ Updating last_name: "${profile.last_name}" -> "${userData.lastName}"`);
         }
+
+        console.log('💾 Update data:', JSON.stringify(updateData, null, 2));
 
         const { data: updatedProfile, error: updateError } = await supabase
           .from("profiles")
@@ -3080,11 +3232,14 @@ app.post("/api/auth/google-oauth", async (req, res) => {
           .single();
 
         if (updateError) {
-          console.error("Failed to update profile:", updateError);
+          console.error("❌ Failed to update profile:", updateError);
           // Don't fail the login, just log the error
         } else {
+          console.log('✅ Profile updated successfully:', JSON.stringify(updatedProfile, null, 2));
           profile = updatedProfile;
         }
+      } else {
+        console.log('ℹ️ No profile update needed');
       }
     }
 

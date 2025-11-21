@@ -22,16 +22,16 @@ export const generateTokens = async (user) => {
     // Get user profile for role information
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, first_name, last_name")
+      .select("email, role, first_name, last_name")
       .eq("id", user.id)
       .single();
 
     const payload = {
       userId: user.id,
-      email: user.email,
+      email: user.email || profile?.email,
       role: profile?.role || "user",
-      firstName: profile?.first_name,
-      lastName: profile?.last_name,
+      firstName: profile?.first_name || null,
+      lastName: profile?.last_name || null,
       emailVerified: user.email_confirmed_at ? true : false,
       iat: Math.floor(Date.now() / 1000),
     };
