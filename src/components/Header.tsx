@@ -474,10 +474,11 @@ const Header = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col gap-4 mt-6">
+                <nav className="flex flex-col gap-4 mt-16 pt-4" data-testid="mobile-menu">
                   <a
                     href="/cars"
                     className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2"
+                    data-testid="new-cars-link"
                   >
                     New Cars
                   </a>
@@ -501,7 +502,7 @@ const Header = () => {
                   </a>
                   <a
                     href="/wishlist"
-                    className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2 sm:hidden"
+                    className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2"
                   >
                     Wishlist
                   </a>
