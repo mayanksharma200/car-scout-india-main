@@ -134,11 +134,11 @@ const allBrands = [
 const BrandGrid = () => {
   const navigate = useNavigate();
   const [showAllBrands, setShowAllBrands] = useState(false);
-  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAvailableBrands = async () => {
+    const fetchBrandCounts = async () => {
       try {
         const { data, error } = await supabase
           .from('cars')
@@ -150,10 +150,15 @@ const BrandGrid = () => {
           return;
         }
 
-        // Extract unique brands and normalize to Title Case for comparison
-        const uniqueBrands = [...new Set(data.map(item => item.brand))];
-        console.log('Available brands from DB:', uniqueBrands);
-        setAvailableBrands(uniqueBrands);
+        // Count cars per brand
+        const counts: Record<string, number> = {};
+        data.forEach(item => {
+          const brand = item.brand;
+          counts[brand] = (counts[brand] || 0) + 1;
+        });
+
+        console.log('Brand counts from DB:', counts);
+        setBrandCounts(counts);
       } catch (err) {
         console.error('Failed to fetch brands:', err);
       } finally {
@@ -161,16 +166,30 @@ const BrandGrid = () => {
       }
     };
 
-    fetchAvailableBrands();
+    fetchBrandCounts();
   }, []);
 
-  // Filter allBrands to only include those present in availableBrands
+  // Filter allBrands to only include those present in brandCounts
   // We compare case-insensitively to be safe
-  const filteredBrands = allBrands.filter(brand =>
-    availableBrands.some(available =>
-      available.toLowerCase() === brand.name.toLowerCase()
+  const filteredBrands = allBrands
+    .filter(brand =>
+      Object.keys(brandCounts).some(available =>
+        available.toLowerCase() === brand.name.toLowerCase()
+      )
     )
-  );
+    .map(brand => {
+      // Find the matching brand name from database (case-insensitive)
+      const dbBrandName = Object.keys(brandCounts).find(
+        available => available.toLowerCase() === brand.name.toLowerCase()
+      );
+      const count = dbBrandName ? brandCounts[dbBrandName] : 0;
+
+      return {
+        ...brand,
+        models: `${count} Model${count !== 1 ? 's' : ''}`,
+        count // Store the count for potential sorting
+      };
+    });
 
   // Show first 8 brands initially, all brands when expanded
   const brandsToShow = showAllBrands ? filteredBrands : filteredBrands.slice(0, 8);
