@@ -72,6 +72,27 @@ const LoanModal = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Name validation
+    if (formData.name.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Name",
+        description: "Name must be at least 2 characters long",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+      });
+      return;
+    }
+
     // Phone validation
     const phoneRegex = /^\d{10}$/;
     if (!formData.phone || !phoneRegex.test(formData.phone)) {
@@ -79,6 +100,26 @@ const LoanModal = ({
         variant: "destructive",
         title: "Invalid Phone Number",
         description: "Please enter a valid 10-digit phone number",
+      });
+      return;
+    }
+
+    // City validation
+    if (formData.city.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid City",
+        description: "City name must be at least 2 characters long",
+      });
+      return;
+    }
+
+    // Monthly Income validation (if provided)
+    if (formData.monthlyIncome && parseInt(formData.monthlyIncome) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Income",
+        description: "Monthly income must be a positive number",
       });
       return;
     }

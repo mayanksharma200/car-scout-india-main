@@ -34,6 +34,27 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Name validation
+    if (formData.name.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Name",
+        description: "Name must be at least 2 characters long"
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address"
+      });
+      return;
+    }
+
     // Phone validation
     const phoneRegex = /^\d{10}$/;
     if (!formData.phone || !phoneRegex.test(formData.phone)) {
@@ -44,6 +65,29 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
       });
       return;
     }
+
+    // Budget validation
+    if (formData.budget_min && formData.budget_max) {
+      if (parseInt(formData.budget_min) > parseInt(formData.budget_max)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Budget Range",
+          description: "Minimum budget cannot be greater than maximum budget"
+        });
+        return;
+      }
+    }
+
+    if ((formData.budget_min && parseInt(formData.budget_min) < 0) ||
+      (formData.budget_max && parseInt(formData.budget_max) < 0)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Budget",
+        description: "Budget amounts cannot be negative"
+      });
+      return;
+    }
+
     setShowOTP(true);
   };
 

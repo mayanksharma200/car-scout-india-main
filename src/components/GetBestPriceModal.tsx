@@ -32,6 +32,27 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Name validation
+    if (formData.name.length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Name",
+        description: "Name must be at least 2 characters long"
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address"
+      });
+      return;
+    }
+
     // Phone validation
     const phoneRegex = /^\d{10}$/;
     if (!formData.phone || !phoneRegex.test(formData.phone)) {
