@@ -1988,6 +1988,64 @@ app.post("/api/admin/cars/:id/delete-image", async (req, res) => {
       }
     }
 
+    // Fetch the current car data
+    const { data: car, error: fetchError } = await supabase
+      .from('cars')
+      .select('color_variant_images')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !car) {
+      console.error('Error fetching car data:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Car not found'
+      });
+    }
+
+    // Remove the image URL from color_variant_images
+    if (car.color_variant_images && typeof car.color_variant_images === 'object') {
+      let updated = false;
+      const updatedColorVariantImages = { ...car.color_variant_images };
+
+      // Iterate through each color
+      Object.keys(updatedColorVariantImages).forEach(colorName => {
+        const colorData = updatedColorVariantImages[colorName];
+        if (colorData && colorData.images && typeof colorData.images === 'object') {
+          // Iterate through each angle
+          Object.keys(colorData.images).forEach(angle => {
+            if (colorData.images[angle] === imageUrl) {
+              // Remove the image URL
+              delete colorData.images[angle];
+              updated = true;
+              console.log(`✅ Removed image URL from database: ${colorName} -> ${angle}`);
+            }
+          });
+        }
+      });
+
+      // Update the database if any changes were made
+      if (updated) {
+        const { error: updateError } = await supabase
+          .from('cars')
+          .update({
+            color_variant_images: updatedColorVariantImages,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Error updating car data:', updateError);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to update database'
+          });
+        }
+
+        console.log(`✅ Updated database for car ${id}`);
+      }
+    }
+
     res.json({
       success: true,
       message: 'Image deleted successfully'
