@@ -42,6 +42,7 @@ const LoanModal = ({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -68,6 +69,18 @@ const LoanModal = ({
   };
 
   const config = modalConfig[modalType];
+
+  // Check if form is valid for submit button state
+  const isFormValid = () => {
+    return (
+      formData.name.length >= 2 &&
+      formData.email.length > 0 &&
+      formData.phone.length === 10 &&
+      formData.city.length >= 2 &&
+      formData.employmentType.length > 0 &&
+      formData.monthlyIncome.length > 0
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,12 +127,22 @@ const LoanModal = ({
       return;
     }
 
-    // Monthly Income validation (if provided)
-    if (formData.monthlyIncome && parseInt(formData.monthlyIncome) <= 0) {
+    // Employment Type validation
+    if (!formData.employmentType) {
+      toast({
+        variant: "destructive",
+        title: "Employment Type Required",
+        description: "Please select your employment type",
+      });
+      return;
+    }
+
+    // Monthly Income validation
+    if (!formData.monthlyIncome || parseInt(formData.monthlyIncome) <= 0) {
       toast({
         variant: "destructive",
         title: "Invalid Income",
-        description: "Monthly income must be a positive number",
+        description: "Please enter a valid monthly income",
       });
       return;
     }
@@ -221,6 +244,7 @@ const LoanModal = ({
 
       setOpen(false);
       setShowOTP(false);
+      setPhoneError("");
       setFormData({
         name: "",
         email: "",
@@ -306,11 +330,28 @@ const LoanModal = ({
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                }
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                  if (value.length <= 10) {
+                    setFormData((prev) => ({ ...prev, phone: value }));
+                    // Clear error when user is typing
+                    if (phoneError) setPhoneError("");
+                  }
+                }}
+                onBlur={() => {
+                  // Validate on blur (when user leaves the field)
+                  if (formData.phone.length > 0 && formData.phone.length < 10) {
+                    setPhoneError("Please enter a valid 10-digit phone number");
+                  }
+                }}
+                maxLength={10}
+                placeholder="10-digit phone number"
+                className={phoneError ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {phoneError && (
+                <p className="text-sm text-red-500 mt-1">{phoneError}</p>
+              )}
             </div>
           </div>
 
@@ -340,7 +381,7 @@ const LoanModal = ({
               />
             </div>
             <div>
-              <Label htmlFor="employmentType">Employment Type</Label>
+              <Label htmlFor="employmentType">Employment Type *</Label>
               <Select
                 value={formData.employmentType}
                 onValueChange={(value) =>
@@ -350,7 +391,7 @@ const LoanModal = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="salaried">Salaried</SelectItem>
                   <SelectItem value="self_employed">Self Employed</SelectItem>
                   <SelectItem value="business">Business Owner</SelectItem>
@@ -361,17 +402,25 @@ const LoanModal = ({
           </div>
 
           <div>
-            <Label htmlFor="monthlyIncome">Monthly Income (₹)</Label>
+            <Label htmlFor="monthlyIncome">Monthly Income (₹) *</Label>
             <Input
               id="monthlyIncome"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={formData.monthlyIncome}
-              onChange={(e) =>
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, ''); // Only allow digits
                 setFormData((prev) => ({
                   ...prev,
-                  monthlyIncome: e.target.value,
+                  monthlyIncome: value,
                 }))
-              }
+              }}
+              onKeyDown={(e) => {
+                // Prevent 'e', 'E', '+', '-', '.'
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Ex: 50000"
             />
           </div>
@@ -388,7 +437,7 @@ const LoanModal = ({
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading || !isFormValid()} className="w-full">
             {loading ? "Submitting..." : "Send OTP & Submit"}
           </Button>
         </form>
