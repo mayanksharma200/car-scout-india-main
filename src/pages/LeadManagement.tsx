@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Search, Filter, MoreHorizontal, Phone, Mail, Calendar, Car, TrendingUp, MapPin, Eye, MessageSquare, ExternalLink, Edit, Trash2, IndianRupee, Briefcase, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Search, Filter, MoreHorizontal, Phone, Mail, Calendar, Car, TrendingUp, MapPin, Eye, MessageSquare, ExternalLink, Edit, Trash2, IndianRupee, Briefcase, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -242,6 +242,106 @@ const LeadManagement = () => {
 
   const filteredLeads = leads;
 
+  const exportToCSV = async () => {
+    try {
+      // Fetch all leads with current filters (no pagination limit)
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "10000", // Get all leads
+        sort_by: "created_at",
+        sort_order: "desc",
+      });
+
+      if (searchQuery) params.append("search", searchQuery);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (sourceFilter !== "all") params.append("source", sourceFilter);
+
+      const response = await fetch(`/api/admin/leads?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch leads for export");
+      }
+
+      const result = await response.json();
+      const allLeads = result.success ? result.data : [];
+
+      if (allLeads.length === 0) {
+        toast.error("No leads to export");
+        return;
+      }
+
+      // Define CSV headers
+      const headers = [
+        "ID",
+        "Name",
+        "Email",
+        "Phone",
+        "City",
+        "Source",
+        "Status",
+        "Car ID",
+        "Budget Min",
+        "Budget Max",
+        "Timeline",
+        "Employment Type",
+        "Monthly Income",
+        "Loan Amount",
+        "EMI Amount",
+        "Message",
+        "API Sent",
+        "Created At",
+        "Updated At"
+      ];
+
+      // Convert leads to CSV rows
+      const rows = allLeads.map((lead: Lead) => [
+        lead.id,
+        lead.name,
+        lead.email,
+        lead.phone,
+        lead.city,
+        lead.source,
+        lead.status,
+        lead.interested_car_id || "",
+        lead.budget_min || "",
+        lead.budget_max || "",
+        lead.timeline || "",
+        lead.employment_type || "",
+        lead.monthly_income || "",
+        lead.loan_amount || "",
+        lead.emi_amount || "",
+        lead.message ? lead.message.replace(/"/g, '""') : "", // Escape quotes
+        lead.api_sent ? "Yes" : "No",
+        formatDate(lead.created_at),
+        formatDate(lead.updated_at)
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.map(h => `"${h}"`).join(","),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute("href", url);
+      link.setAttribute("download", `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Exported ${allLeads.length} leads to CSV`);
+    } catch (error) {
+      console.error("Error exporting leads:", error);
+      toast.error("Failed to export leads");
+    }
+  };
+
   const renderLeadTypeDetails = (lead: Lead) => {
     switch (lead.source) {
       case 'loan_comparison':
@@ -439,6 +539,10 @@ const LeadManagement = () => {
                   <SelectItem value="website">Website</SelectItem>
                 </SelectContent>
               </Select>
+              <Button onClick={exportToCSV} variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
             </div>
           </CardContent>
         </Card>

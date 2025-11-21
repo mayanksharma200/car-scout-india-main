@@ -2298,6 +2298,57 @@ app.put("/api/admin/leads/:id", async (req, res) => {
 
 // ===== USER MANAGEMENT ENDPOINTS =====
 
+// Debug endpoint to check total users count
+app.get("/api/admin/users/debug", async (req, res) => {
+  try {
+    // Check profiles table
+    const { data: profilesData, error: profilesError, count: profilesCount } = await supabase
+      .from("profiles")
+      .select("*", { count: 'exact' });
+
+    // Check auth.users via admin API
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+
+    console.log('[Debug] Profiles query:', {
+      totalRecords: profilesData?.length,
+      count: profilesCount,
+      error: profilesError?.message,
+      sampleEmails: profilesData?.slice(0, 3).map(u => u.email)
+    });
+
+    console.log('[Debug] Auth users:', {
+      totalAuthUsers: authUsers?.users?.length,
+      error: authError?.message,
+      sampleEmails: authUsers?.users?.slice(0, 3).map(u => u.email)
+    });
+
+    res.json({
+      success: true,
+      profiles: {
+        totalInDatabase: profilesCount,
+        recordsReturned: profilesData?.length,
+        data: profilesData
+      },
+      authUsers: {
+        total: authUsers?.users?.length || 0,
+        data: authUsers?.users?.map(u => ({
+          id: u.id,
+          email: u.email,
+          created_at: u.created_at,
+          email_confirmed_at: u.email_confirmed_at
+        }))
+      },
+      error: profilesError?.message || authError?.message || null
+    });
+  } catch (error) {
+    console.error('[Debug] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get all users with profiles
 app.get("/api/admin/users", async (req, res) => {
   try {
@@ -2312,45 +2363,101 @@ app.get("/api/admin/users", async (req, res) => {
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    let query = supabase
-      .from("profiles")
-      .select("*", { count: 'exact' });
+    console.log('[Admin Users] Query params:', { page, limit, role, search, sort_by, sort_order, offset });
 
-    // Filter by role
-    if (role && role !== 'all') {
-      query = query.eq('role', role);
-    }
+    // Get all auth users
+    const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
 
-    // Search by email, first_name, or last_name
-    if (search) {
-      query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-    }
-
-    // Sorting
-    query = query.order(sort_by, { ascending: sort_order === 'asc' });
-
-    // Pagination
-    query = query.range(offset, offset + parseInt(limit) - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error('[Admin] Error fetching users:', error);
+    if (authError) {
+      console.error('[Admin] Error fetching auth users:', authError);
       return res.status(500).json({
         success: false,
         error: 'Failed to fetch users',
-        details: error.message
+        details: authError.message
       });
     }
 
+    // Get all profiles
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*");
+
+    if (profilesError) {
+      console.error('[Admin] Error fetching profiles:', profilesError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch profiles',
+        details: profilesError.message
+      });
+    }
+
+    // Create a map of profiles by user ID
+    const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+    // Merge auth users with their profiles
+    let mergedUsers = authUsersData.users.map(authUser => {
+      const profile = profilesMap.get(authUser.id);
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        role: profile?.role || 'user',
+        created_at: authUser.created_at,
+        updated_at: profile?.updated_at || authUser.updated_at,
+        first_name: profile?.first_name || null,
+        last_name: profile?.last_name || null,
+        phone: profile?.phone || null,
+        avatar_url: profile?.avatar_url || null,
+        last_login: profile?.last_login || null,
+        login_count: profile?.login_count || 0,
+        failed_login_attempts: profile?.failed_login_attempts || 0,
+        locked_until: profile?.locked_until || null,
+        is_active: profile?.is_active ?? true,
+        email_verified: authUser.email_confirmed_at ? true : false,
+        phone_verified: profile?.phone_verified || false,
+        city: profile?.city || null
+      };
+    });
+
+    // Apply filters
+    if (role && role !== 'all') {
+      mergedUsers = mergedUsers.filter(u => u.role === role);
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      mergedUsers = mergedUsers.filter(u =>
+        u.email?.toLowerCase().includes(searchLower) ||
+        u.first_name?.toLowerCase().includes(searchLower) ||
+        u.last_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Sort
+    mergedUsers.sort((a, b) => {
+      const aVal = a[sort_by];
+      const bVal = b[sort_by];
+      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sort_order === 'asc' ? comparison : -comparison;
+    });
+
+    const totalUsers = mergedUsers.length;
+    const paginatedUsers = mergedUsers.slice(offset, offset + parseInt(limit));
+
+    console.log('[Admin Users] Query result:', {
+      totalAuthUsers: authUsersData.users.length,
+      totalProfiles: profilesData?.length,
+      mergedTotal: totalUsers,
+      paginatedCount: paginatedUsers.length
+    });
+
     res.json({
       success: true,
-      data: data || [],
+      data: paginatedUsers,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / parseInt(limit))
+        total: totalUsers,
+        totalPages: Math.ceil(totalUsers / parseInt(limit))
       }
     });
 

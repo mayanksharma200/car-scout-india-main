@@ -228,8 +228,47 @@ const AdminUserManagement = () => {
   };
 
   // Export to CSV
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
     try {
+      // Fetch all users for export (no pagination)
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "10000", // Get all users
+        sort_by: 'created_at',
+        sort_order: 'desc'
+      });
+
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+
+      if (roleFilter && roleFilter !== 'all') {
+        params.append('role', roleFilter);
+      }
+
+      const response = await fetch(`/api/admin/users?${params}`);
+      const result = await response.json();
+
+      if (!result.success) {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to fetch users for export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const allUsers = result.data || [];
+
+      if (allUsers.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No users to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Prepare CSV headers
       const headers = [
         "Email",
@@ -245,7 +284,7 @@ const AdminUserManagement = () => {
       ];
 
       // Prepare CSV rows
-      const rows = users.map(user => [
+      const rows = allUsers.map((user: User) => [
         user.email,
         user.first_name || "",
         user.last_name || "",
@@ -277,7 +316,7 @@ const AdminUserManagement = () => {
 
       toast({
         title: "Success",
-        description: `Exported ${users.length} users to CSV`,
+        description: `Exported ${allUsers.length} users to CSV`,
       });
     } catch (error) {
       console.error("Error exporting CSV:", error);
