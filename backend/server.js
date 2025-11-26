@@ -1932,7 +1932,7 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
 // Generate a single image for a specific angle using Ideogram AI
 app.post("/api/admin/cars/ideogram-generate-single", validateToken, async (req, res) => {
   try {
-    const { carData, angle, colorName, colorCode, options = {} } = req.body;
+    const { carId, carData, angle, colorName, colorCode, options = {} } = req.body;
 
     if (!carData || !angle) {
       return res.status(400).json({
@@ -1986,7 +1986,7 @@ app.post("/api/admin/cars/ideogram-generate-single", validateToken, async (req, 
       // Log image generation
       await logImageGeneration(
         req.user?.id,
-        carData.id, // Might be undefined for new cars
+        carId || carData.id, // Use passed carId or fallback to carData.id
         'add_edit_car',
         1,
         0.03,

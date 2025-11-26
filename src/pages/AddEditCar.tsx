@@ -498,6 +498,7 @@ const AddEditCar = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          carId: id,
           carData: {
             brand: formData.brand,
             model: formData.model,
