@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface CarFormData {
   // Basic Information
@@ -87,6 +88,7 @@ interface CarFormData {
 const AddEditCar = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getAuthHeaders } = useAdminAuth();
   const isEditMode = Boolean(id);
 
   const [loading, setLoading] = useState(false);
@@ -370,9 +372,18 @@ const AddEditCar = () => {
     // If it's an S3 URL and we're in edit mode, delete from S3
     if (imageUrl && typeof imageUrl === 'string' && isEditMode && id && imageUrl.includes('amazonaws.com')) {
       try {
+        // Get auth headers
+        const headers = getAuthHeaders();
+
+        if (!headers.Authorization) {
+          console.error("No auth token found for delete");
+          return;
+        }
+
         const response = await fetch(`/api/admin/cars/${id}/delete-image`, {
           method: 'POST',
           headers: {
+            ...headers,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ imageUrl }),
@@ -418,9 +429,18 @@ const AddEditCar = () => {
       // If we're in edit mode and there's an existing image, delete it first
       if (currentImageUrl && typeof currentImageUrl === 'string' && isEditMode && id && currentImageUrl.includes('amazonaws.com')) {
         try {
+          // Get auth headers
+          const headers = getAuthHeaders();
+
+          if (!headers.Authorization) {
+            console.error("No auth token found for delete old image");
+            return;
+          }
+
           const deleteResponse = await fetch(`/api/admin/cars/${id}/delete-image`, {
             method: 'POST',
             headers: {
+              ...headers,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ imageUrl: currentImageUrl }),
@@ -463,9 +483,18 @@ const AddEditCar = () => {
         }
       }
 
+      // Get auth headers from AdminAuthContext
+      const headers = getAuthHeaders();
+
+      if (!headers.Authorization) {
+        toast.error("Authentication required. Please log in again.");
+        return;
+      }
+
       const response = await fetch('/api/admin/cars/ideogram-generate-single', {
         method: 'POST',
         headers: {
+          ...headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -540,7 +569,7 @@ const AddEditCar = () => {
         // Parse colors and color codes to map color names to their codes
         const colorNames = formData.colors ? formData.colors.split(';').map(c => c.trim()) : [];
         const colorCodes = formData.color_codes ? formData.color_codes.split(';').map(c => c.trim()) : [];
-        
+
         // Create a map of color name to color code
         const colorCodeMap: Record<string, string> = {};
         colorNames.forEach((name, index) => {
@@ -552,7 +581,7 @@ const AddEditCar = () => {
         Object.keys(formData.color_images).forEach(colorName => {
           // Skip the default color as it's not a real color
           if (colorName === 'default') return;
-          
+
           const imagesArray = formData.color_images[colorName];
           if (Array.isArray(imagesArray) && imagesArray.length > 0) {
             const angleOrder = [
@@ -649,7 +678,7 @@ const AddEditCar = () => {
         // Images - send both formats for compatibility, but prioritize color_variant_images
         images: formData.color_images,
         color_variant_images: colorVariantImages,
-        
+
         // Add ideogram_images metadata if we have color_variant_images with data
         ideogram_images: Object.keys(colorVariantImages).length > 0 ? {
           valid: true,

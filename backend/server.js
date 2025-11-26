@@ -189,6 +189,33 @@ const logAdminActivity = async (activityData) => {
   }
 };
 
+/**
+ * Log image generation activity
+ */
+const logImageGeneration = async (userId, carId, source, imageCount, cost, metadata = {}) => {
+  try {
+    const logEntry = {
+      user_id: userId || null,
+      car_id: carId || null,
+      source,
+      image_count: imageCount,
+      cost,
+      metadata,
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('image_generation_logs')
+      .insert([logEntry]);
+
+    if (error) throw error;
+
+    console.log(`[ImageLog] Logged ${imageCount} images from ${source} (Cost: $${cost})`);
+  } catch (error) {
+    console.error('[ImageLog] Failed to log image generation:', error.message);
+  }
+};
+
 // ===== TOKEN MANAGEMENT =====
 
 // Generate JWT tokens (environment-aware)
@@ -284,60 +311,118 @@ const validateToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, TOKEN_CONFIG.secret, {
-      issuer: TOKEN_CONFIG.issuer,
-      audience: TOKEN_CONFIG.audience,
-    });
 
-    // Verify user exists and is active
-    const { data: user, error } = await supabase.auth.admin.getUserById(
-      decoded.userId
-    );
-    if (error || !user) {
+    // Handle "undefined" or "null" string tokens which cause malformed errors
+    if (!token || token === 'undefined' || token === 'null') {
       return res.status(401).json({
         success: false,
-        error: "Invalid token - user not found",
-        code: "USER_NOT_FOUND",
+        error: "Invalid token format",
+        code: "INVALID_TOKEN_FORMAT",
       });
     }
 
-    // Check account status
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_active, role, failed_login_attempts, locked_until")
-      .eq("id", decoded.userId)
-      .single();
+    try {
+      // 1. Try verifying as a custom backend token
+      const decoded = jwt.verify(token, TOKEN_CONFIG.secret, {
+        issuer: TOKEN_CONFIG.issuer,
+        audience: TOKEN_CONFIG.audience,
+      });
 
-    if (profile) {
-      if (!profile.is_active) {
-        return res.status(401).json({
-          success: false,
-          error: "Account is deactivated",
-          code: "ACCOUNT_DEACTIVATED",
-        });
+      // Verify user exists and is active
+      const { data: user, error } = await supabase.auth.admin.getUserById(
+        decoded.userId
+      );
+      if (error || !user) {
+        throw new Error("User not found");
       }
 
-      if (profile.locked_until && new Date(profile.locked_until) > new Date()) {
-        return res.status(401).json({
-          success: false,
-          error: "Account is temporarily locked",
-          code: "ACCOUNT_LOCKED",
-        });
+      // Check account status
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_active, role, failed_login_attempts, locked_until, first_name, last_name")
+        .eq("id", decoded.userId)
+        .single();
+
+      if (profile) {
+        if (!profile.is_active) {
+          return res.status(401).json({
+            success: false,
+            error: "Account is deactivated",
+            code: "ACCOUNT_DEACTIVATED",
+          });
+        }
+
+        if (profile.locked_until && new Date(profile.locked_until) > new Date()) {
+          return res.status(401).json({
+            success: false,
+            error: "Account is temporarily locked",
+            code: "ACCOUNT_LOCKED",
+          });
+        }
+      }
+
+      req.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        firstName: decoded.firstName,
+        lastName: decoded.lastName,
+        emailVerified: decoded.emailVerified,
+      };
+
+      return next();
+
+    } catch (jwtError) {
+      // 2. If custom token fails, try validating as a Supabase session token
+      // This is necessary because the frontend uses Supabase Auth directly
+
+      // Only try fallback if it was a verification error, not a logic error above
+      if (jwtError.name === 'JsonWebTokenError' || jwtError.name === 'TokenExpiredError') {
+        try {
+          const { data: { user }, error: supabaseError } = await supabase.auth.getUser(token);
+
+          if (supabaseError || !user) {
+            // If both fail, return the original JWT error or generic unauthorized
+            console.error("Supabase token validation failed:", supabaseError?.message);
+            throw jwtError;
+          }
+
+          // Fetch profile to get role
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, first_name, last_name, is_active, city")
+            .eq("id", user.id)
+            .single();
+
+          if (profile && !profile.is_active) {
+            return res.status(401).json({
+              success: false,
+              error: "Account is deactivated",
+              code: "ACCOUNT_DEACTIVATED",
+            });
+          }
+
+          // Populate req.user from Supabase user and profile
+          req.user = {
+            id: user.id,
+            email: user.email,
+            role: profile?.role || 'user',
+            firstName: profile?.first_name || user.user_metadata?.first_name,
+            lastName: profile?.last_name || user.user_metadata?.last_name,
+            emailVerified: user.email_confirmed_at ? true : false,
+          };
+
+          return next();
+        } catch (fallbackError) {
+          // If fallback also fails, throw the original error to be handled by the outer catch
+          throw jwtError;
+        }
+      } else {
+        throw jwtError;
       }
     }
-
-    req.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      firstName: decoded.firstName,
-      lastName: decoded.lastName,
-      emailVerified: decoded.emailVerified,
-    };
-
-    next();
   } catch (error) {
-    console.error("Token validation error:", error);
+    console.error("Token validation error:", error.message);
 
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
@@ -1564,7 +1649,7 @@ app.get("/api/admin/cars", async (req, res) => {
 });
 
 // Admin endpoint for generating images with Ideogram AI (with streaming support)
-app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
+app.post("/api/admin/cars/ideogram-generate", validateToken, async (req, res) => {
   try {
     const { carId, carData, options = {} } = req.body;
 
@@ -1624,6 +1709,20 @@ app.post("/api/admin/cars/ideogram-generate", async (req, res) => {
         errors: ideogramResult.errors,
         message: `Generated ${ideogramResult.totalImages} images across ${ideogramResult.totalColors} colors.`
       })}\n\n`);
+
+      // Log image generation
+      const cost = ideogramResult.totalImages * 0.03;
+      await logImageGeneration(
+        req.user?.id,
+        carId,
+        'dashboard',
+        ideogramResult.totalImages,
+        cost,
+        {
+          carName: `${carData.brand} ${carData.model}`,
+          totalColors: ideogramResult.totalColors
+        }
+      );
     } else {
       console.log(`❌ Ideogram generation failed for: ${carData.brand} ${carData.model}`);
       res.write(`data: ${JSON.stringify({
@@ -1831,7 +1930,7 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
 });
 
 // Generate a single image for a specific angle using Ideogram AI
-app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
+app.post("/api/admin/cars/ideogram-generate-single", validateToken, async (req, res) => {
   try {
     const { carData, angle, colorName, colorCode, options = {} } = req.body;
 
@@ -1883,6 +1982,20 @@ app.post("/api/admin/cars/ideogram-generate-single", async (req, res) => {
 
     if (ideogramResult && ideogramResult.url) {
       console.log(`✅ Successfully generated single Ideogram image for: ${carData.brand} ${carData.model} - ${angle}`);
+
+      // Log image generation
+      await logImageGeneration(
+        req.user?.id,
+        carData.id, // Might be undefined for new cars
+        'add_edit_car',
+        1,
+        0.03,
+        {
+          angle,
+          carName: `${carData.brand} ${carData.model}`,
+          color: colorName
+        }
+      );
 
       // Upload directly to S3
       if (s3UploadService.isConfigured()) {
@@ -2062,7 +2175,7 @@ app.post("/api/admin/cars/:id/delete-image", async (req, res) => {
 });
 
 // Batch Ideogram generation endpoint for multiple cars
-app.post("/api/admin/cars/ideogram-bulk-generate", async (req, res) => {
+app.post("/api/admin/cars/ideogram-bulk-generate", validateToken, async (req, res) => {
   try {
     const { carIds, options = {} } = req.body;
 
@@ -2148,6 +2261,19 @@ app.post("/api/admin/cars/ideogram-bulk-generate", async (req, res) => {
               imagesCount: ideogramResult.totalImages,
               primaryImage: ideogramResult.primaryImage
             });
+
+            // Log image generation for this car
+            const cost = ideogramResult.totalImages * 0.03;
+            await logImageGeneration(
+              req.user?.id,
+              carId,
+              'bulk',
+              ideogramResult.totalImages,
+              cost,
+              {
+                carName: `${car.brand} ${car.model}`
+              }
+            );
             successCount++;
           }
         } else {
@@ -2405,10 +2531,10 @@ app.post("/api/admin/users/backfill-google-profiles", async (req, res) => {
       if (!profile) {
         // Profile doesn't exist - create it
         const firstName = authUser.user_metadata?.given_name ||
-                         authUser.user_metadata?.full_name?.split(' ')[0] ||
-                         authUser.email?.split('@')[0] || '';
+          authUser.user_metadata?.full_name?.split(' ')[0] ||
+          authUser.email?.split('@')[0] || '';
         const lastName = authUser.user_metadata?.family_name ||
-                        authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
+          authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '';
 
         creates.push({
           id: authUser.id,
@@ -2426,12 +2552,12 @@ app.post("/api/admin/users/backfill-google-profiles", async (req, res) => {
       } else if (isGoogleUser && (!profile.first_name || !profile.last_name || !profile.email)) {
         // Profile exists but is missing name data for Google user
         const firstName = authUser.user_metadata?.given_name ||
-                         authUser.user_metadata?.full_name?.split(' ')[0] ||
-                         profile.first_name ||
-                         authUser.email?.split('@')[0] || '';
+          authUser.user_metadata?.full_name?.split(' ')[0] ||
+          profile.first_name ||
+          authUser.email?.split('@')[0] || '';
         const lastName = authUser.user_metadata?.family_name ||
-                        authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
-                        profile.last_name || '';
+          authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') ||
+          profile.last_name || '';
 
         if (firstName !== profile.first_name || lastName !== profile.last_name || !profile.email) {
           updates.push({

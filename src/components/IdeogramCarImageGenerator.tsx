@@ -18,6 +18,7 @@ import {
   Wand2
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { carAPI } from "@/services/api";
 
@@ -103,6 +104,7 @@ const IdeogramCarImageGenerator = () => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedColorImages, setSelectedColorImages] = useState<Record<string, string[]>>({});
   const [isUploading, setIsUploading] = useState(false);
+  const { getAuthHeaders } = useAdminAuth();
 
   // Car inventory image preview
   const [carImagePreview, setCarImagePreview] = useState<CarItem | null>(null);
@@ -296,10 +298,19 @@ const IdeogramCarImageGenerator = () => {
             }
           });
 
+          // Get auth headers
+          const headers = getAuthHeaders();
+
+          if (!headers.Authorization) {
+            toast.error("Authentication required. Please log in again.");
+            return;
+          }
+
           // Use fetch with streaming for POST request
           const response = await fetch('/api/admin/cars/ideogram-generate', {
             method: 'POST',
             headers: {
+              ...headers,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -627,9 +638,19 @@ const IdeogramCarImageGenerator = () => {
         toast.info(`Uploading ${totalImages} images to S3...`);
       }
 
+      // Get auth headers
+      const headers = getAuthHeaders();
+
+      if (!headers.Authorization) {
+        toast.error("Authentication required. Please log in again.");
+        setIsUploading(false);
+        return;
+      }
+
       const response = await fetch('/api/admin/cars/ideogram-approve-images', {
         method: 'POST',
         headers: {
+          ...headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -696,7 +717,7 @@ const IdeogramCarImageGenerator = () => {
               <select
                 className="w-full mt-1 p-2 border rounded-md bg-white"
                 value={options.num_images}
-                onChange={(e) => setOptions({...options, num_images: parseInt(e.target.value)})}
+                onChange={(e) => setOptions({ ...options, num_images: parseInt(e.target.value) })}
               >
                 <option value="4">4 angles</option>
                 <option value="8">8 angles (Full)</option>
@@ -707,7 +728,7 @@ const IdeogramCarImageGenerator = () => {
               <select
                 className="w-full mt-1 p-2 border rounded-md bg-white"
                 value={options.aspect_ratio}
-                onChange={(e) => setOptions({...options, aspect_ratio: e.target.value})}
+                onChange={(e) => setOptions({ ...options, aspect_ratio: e.target.value })}
               >
                 <option value="16x9">16:9 (Wide)</option>
                 <option value="4x3">4:3</option>
@@ -722,7 +743,7 @@ const IdeogramCarImageGenerator = () => {
               <select
                 className="w-full mt-1 p-2 border rounded-md bg-white"
                 value={options.rendering_speed}
-                onChange={(e) => setOptions({...options, rendering_speed: e.target.value as GenerationOptions['rendering_speed']})}
+                onChange={(e) => setOptions({ ...options, rendering_speed: e.target.value as GenerationOptions['rendering_speed'] })}
               >
                 <option value="FLASH">Flash (Fast)</option>
                 <option value="TURBO">Turbo (Balanced)</option>
@@ -735,7 +756,7 @@ const IdeogramCarImageGenerator = () => {
               <select
                 className="w-full mt-1 p-2 border rounded-md bg-white"
                 value={options.style_type}
-                onChange={(e) => setOptions({...options, style_type: e.target.value as GenerationOptions['style_type']})}
+                onChange={(e) => setOptions({ ...options, style_type: e.target.value as GenerationOptions['style_type'] })}
               >
                 <option value="REALISTIC">Realistic</option>
                 <option value="AUTO">Auto</option>
@@ -850,9 +871,8 @@ const IdeogramCarImageGenerator = () => {
               {filteredCars.map((car) => (
                 <div
                   key={car.id}
-                  className={`flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors ${
-                    selectedCars.includes(car.id) ? 'bg-purple-50 border-purple-200' : ''
-                  }`}
+                  className={`flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors ${selectedCars.includes(car.id) ? 'bg-purple-50 border-purple-200' : ''
+                    }`}
                   onClick={() => toggleCarSelection(car.id)}
                 >
                   <Checkbox
@@ -978,10 +998,9 @@ const IdeogramCarImageGenerator = () => {
               {processedCars.map((car) => (
                 <div
                   key={car.id}
-                  className={`rounded border ${
-                    car.status === 'pending_approval' ? 'bg-yellow-50 border-yellow-200' :
+                  className={`rounded border ${car.status === 'pending_approval' ? 'bg-yellow-50 border-yellow-200' :
                     car.status === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between p-3">
                     <div className="flex-1">
@@ -1031,10 +1050,9 @@ const IdeogramCarImageGenerator = () => {
                         {car.generationLogs.map((log, idx) => (
                           <div
                             key={idx}
-                            className={`flex items-start gap-2 text-xs p-1.5 rounded ${
-                              log.status === 'success' ? 'bg-green-100' :
+                            className={`flex items-start gap-2 text-xs p-1.5 rounded ${log.status === 'success' ? 'bg-green-100' :
                               log.status === 'failed' ? 'bg-red-100' : 'bg-gray-100'
-                            }`}
+                              }`}
                           >
                             {log.status === 'success' ? (
                               <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
@@ -1047,10 +1065,9 @@ const IdeogramCarImageGenerator = () => {
                               <div className="font-medium capitalize">
                                 {log.color} - {log.angle}
                               </div>
-                              <div className={`${
-                                log.status === 'success' ? 'text-green-700' :
+                              <div className={`${log.status === 'success' ? 'text-green-700' :
                                 log.status === 'failed' ? 'text-red-700' : 'text-gray-600'
-                              }`}>
+                                }`}>
                                 {log.message}
                               </div>
                             </div>
@@ -1166,11 +1183,10 @@ const IdeogramCarImageGenerator = () => {
                           {colorData.images.map((image, index) => (
                             <div
                               key={index}
-                              className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                                colorSelectedImages.includes(image.url)
-                                  ? 'border-purple-500 ring-2 ring-purple-200'
-                                  : 'border-gray-200 hover:border-gray-400'
-                              }`}
+                              className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${colorSelectedImages.includes(image.url)
+                                ? 'border-purple-500 ring-2 ring-purple-200'
+                                : 'border-gray-200 hover:border-gray-400'
+                                }`}
                               onClick={() => toggleColorImageSelection(colorName, image.url)}
                             >
                               <div className="aspect-video bg-gray-100 relative">
@@ -1221,11 +1237,10 @@ const IdeogramCarImageGenerator = () => {
                     {currentCarForReview.generated_images?.map((image, index) => (
                       <div
                         key={index}
-                        className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                          selectedImages.includes(image.url)
-                            ? 'border-purple-500 ring-2 ring-purple-200'
-                            : 'border-gray-200 hover:border-gray-400'
-                        }`}
+                        className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${selectedImages.includes(image.url)
+                          ? 'border-purple-500 ring-2 ring-purple-200'
+                          : 'border-gray-200 hover:border-gray-400'
+                          }`}
                         onClick={() => toggleImageSelection(image.url)}
                       >
                         <div className="aspect-video bg-gray-100 relative">
