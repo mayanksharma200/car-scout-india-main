@@ -195,22 +195,29 @@ export function useContent() {
     try {
       setLoading(true);
 
-      // Fetch news from API
-      const { data: newsData, error: newsError } = await supabase
-        .from('news_articles' as any)
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch news from Public API
+      // Use VITE_API_URL or default to /api
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${apiUrl}/news?limit=100`); // Fetch recent news
 
-      if (newsError) throw newsError;
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
 
-      const typedNewsData = (newsData || []) as any[];
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch news');
+      }
+
+      const newsData = result.data || [];
 
       // Transform news data to match Content interface
-      const formattedNews = typedNewsData.map(item => ({
+      const formattedNews = newsData.map((item: any) => ({
         id: item.id,
         title: item.title,
         type: 'news' as const,
-        status: item.status as 'published' | 'draft' | 'scheduled' | 'review',
+        status: 'published', // Public API only returns published
         author: item.author,
         category: item.category,
         slug: item.slug,
@@ -223,15 +230,10 @@ export function useContent() {
         updated_at: item.updated_at
       }));
 
-      // Combine with other content types if needed (currently only news is dynamic)
-      // You might want to fetch pages here too if you have a pages table
-
       setContent(formattedNews);
     } catch (err) {
       console.error('Failed to fetch content:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch content');
-      // Fallback to mock data if DB fails (optional, maybe remove in production)
-      // setContent(mockContent); 
     } finally {
       setLoading(false);
     }

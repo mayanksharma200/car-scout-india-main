@@ -1784,12 +1784,18 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
 // Get All News Articles (Admin)
 app.get("/api/admin/news", async (req, res) => {
   try {
+    console.log("[Admin] Fetching all news articles...");
     const { data, error } = await supabase
       .from("news_articles")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Admin] Error fetching news from DB:", error);
+      throw error;
+    }
+
+    console.log(`[Admin] Fetched ${data?.length || 0} articles from DB`);
 
     res.json({
       success: true,
