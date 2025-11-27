@@ -22,9 +22,17 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 console.log(`🔧 Mode: ${IS_PRODUCTION ? "Production" : "Development"}`);
 
 // Initialize Supabase client with service role (bypasses RLS)
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("❌ Missing Supabase configuration. Please check your .env file.");
+  console.error("Required: SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_KEY (or VITE_SUPABASE_ANON_KEY)");
+}
+
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -583,11 +591,13 @@ app.get("/api/stats", async (req, res) => {
 
     if (brandsError) throw brandsError;
 
-    const uniqueBrands = new Set(
+    const uniqueBrandsList = [...new Set(
       brandsData
         .map((car) => car.brand)
         .filter((brand) => brand && brand.trim() !== "")
-    ).size;
+    )].sort();
+
+    const uniqueBrandsCount = uniqueBrandsList.length;
 
     // 3. Count cities
     // Based on the schema, we have specific price columns for cities
@@ -608,8 +618,9 @@ app.get("/api/stats", async (req, res) => {
       success: true,
       data: {
         totalCars: totalCars || 0,
-        totalBrands: uniqueBrands || 0,
+        totalBrands: uniqueBrandsCount || 0,
         totalCities: totalCities,
+        brands: uniqueBrandsList, // Return the actual list of brands
       },
     });
   } catch (error) {

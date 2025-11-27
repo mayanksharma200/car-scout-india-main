@@ -105,6 +105,9 @@ const HeroSection = () => {
     totalCities: 0,
   });
 
+  // Available brands from DB
+  const [availableBrands, setAvailableBrands] = useState([]);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -112,6 +115,9 @@ const HeroSection = () => {
         const result = await response.json();
         if (result.success) {
           setStats(result.data);
+          if (result.data.brands && Array.isArray(result.data.brands)) {
+            setAvailableBrands(result.data.brands);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -236,7 +242,8 @@ const HeroSection = () => {
     "Above ₹1 Crore",
   ];
 
-  const carBrands = [
+  // Fallback brands if API fails or while loading
+  const defaultBrands = [
     "Maruti Suzuki",
     "Hyundai",
     "Tata",
@@ -258,6 +265,9 @@ const HeroSection = () => {
     "Jaguar",
     "Land Rover",
   ];
+
+  // Use availableBrands if fetched, otherwise fallback to defaultBrands
+  const carBrands = availableBrands.length > 0 ? availableBrands : defaultBrands;
 
   const filterOptions = {
     fuelTypes: ["Petrol", "Diesel", "Electric", "Hybrid", "CNG"],
