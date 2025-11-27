@@ -24,7 +24,7 @@ const ContentManagement = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [apiProvider, setApiProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
-  
+
   // Add Content Dialog States
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [newContent, setNewContent] = useState({
@@ -37,7 +37,10 @@ const ContentManagement = () => {
     model: "",
     category: "",
     author: "",
-    slug: ""
+    slug: "",
+    content: "",
+    excerpt: "",
+    image_url: ""
   });
 
   if (loading) {
@@ -62,10 +65,10 @@ const ContentManagement = () => {
   const getStatusBadge = (status: string) => {
     const variants = {
       published: "default",
-      draft: "secondary", 
+      draft: "secondary",
       scheduled: "outline"
     } as const;
-    
+
     return <Badge variant={variants[status as keyof typeof variants] || "secondary"}>{status}</Badge>;
   };
 
@@ -80,16 +83,16 @@ const ContentManagement = () => {
     }
 
     setIsSyncing(true);
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       toast({
         title: "Success",
         description: `Successfully synced car data from ${apiProvider}. 15 cars updated, 3 new cars added.`,
       });
-      
+
       setIsApiSyncOpen(false);
     } catch (error) {
       toast({
@@ -125,7 +128,7 @@ const ContentManagement = () => {
 
     try {
       console.log("Adding new content:", newContent);
-      
+
       // Create content data
       const contentData = {
         title: newContent.title,
@@ -134,16 +137,19 @@ const ContentManagement = () => {
         author: newContent.author,
         category: newContent.category,
         slug: newContent.slug,
+        content: newContent.content,
+        excerpt: newContent.excerpt,
+        image_url: newContent.image_url,
         views: 0
       };
-      
+
       const addedContent = await addContentToDb(contentData);
-      
+
       toast({
         title: "Success",
         description: `${addedContent?.type.charAt(0).toUpperCase() + addedContent?.type.slice(1)} "${addedContent?.title}" has been created successfully.`,
       });
-      
+
       // Reset form
       setNewContent({
         title: "",
@@ -155,9 +161,12 @@ const ContentManagement = () => {
         model: "",
         category: "",
         author: "",
-        slug: ""
+        slug: "",
+        content: "",
+        excerpt: "",
+        image_url: ""
       });
-      
+
       setIsAddContentOpen(false);
     } catch (error) {
       toast({
@@ -222,8 +231,8 @@ const ContentManagement = () => {
                     <Switch id="autoSync" />
                     <Label htmlFor="autoSync">Enable automatic daily sync</Label>
                   </div>
-                  <Button 
-                    onClick={handleApiSync} 
+                  <Button
+                    onClick={handleApiSync}
                     disabled={isSyncing}
                     className="w-full"
                   >
@@ -242,7 +251,7 @@ const ContentManagement = () => {
                 </div>
               </DialogContent>
             </Dialog>
-            
+
             {/* Add Content Dialog */}
             <Dialog open={isAddContentOpen} onOpenChange={setIsAddContentOpen}>
               <DialogTrigger asChild>
@@ -262,8 +271,8 @@ const ContentManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contentType">Content Type</Label>
-                      <Select 
-                        value={newContent.type} 
+                      <Select
+                        value={newContent.type}
                         onValueChange={(value) => setNewContent(prev => ({ ...prev, type: value }))}
                       >
                         <SelectTrigger>
@@ -278,8 +287,8 @@ const ContentManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
-                      <Select 
-                        value={newContent.status} 
+                      <Select
+                        value={newContent.status}
                         onValueChange={(value) => setNewContent(prev => ({ ...prev, status: value }))}
                       >
                         <SelectTrigger>
@@ -302,8 +311,8 @@ const ContentManagement = () => {
                       onChange={(e) => setNewContent(prev => ({ ...prev, title: e.target.value }))}
                       placeholder={
                         newContent.type === 'car' ? 'e.g., BMW X5 2024' :
-                        newContent.type === 'news' ? 'e.g., Electric Vehicle Market Trends' :
-                        'e.g., About Us'
+                          newContent.type === 'news' ? 'e.g., Electric Vehicle Market Trends' :
+                            'e.g., About Us'
                       }
                     />
                   </div>
@@ -332,26 +341,57 @@ const ContentManagement = () => {
                   )}
 
                   {newContent.type === 'news' && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="author">Author</Label>
+                          <Input
+                            id="author"
+                            value={newContent.author}
+                            onChange={(e) => setNewContent(prev => ({ ...prev, author: e.target.value }))}
+                            placeholder="e.g., Auto Expert"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Input
+                            id="category"
+                            value={newContent.category}
+                            onChange={(e) => setNewContent(prev => ({ ...prev, category: e.target.value }))}
+                            placeholder="e.g., Industry News"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="author">Author</Label>
+                        <Label htmlFor="image_url">Image URL</Label>
                         <Input
-                          id="author"
-                          value={newContent.author}
-                          onChange={(e) => setNewContent(prev => ({ ...prev, author: e.target.value }))}
-                          placeholder="e.g., Auto Expert"
+                          id="image_url"
+                          value={newContent.image_url}
+                          onChange={(e) => setNewContent(prev => ({ ...prev, image_url: e.target.value }))}
+                          placeholder="e.g., https://example.com/image.jpg"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Input
-                          id="category"
-                          value={newContent.category}
-                          onChange={(e) => setNewContent(prev => ({ ...prev, category: e.target.value }))}
-                          placeholder="e.g., Industry News"
+                        <Label htmlFor="excerpt">Excerpt</Label>
+                        <Textarea
+                          id="excerpt"
+                          value={newContent.excerpt}
+                          onChange={(e) => setNewContent(prev => ({ ...prev, excerpt: e.target.value }))}
+                          placeholder="Short summary of the article..."
+                          rows={2}
                         />
                       </div>
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="content">Content</Label>
+                        <Textarea
+                          id="content"
+                          value={newContent.content}
+                          onChange={(e) => setNewContent(prev => ({ ...prev, content: e.target.value }))}
+                          placeholder="Full article content..."
+                          rows={6}
+                        />
+                      </div>
+                    </>
                   )}
 
                   {newContent.type === 'page' && (

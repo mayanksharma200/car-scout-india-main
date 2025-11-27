@@ -126,9 +126,9 @@ export const wishlistAPI = {
   },
 
   // Check if car is in wishlist
-//   check: async (carId: string) => {
-//     return fetchAuthenticatedAPI(`/wishlist/check/${carId}`);
-//   },
+  //   check: async (carId: string) => {
+  //     return fetchAuthenticatedAPI(`/wishlist/check/${carId}`);
+  //   },
 
   check: async (carId: string) => {
     return console.log("test - Checking wishlist status for all cars");
@@ -264,6 +264,13 @@ export interface ApiClient {
   leads: {
     create: (leadData: any) => Promise<any>;
   };
+  news: {
+    getAll: (params?: any) => Promise<any>;
+    getBySlug: (slug: string) => Promise<any>;
+    create: (newsData: any) => Promise<any>;
+    update: (id: string, newsData: any) => Promise<any>;
+    delete: (id: string) => Promise<any>;
+  };
 }
 
 // Export createApiClient function for use with authentication context
@@ -272,7 +279,7 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
   isTokenExpired: () => boolean;
   refreshTokens: () => Promise<boolean>;
 }): ApiClient => {
-  
+
   const makeAuthenticatedRequest = async (endpoint: string, options: RequestInit = {}) => {
     // Check and refresh token if needed
     if (isTokenExpired()) {
@@ -284,7 +291,7 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
     }
 
     const authHeaders = getAuthHeaders();
-    
+
     return fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       credentials: 'include',
@@ -354,35 +361,35 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
         return response.json();
       },
 
-            // NEW: Batch check multiple cars
-checkMultiple: async (carIds) => {
-  try {
-    console.log(`Checking wishlist status for ${carIds.length} cars...`);
-    
-    const response = await makeAuthenticatedRequest('/wishlist/check-multiple', { // CHANGE makeRequest to makeAuthenticatedRequest
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      // NEW: Batch check multiple cars
+      checkMultiple: async (carIds) => {
+        try {
+          console.log(`Checking wishlist status for ${carIds.length} cars...`);
+
+          const response = await makeAuthenticatedRequest('/wishlist/check-multiple', { // CHANGE makeRequest to makeAuthenticatedRequest
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ carIds }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to check wishlist status');
+          }
+
+          console.log(`Wishlist check complete for ${carIds.length} cars`);
+          return result;
+        } catch (error) {
+          console.error('Error checking multiple wishlist items:', error);
+          return {
+            success: false,
+            error: error.message || 'Failed to check wishlist status'
+          };
+        }
       },
-      body: JSON.stringify({ carIds }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to check wishlist status');
-    }
-
-    console.log(`Wishlist check complete for ${carIds.length} cars`);
-    return result;
-  } catch (error) {
-    console.error('Error checking multiple wishlist items:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to check wishlist status'
-    };
-  }
-},
 
       check: async (carId: string) => {
         const response = await makeAuthenticatedRequest(`/wishlist/check/${carId}`);
@@ -417,6 +424,41 @@ checkMultiple: async (carIds) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(leadData),
+        });
+        return response.json();
+      },
+    },
+
+    // News
+    news: {
+      getAll: async (params?: any) => {
+        const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+        const response = await fetch(`${API_BASE_URL}/news${queryString}`);
+        return response.json();
+      },
+      getBySlug: async (slug: string) => {
+        const response = await fetch(`${API_BASE_URL}/news/${slug}`);
+        return response.json();
+      },
+      create: async (newsData: any) => {
+        const response = await makeAuthenticatedRequest('/admin/news', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newsData),
+        });
+        return response.json();
+      },
+      update: async (id: string, newsData: any) => {
+        const response = await makeAuthenticatedRequest(`/admin/news/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newsData),
+        });
+        return response.json();
+      },
+      delete: async (id: string) => {
+        const response = await makeAuthenticatedRequest(`/admin/news/${id}`, {
+          method: 'DELETE',
         });
         return response.json();
       },

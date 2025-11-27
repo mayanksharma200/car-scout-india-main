@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
+import { useContent } from "@/hooks/useSupabaseData";
 
 
 const News = () => {
@@ -25,77 +26,24 @@ const News = () => {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, navigate]);
-  const newsArticles = [
-    {
-      id: 1,
-      title: "Maruti Suzuki Launches New Swift with Advanced Safety Features",
-      excerpt: "The new generation Swift comes with 6 airbags as standard, enhanced ESP, and improved fuel efficiency of 25 kmpl.",
-      image: "/placeholder.svg",
-      category: "Launch",
-      author: "Automotive Team",
-      date: "2025-01-15",
-      readTime: "3 min read",
-      featured: true
-    },
-    {
-      id: 2,
-      title: "Electric Vehicle Sales Surge 300% in India During 2024",
-      excerpt: "India's EV market shows unprecedented growth with new government incentives and improved charging infrastructure.",
-      image: "/placeholder.svg",
-      category: "Market News",
-      author: "Industry Analyst",
-      date: "2025-01-14",
-      readTime: "5 min read",
-      featured: false
-    },
-    {
-      id: 3,
-      title: "Tata Motors Unveils Nexon EV Max with 500km Range",
-      excerpt: "The new Nexon EV Max promises industry-leading range and fast charging capabilities for Indian customers.",
-      image: "/placeholder.svg",
-      category: "Electric",
-      author: "EV Specialist",
-      date: "2025-01-13",
-      readTime: "4 min read",
-      featured: false
-    },
-    {
-      id: 4,
-      title: "Hyundai Creta Facelift: First Look and Expected Features",
-      excerpt: "Spy shots reveal significant design changes and new technology features in the upcoming Creta facelift.",
-      image: "/placeholder.svg",
-      category: "Spy Shots",
-      author: "Auto Reporter",
-      date: "2025-01-12",
-      readTime: "3 min read",
-      featured: false
-    },
-    {
-      id: 5,
-      title: "BS7 Emission Norms: What It Means for Car Buyers",
-      excerpt: "New emission standards expected to increase vehicle prices but improve air quality across Indian cities.",
-      image: "/placeholder.svg",
-      category: "Policy",
-      author: "Policy Expert",
-      date: "2025-01-11",
-      readTime: "6 min read",
-      featured: false
-    },
-    {
-      id: 6,
-      title: "Mahindra XUV400 EV: Comprehensive Review and Road Test",
-      excerpt: "Our detailed review of Mahindra's compact electric SUV covering performance, features, and value proposition.",
-      image: "/placeholder.svg",
-      category: "Review",
-      author: "Road Test Team",
-      date: "2025-01-10",
-      readTime: "8 min read",
-      featured: false
-    }
-  ];
+  const { content: newsArticles, loading } = useContent();
 
   const categories = ["All", "Launch", "Market News", "Electric", "Spy Shots", "Policy", "Review"];
   const trendingTopics = ["Electric Vehicles", "Maruti Swift", "Tata Nexon", "Hyundai Creta", "BS7 Norms"];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -106,13 +54,13 @@ const News = () => {
     });
   };
 
-  const featuredArticle = newsArticles.find(article => article.featured);
-  const regularArticles = newsArticles.filter(article => !article.featured);
+  const featuredArticle = newsArticles.find(article => article.is_featured);
+  const regularArticles = newsArticles.filter(article => !article.is_featured);
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -145,9 +93,9 @@ const News = () => {
             {featuredArticle && (
               <Card className="mb-8 overflow-hidden">
                 <div className="grid md:grid-cols-2 gap-0">
-                  <div className="aspect-video md:aspect-auto">
-                    <img 
-                      src={featuredArticle.image} 
+                  <div className="relative h-64 md:h-full">
+                    <img
+                      src={featuredArticle.image_url || "/placeholder.svg"}
                       alt={featuredArticle.title}
                       className="w-full h-full object-cover"
                     />
@@ -171,22 +119,23 @@ const News = () => {
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          <span>{formatDate(featuredArticle.date)}</span>
+                          <span>{formatDate(featuredArticle.created_at)}</span>
+                          <span className="mx-2">•</span>
+                          <span>{Math.ceil((featuredArticle.content?.length || 0) / 1000)} min read</span>
                         </div>
-                        <span>{featuredArticle.readTime}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <ShareModal
                           title={featuredArticle.title}
+                          url={`${window.location.origin}/news/${featuredArticle.slug}`}
+                          image={featuredArticle.image_url || "/placeholder.svg"}
                           description={featuredArticle.excerpt}
-                          url={`/news/${featuredArticle.id}`}
-                          image={featuredArticle.image}
                         >
                           <Button variant="ghost" size="sm">
                             <Share2 className="w-4 h-4" />
                           </Button>
                         </ShareModal>
-                        <Button variant="ghost" className="group">
+                        <Button variant="ghost" className="group" onClick={() => navigate(`/news/${featuredArticle.slug}`)}>
                           Read More
                           <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                         </Button>
@@ -200,12 +149,12 @@ const News = () => {
             {/* Regular Articles */}
             <div className="grid md:grid-cols-2 gap-6">
               {regularArticles.map((article) => (
-                <Card key={article.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <Card key={article.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => navigate(`/news/${article.slug}`)}>
                   <div className="aspect-video overflow-hidden">
-                    <img 
-                      src={article.image} 
+                    <img
+                      src={article.image_url || "/placeholder.svg"}
                       alt={article.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
                   <CardContent className="p-6">
@@ -220,27 +169,25 @@ const News = () => {
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          <span>{article.author}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDate(article.date)}</span>
+                        <div className="flex items-center text-xs text-gray-500 mb-2">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          <span>{formatDate(article.created_at)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <ShareModal
-                          title={article.title}
-                          description={article.excerpt}
-                          url={`/news/${article.id}`}
-                          image={article.image}
-                        >
-                          <Button variant="ghost" size="sm">
-                            <Share2 className="w-3 h-3" />
-                          </Button>
-                        </ShareModal>
-                        <span className="text-xs text-muted-foreground">{article.readTime}</span>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <ShareModal
+                            title={article.title}
+                            description={article.excerpt}
+                            url={`${window.location.origin}/news/${article.slug}`}
+                            image={article.image_url || "/placeholder.svg"}
+                          >
+                            <Button variant="ghost" size="sm">
+                              <Share2 className="w-3 h-3" />
+                            </Button>
+                          </ShareModal>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
                       </div>
                     </div>
                   </CardContent>
@@ -308,21 +255,20 @@ const News = () => {
               <CardContent>
                 <div className="space-y-4">
                   {newsArticles.slice(0, 3).map((article, index) => (
-                    <div key={article.id} className="flex gap-3 cursor-pointer group">
-                      <div className="flex-shrink-0 w-16 h-12 bg-muted rounded overflow-hidden">
-                        <img 
-                          src={article.image} 
-                          alt={article.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                    <div key={article.id} className="flex gap-3 cursor-pointer group" onClick={() => navigate(`/news/${article.slug}`)}>
+                      <img
+                        src={article.image_url || "/placeholder.svg"}
+                        alt={article.title}
+                        className="w-24 h-24 object-cover rounded-md"
+                      />
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
+                        <Badge variant="outline" className="mb-2">{article.category}</Badge>
+                        <h4 className="font-semibold line-clamp-2 mb-1 group-hover:text-primary transition-colors">
                           {article.title}
                         </h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(article.date)}
-                        </p>
+                        <div className="flex items-center text-xs text-gray-500 mt-2">
+                          <span>{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -332,7 +278,7 @@ const News = () => {
           </div>
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 };

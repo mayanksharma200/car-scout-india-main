@@ -27,6 +27,7 @@ import CarDetail from "./pages/CarDetail";
 import Compare from "./pages/Compare";
 import EMICalculatorPage from "./pages/EMICalculatorPage";
 import News from "./pages/News";
+import NewsDetail from "./pages/NewsDetail";
 import LoanApplication from "./pages/LoanApplication";
 import Login from "./pages/Login";
 import Register from "./pages/Register";

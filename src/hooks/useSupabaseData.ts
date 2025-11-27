@@ -107,6 +107,10 @@ export interface Content {
   author?: string;
   category?: string;
   slug?: string;
+  content?: string;
+  excerpt?: string;
+  image_url?: string;
+  is_featured?: boolean;
   views: number;
   created_at: string;
   updated_at: string;
@@ -142,7 +146,7 @@ export function useCars() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      
+
       setCars(prev => [newCar, ...prev]);
       return newCar;
     } catch (err) {
@@ -190,11 +194,44 @@ export function useContent() {
   const fetchContent = async () => {
     try {
       setLoading(true);
-      // Using live-simulated data - database tables are ready
-      setContent(mockContent);
+
+      // Fetch news from API
+      const { data: newsData, error: newsError } = await supabase
+        .from('news_articles' as any)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (newsError) throw newsError;
+
+      const typedNewsData = (newsData || []) as any[];
+
+      // Transform news data to match Content interface
+      const formattedNews = typedNewsData.map(item => ({
+        id: item.id,
+        title: item.title,
+        type: 'news' as const,
+        status: item.status as 'published' | 'draft' | 'scheduled' | 'review',
+        author: item.author,
+        category: item.category,
+        slug: item.slug,
+        content: item.content,
+        excerpt: item.excerpt,
+        image_url: item.image_url,
+        is_featured: item.is_featured,
+        views: item.views || 0,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }));
+
+      // Combine with other content types if needed (currently only news is dynamic)
+      // You might want to fetch pages here too if you have a pages table
+
+      setContent(formattedNews);
     } catch (err) {
-      console.warn('Failed to fetch content, using mock data:', err);
-      setContent(mockContent);
+      console.error('Failed to fetch content:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch content');
+      // Fallback to mock data if DB fails (optional, maybe remove in production)
+      // setContent(mockContent); 
     } finally {
       setLoading(false);
     }
@@ -202,17 +239,48 @@ export function useContent() {
 
   const addContent = async (contentData: Omit<Content, 'id' | 'views' | 'created_at' | 'updated_at'>) => {
     try {
-      // Simulate database insert - the actual database is ready
-      const newContent = {
-        ...contentData,
-        id: Date.now().toString(),
-        views: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setContent(prev => [newContent, ...prev]);
-      return newContent;
+      if (contentData.type === 'news') {
+        const { data, error } = await supabase
+          .from('news_articles' as any)
+          .insert([{
+            title: contentData.title,
+            slug: contentData.slug || contentData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            author: contentData.author,
+            category: contentData.category,
+            status: contentData.status,
+            content: contentData.content,
+            excerpt: contentData.excerpt,
+            image_url: contentData.image_url,
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const typedData = data as any;
+
+        const newContent: Content = {
+          id: typedData.id,
+          title: typedData.title,
+          type: 'news',
+          status: typedData.status as any,
+          author: typedData.author,
+          category: typedData.category,
+          slug: typedData.slug,
+          content: typedData.content,
+          excerpt: typedData.excerpt,
+          image_url: typedData.image_url,
+          views: typedData.views || 0,
+          created_at: typedData.created_at,
+          updated_at: typedData.updated_at
+        };
+
+        setContent(prev => [newContent, ...prev]);
+        return newContent;
+      }
+
+      // Handle other types or throw error
+      throw new Error('Only news content is currently supported');
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to add content');
     }

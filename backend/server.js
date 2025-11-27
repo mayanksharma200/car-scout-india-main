@@ -1296,7 +1296,7 @@ app.get("/api/cars/:id", async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (error) throw error;
+    if (error) throw error; // Check for Supabase query error first
 
     if (!data) {
       return res.status(404).json({
@@ -1305,6 +1305,7 @@ app.get("/api/cars/:id", async (req, res) => {
       });
     }
 
+    // Increment view count
     await supabase
       .from("cars")
       .update({ view_count: (data.view_count || 0) + 1 })
@@ -1320,6 +1321,75 @@ app.get("/api/cars/:id", async (req, res) => {
       success: false,
       error: "Failed to fetch car",
     });
+  }
+});
+
+// Public News Endpoints
+app.get("/api/news", async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      featured
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    let query = supabase
+      .from("news_articles")
+      .select("*", { count: 'exact' })
+      .eq('status', 'published')
+      .order('published_at', { ascending: false });
+
+    if (category && category !== 'All') {
+      query = query.eq('category', category);
+    }
+
+    if (featured === 'true') {
+      query = query.eq('is_featured', true);
+    }
+
+    const { data, error, count } = await query.range(offset, offset + parseInt(limit) - 1);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        totalPages: Math.ceil(count / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching news:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/api/news/:slug", async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Increment views
+    await supabase.rpc('increment_news_views', { article_slug: slug });
+
+    const { data, error } = await supabase
+      .from("news_articles")
+      .select("*")
+      .eq("slug", slug)
+      .eq("status", "published")
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching news article:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1702,6 +1772,86 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
       success: false,
       error: "Failed to process bulk action"
     });
+  }
+});
+
+// ===== ADMIN NEWS ENDPOINTS =====
+
+// Create News Article
+app.post("/api/admin/news", async (req, res) => {
+  try {
+    const { title, content, excerpt, category, image_url, author, status, is_featured, slug } = req.body;
+
+    // Generate slug if not provided
+    const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+    const { data, error } = await supabase
+      .from("news_articles")
+      .insert([{
+        title,
+        slug: finalSlug,
+        content,
+        excerpt,
+        category,
+        image_url,
+        author,
+        status: status || 'draft',
+        is_featured: is_featured || false,
+        published_at: status === 'published' ? new Date() : null
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error creating news:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update News Article
+app.put("/api/admin/news/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const { data, error } = await supabase
+      .from("news_articles")
+      .update({
+        ...updates,
+        updated_at: new Date()
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error updating news:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete News Article
+app.delete("/api/admin/news/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from("news_articles")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    res.json({ success: true, message: "Article deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting news:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
