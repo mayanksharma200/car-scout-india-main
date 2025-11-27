@@ -274,17 +274,7 @@ const HeroSection = () => {
     transmissions: ["Manual", "Automatic", "CVT", "AMT"],
     bodyTypes: ["Hatchback", "Sedan", "SUV", "Coupe", "Convertible", "MPV"],
     seatingOptions: ["2", "4", "5", "7", "8+"],
-    brands: [
-      "Maruti",
-      "Hyundai",
-      "Tata",
-      "Mahindra",
-      "Honda",
-      "Toyota",
-      "BMW",
-      "Mercedes",
-      "Audi",
-    ],
+    brands: carBrands,
   };
 
   // Enhanced build search query - only include brand/model search terms, not filter values
