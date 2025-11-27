@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useContent } from "@/hooks/useSupabaseData";
 import { useAdminAuthenticatedApi } from "@/hooks/useAdminAuthenticatedApi";
 import { Plus, Minus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image, TrendingUp } from "lucide-react";
@@ -18,6 +19,7 @@ import AdminLayout from "@/components/AdminLayout";
 
 const ContentManagement = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { content: allContent, addContent: addContentToDb, loading, refetch } = useContent();
   const api = useAdminAuthenticatedApi();
   const [searchQuery, setSearchQuery] = useState("");
@@ -228,6 +230,50 @@ const ContentManagement = () => {
     }
 
     setIsAddContentOpen(true);
+  };
+
+  // Handle View
+  const handleView = (item: any) => {
+    if (item.type === 'news' && item.slug) {
+      navigate(`/news/${item.slug}`);
+    } else if (item.type === 'car' && item.slug) {
+      navigate(`/cars/${item.slug}`);
+    }
+  };
+
+  // Handle Delete
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Are you sure you want to delete "${item.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      if (item.type === 'news') {
+        const response = await api.news.delete(item.id);
+        if (response.success) {
+          toast({
+            title: "Success",
+            description: "Article deleted successfully",
+          });
+          refetch();
+        } else {
+          throw new Error(response.error || "Failed to delete article");
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Delete functionality for this content type is not yet implemented",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete content",
+        variant: "destructive",
+      });
+    }
   };
 
   // Add Content functionality
@@ -1005,13 +1051,13 @@ const ContentManagement = () => {
                         <TableCell>{item.views}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleView(item)}>
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
