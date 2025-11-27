@@ -1636,6 +1636,75 @@ app.delete("/api/admin/cars/:id", async (req, res) => {
   }
 });
 
+// Bulk actions for cars
+app.post("/api/admin/cars/bulk-action", async (req, res) => {
+  try {
+    const { carIds, action } = req.body;
+
+    if (!carIds || !Array.isArray(carIds) || carIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No cars selected"
+      });
+    }
+
+    if (!['activate', 'deactivate', 'delete'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid action"
+      });
+    }
+
+    let result;
+
+    if (action === 'delete') {
+      // Delete cars
+      const { data, error } = await supabase
+        .from('cars')
+        .delete()
+        .in('id', carIds)
+        .select();
+
+      if (error) throw error;
+      result = data;
+    } else {
+      // Update status
+      const status = action === 'activate' ? 'active' : 'inactive';
+      const { data, error } = await supabase
+        .from('cars')
+        .update({ status, updated_at: new Date().toISOString() })
+        .in('id', carIds)
+        .select();
+
+      if (error) throw error;
+      result = data;
+    }
+
+    // Log activity
+    await logAdminActivity({
+      action_type: `bulk_${action}`,
+      action_title: `Bulk ${action} cars`,
+      action_details: `${action === 'delete' ? 'Deleted' : 'Updated status for'} ${carIds.length} cars`,
+      entity_type: 'car',
+      entity_id: 'bulk',
+      metadata: { count: carIds.length, carIds }
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${carIds.length} cars`,
+      data: result
+    });
+
+  } catch (error) {
+    console.error("Error in bulk action:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to process bulk action"
+    });
+  }
+});
+
 // Get all cars for admin (includes inactive/draft cars)
 app.get("/api/admin/cars", async (req, res) => {
   try {

@@ -14,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,6 +78,10 @@ const CarManagement = () => {
   const [carToDelete, setCarToDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Bulk Action States
+  const [selectedCars, setSelectedCars] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
   // Fetch stats from API
   const fetchStats = async () => {
     try {
@@ -107,24 +113,24 @@ const CarManagement = () => {
         const carsWithImages = allCars.filter((car: any) =>
           car.images &&
           ((Array.isArray(car.images) && car.images.length > 0) ||
-           (typeof car.images === 'object' && Object.keys(car.images).length > 0))
+            (typeof car.images === 'object' && Object.keys(car.images).length > 0))
         ).length;
 
         // Calculate average price
         const carsWithValidPrices = allCars.filter((car: any) => {
           const price = car.exact_price || car.ex_showroom_price || car.price_min;
           return price !== null &&
-                 price !== undefined &&
-                 !isNaN(Number(price)) &&
-                 price !== "N/A" &&
-                 Number(price) > 0;
+            price !== undefined &&
+            !isNaN(Number(price)) &&
+            price !== "N/A" &&
+            Number(price) > 0;
         });
 
         const averagePrice = carsWithValidPrices.length > 0
           ? Math.round(carsWithValidPrices.reduce((sum: number, car: any) => {
-              const price = Number(car.exact_price) || Number(car.ex_showroom_price) || Number(car.price_min);
-              return sum + price;
-            }, 0) / carsWithValidPrices.length)
+            const price = Number(car.exact_price) || Number(car.ex_showroom_price) || Number(car.price_min);
+            return sum + price;
+          }, 0) / carsWithValidPrices.length)
           : 0;
 
         setStats({
@@ -306,6 +312,115 @@ const CarManagement = () => {
     }
   };
 
+  // Handle status toggle
+  const handleStatusToggle = async (carId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+      // Optimistic update
+      setCars(cars.map(car =>
+        car.id === carId ? { ...car, status: newStatus } : car
+      ));
+
+      const response = await fetch(`/api/admin/cars/${carId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      toast({
+        title: "Success",
+        description: `Car marked as ${newStatus}`,
+      });
+
+      // Refresh stats to keep counts accurate
+      fetchStats();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      // Revert optimistic update
+      setCars(cars.map(car =>
+        car.id === carId ? { ...car, status: currentStatus } : car
+      ));
+      toast({
+        title: "Error",
+        description: "Failed to update car status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle Select All
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const newSelected = new Set(selectedCars);
+      cars.forEach(car => newSelected.add(car.id));
+      setSelectedCars(newSelected);
+    } else {
+      const newSelected = new Set(selectedCars);
+      cars.forEach(car => newSelected.delete(car.id));
+      setSelectedCars(newSelected);
+    }
+  };
+
+  // Handle Select Single Car
+  const handleSelectCar = (carId: string, checked: boolean) => {
+    const newSelected = new Set(selectedCars);
+    if (checked) {
+      newSelected.add(carId);
+    } else {
+      newSelected.delete(carId);
+    }
+    setSelectedCars(newSelected);
+  };
+
+  // Handle Bulk Action
+  const handleBulkAction = async (action: 'activate' | 'deactivate' | 'delete') => {
+    if (selectedCars.size === 0) return;
+
+    try {
+      setBulkActionLoading(true);
+      const response = await fetch('/api/admin/cars/bulk-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          carIds: Array.from(selectedCars),
+          action
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+        setSelectedCars(new Set());
+        fetchCars();
+        fetchStats();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error("Error performing bulk action:", error);
+      toast({
+        title: "Error",
+        description: "Failed to perform bulk action",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6">
@@ -320,9 +435,9 @@ const CarManagement = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                   <CarIcon className="w-5 h-5 text-blue-600" />
-                 </div>
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <CarIcon className="w-5 h-5 text-blue-600" />
+                </div>
                 <div>
                   <p className="text-2xl font-bold">{loadingStats ? "..." : stats.totalCars}</p>
                   <p className="text-sm text-muted-foreground">Total Cars</p>
@@ -432,6 +547,51 @@ const CarManagement = () => {
           </CardContent>
         </Card>
 
+        {/* Bulk Actions Bar */}
+        {selectedCars.size > 0 && (
+          <div className="bg-muted/50 p-4 rounded-lg mb-6 flex items-center justify-between border animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{selectedCars.size} cars selected</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCars(new Set())}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Clear selection
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('activate')}
+                disabled={bulkActionLoading}
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+              >
+                Mark as Active
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('deactivate')}
+                disabled={bulkActionLoading}
+                className="bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-200"
+              >
+                Mark as Inactive
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleBulkAction('delete')}
+                disabled={bulkActionLoading}
+              >
+                Delete Selected
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Cars Table */}
         <Card>
           <CardHeader>
@@ -441,6 +601,12 @@ const CarManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={cars.length > 0 && cars.every(car => selectedCars.has(car.id))}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                    />
+                  </TableHead>
                   <TableHead>Car Details</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
@@ -471,93 +637,107 @@ const CarManagement = () => {
                   </TableRow>
                 ) : (
                   cars.map((car) => (
-                  <TableRow key={car.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                         <div className="w-12 h-8 bg-muted rounded flex items-center justify-center">
-                           <CarIcon className="w-4 h-4" />
-                         </div>
-                        <div>
-                          <p className="font-medium">{car.brand} {car.model}</p>
-                          <p className="text-sm text-muted-foreground">{car.variant}</p>
+                    <TableRow key={car.id} className={selectedCars.has(car.id) ? "bg-muted/50" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCars.has(car.id)}
+                          onCheckedChange={(checked) => handleSelectCar(car.id, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-8 bg-muted rounded flex items-center justify-center">
+                            <CarIcon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{car.brand} {car.model}</p>
+                            <p className="text-sm text-muted-foreground">{car.variant}</p>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{car.price_min ? formatPrice(car.price_min) : 'N/A'}</p>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(car.status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Image className="w-3 h-3" />
-                        <span>{(() => {
-                          // Calculate total image count checking color_variant_images first
-                          let imageCount = 0;
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium">{car.price_min ? formatPrice(car.price_min) : 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={car.status === 'active'}
+                            onCheckedChange={() => handleStatusToggle(car.id, car.status)}
+                          />
+                          <span className={`text-sm ${car.status === 'active' ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                            {car.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Image className="w-3 h-3" />
+                          <span>{(() => {
+                            // Calculate total image count checking color_variant_images first
+                            let imageCount = 0;
 
-                          // Check color_variant_images first (new multi-color format)
-                          const colorVariantImages = (car as any).color_variant_images;
-                          if (colorVariantImages && typeof colorVariantImages === 'object') {
-                            Object.values(colorVariantImages).forEach((colorData: any) => {
-                              if (colorData && colorData.images && typeof colorData.images === 'object') {
-                                imageCount += Object.keys(colorData.images).length;
-                              }
-                            });
-                          }
-                          // Fallback to images field
-                          else if (Array.isArray(car.images)) {
-                            imageCount = car.images.length;
-                          }
-                          else if (car.images && typeof car.images === 'object') {
-                            imageCount = Object.keys(car.images).length;
-                          }
+                            // Check color_variant_images first (new multi-color format)
+                            const colorVariantImages = (car as any).color_variant_images;
+                            if (colorVariantImages && typeof colorVariantImages === 'object') {
+                              Object.values(colorVariantImages).forEach((colorData: any) => {
+                                if (colorData && colorData.images && typeof colorData.images === 'object') {
+                                  imageCount += Object.keys(colorData.images).length;
+                                }
+                              });
+                            }
+                            // Fallback to images field
+                            else if (Array.isArray(car.images)) {
+                              imageCount = car.images.length;
+                            }
+                            else if (car.images && typeof car.images === 'object') {
+                              imageCount = Object.keys(car.images).length;
+                            }
 
-                          return imageCount;
-                        })()} photos</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{new Date(car.updated_at).toLocaleDateString()}</p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link to={`/cars/${createSlug(car.brand, car.model, car.variant)}`} className="flex items-center cursor-pointer">
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Car
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
-                              <Image className="w-4 h-4 mr-2" />
-                              Manage Photos
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600 cursor-pointer"
-                            onClick={() => handleDeleteClick(car)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Car
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                            return imageCount;
+                          })()} photos</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{new Date(car.updated_at).toLocaleDateString()}</p>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/cars/${createSlug(car.brand, car.model, car.variant)}`} className="flex items-center cursor-pointer">
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Car
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link to={`/admin/cars/edit/${car.id}`} className="flex items-center cursor-pointer">
+                                <Image className="w-4 h-4 mr-2" />
+                                Manage Photos
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600 cursor-pointer"
+                              onClick={() => handleDeleteClick(car)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Car
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
