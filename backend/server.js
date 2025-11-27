@@ -13,6 +13,7 @@ import s3UploadService from "./services/s3UploadService.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from 'url';
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,15 @@ if (!supabaseUrl || !supabaseKey) {
 console.log("Supabase Config Check:");
 console.log("URL:", supabaseUrl ? "Set" : "Missing");
 console.log("Key Type:", process.env.SUPABASE_SERVICE_KEY ? "Service Role Key (Good)" : "Fallback/Anon Key (Might cause RLS issues)");
+
+if (supabaseKey) {
+  try {
+    const payload = JSON.parse(atob(supabaseKey.split('.')[1]));
+    console.log("Supabase Key Role:", payload.role);
+  } catch (e) {
+    console.log("Could not decode Supabase Key");
+  }
+}
 
 const supabase = createClient(
   supabaseUrl,
@@ -1819,10 +1829,22 @@ app.post("/api/admin/news", async (req, res) => {
   try {
     const { title, content, excerpt, category, image_url, author, status, is_featured, slug } = req.body;
 
+    // Create a fresh admin client to ensure we have service role access
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
     // Generate slug if not provided
     const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from("news_articles")
       .insert([{
         title,
@@ -2079,6 +2101,52 @@ app.post("/api/admin/cars/ideogram-generate", validateToken, async (req, res) =>
     })}\n\n`);
 
     res.end();
+  }
+});
+
+// Configure Multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+// Generic Image Upload Endpoint
+app.post("/api/upload", upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file provided' });
+    }
+
+    if (!s3UploadService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'AWS S3 is not configured'
+      });
+    }
+
+    const fileExtension = req.file.originalname.split('.').pop() || 'jpg';
+    const fileName = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
+
+    const s3Url = await s3UploadService.uploadToS3(
+      req.file.buffer,
+      fileName,
+      req.file.mimetype
+    );
+
+    res.json({ success: true, url: s3Url });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

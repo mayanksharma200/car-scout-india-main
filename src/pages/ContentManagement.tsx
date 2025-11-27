@@ -32,6 +32,10 @@ const ContentManagement = () => {
   const [contentSections, setContentSections] = useState([{ id: Date.now().toString(), heading: '', body: '' }]);
   const [keyHighlights, setKeyHighlights] = useState(['']);
 
+  // Image Upload State
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
   // Trending Topics State
   const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
   const [isTrendingTopicsOpen, setIsTrendingTopicsOpen] = useState(false);
@@ -167,6 +171,16 @@ const ContentManagement = () => {
     }
   };
 
+  // Image Upload Handler
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreviewUrl(previewUrl);
+    }
+  };
+
   // Add Content functionality
   const handleAddContent = async () => {
     if (!newContent.title) {
@@ -191,6 +205,28 @@ const ContentManagement = () => {
     try {
       console.log("Adding new content:", newContent);
 
+      let finalImageUrl = newContent.image_url;
+
+      // Handle Image Upload
+      if (selectedImageFile) {
+        try {
+          const response = await api.media.upload(selectedImageFile);
+          if (response.success) {
+            finalImageUrl = response.url;
+          } else {
+            throw new Error(response.error || 'Image upload failed');
+          }
+        } catch (error) {
+          console.error("Image upload error:", error);
+          toast({
+            title: "Error",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       // Create content data
       let finalContent = newContent.content;
 
@@ -213,7 +249,7 @@ const ContentManagement = () => {
         slug: newContent.slug,
         content: finalContent,
         excerpt: newContent.excerpt,
-        image_url: newContent.image_url,
+        image_url: finalImageUrl,
         views: 0
       };
 
@@ -255,6 +291,10 @@ const ContentManagement = () => {
         excerpt: "",
         image_url: ""
       });
+      setSelectedImageFile(null);
+      setImagePreviewUrl(null);
+      setContentSections([{ id: Date.now().toString(), heading: '', body: '' }]);
+      setKeyHighlights(['']);
 
       setIsAddContentOpen(false);
     } catch (error) {
@@ -585,13 +625,41 @@ const ContentManagement = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="image_url">Image URL</Label>
-                        <Input
-                          id="image_url"
-                          value={newContent.image_url}
-                          onChange={(e) => setNewContent(prev => ({ ...prev, image_url: e.target.value }))}
-                          placeholder="e.g., https://example.com/image.jpg"
-                        />
+                        <Label>Featured Image</Label>
+                        <div className="space-y-4 border rounded-md p-4">
+                          {/* File Input */}
+                          <div className="grid w-full max-w-sm items-center gap-1.5">
+                            <Label htmlFor="image-upload">Upload Image</Label>
+                            <Input
+                              id="image-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageSelect}
+                            />
+                          </div>
+
+                          {/* Preview */}
+                          {imagePreviewUrl && (
+                            <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg border">
+                              <img
+                                src={imagePreviewUrl}
+                                alt="Preview"
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                          )}
+
+                          {/* URL Input (Fallback/Manual) */}
+                          <div className="space-y-1">
+                            <Label htmlFor="image_url" className="text-xs text-muted-foreground">Or enter Image URL manually</Label>
+                            <Input
+                              id="image_url"
+                              value={newContent.image_url}
+                              onChange={(e) => setNewContent(prev => ({ ...prev, image_url: e.target.value }))}
+                              placeholder="e.g., https://example.com/image.jpg"
+                            />
+                          </div>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="excerpt">Excerpt</Label>

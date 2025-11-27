@@ -15,14 +15,20 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}, timeout: nu
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    const headers: any = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       credentials: 'include', // Important for cookies
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
 
     clearTimeout(timeoutId);
@@ -153,6 +159,18 @@ export const trendingTopicsAPI = {
   },
 };
 
+// Media API endpoints
+export const mediaAPI = {
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return fetchAPI('/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+};
+
 // Lead API endpoints
 export const leadAPI = {
   // Create a new lead
@@ -263,6 +281,9 @@ export interface ApiClient {
   trendingTopics: {
     getAll: () => Promise<any>;
     update: (topics: any[]) => Promise<any>;
+  };
+  media: {
+    upload: (file: File) => Promise<any>;
   };
   wishlist: {
     getAll: () => Promise<any>;
@@ -494,6 +515,16 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topics }),
+        });
+      },
+    },
+    media: {
+      upload: async (file: File) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        return fetchAPI('/upload', {
+          method: 'POST',
+          body: formData,
         });
       },
     },
