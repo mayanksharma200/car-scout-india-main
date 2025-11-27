@@ -580,14 +580,14 @@ const CarManagement = () => {
               >
                 Mark as Inactive
               </Button>
-              <Button
+              {/* <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => handleBulkAction('delete')}
                 disabled={bulkActionLoading}
               >
                 Delete Selected
-              </Button>
+              </Button> */}
             </div>
           </div>
         )}
@@ -726,13 +726,13 @@ const CarManagement = () => {
                                 Manage Photos
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem
+                            {/* <DropdownMenuItem
                               className="text-red-600 cursor-pointer"
                               onClick={() => handleDeleteClick(car)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete Car
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
