@@ -43,33 +43,35 @@ const ContentManagement = () => {
   const [isTrendingTopicsOpen, setIsTrendingTopicsOpen] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: "", articleSlug: "" });
 
-  useEffect(() => {
-    const fetchAdminNews = async () => {
-      try {
-        const response = await api.news.getAllAdmin();
-        if (response.success) {
-          // Transform API response to match Content interface
-          const transformedNews = response.data.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            type: 'news',
-            status: item.status,
-            lastModified: new Date(item.created_at).toLocaleDateString(),
-            views: item.views || 0,
-            slug: item.slug,
-            content: item.content,
-            excerpt: item.excerpt,
-            image_url: item.image_url,
-            author: item.author,
-            category: item.category
-          }));
-          setAdminNews(transformedNews);
-        }
-      } catch (error) {
-        console.error("Failed to fetch admin news:", error);
+  // Fetch admin news function (extracted so it can be called after operations)
+  const fetchAdminNews = async () => {
+    try {
+      const response = await api.news.getAllAdmin();
+      if (response.success) {
+        // Transform API response to match Content interface
+        const transformedNews = response.data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          type: 'news',
+          status: item.status,
+          lastModified: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+          updated_at: item.updated_at || item.created_at,
+          views: item.views || 0,
+          slug: item.slug,
+          content: item.content,
+          excerpt: item.excerpt,
+          image_url: item.image_url,
+          author: item.author,
+          category: item.category
+        }));
+        setAdminNews(transformedNews);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch admin news:", error);
+    }
+  };
 
+  useEffect(() => {
     const fetchTrendingTopics = async () => {
       try {
         const response = await api.trendingTopics.getAll();
@@ -256,6 +258,7 @@ const ContentManagement = () => {
             description: "Article deleted successfully",
           });
           refetch();
+          await fetchAdminNews();
         } else {
           throw new Error(response.error || "Failed to delete article");
         }
@@ -359,6 +362,7 @@ const ContentManagement = () => {
             addedContent = response.data;
             // Refresh content list
             refetch();
+            await fetchAdminNews();
           } else {
             throw new Error(response.error || "Failed to update news article");
           }
@@ -369,6 +373,7 @@ const ContentManagement = () => {
             addedContent = response.data;
             // Refresh content list
             refetch();
+            await fetchAdminNews();
           } else {
             throw new Error(response.error || "Failed to create news article");
           }
