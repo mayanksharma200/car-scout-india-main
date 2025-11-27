@@ -158,8 +158,8 @@ const NewsDetail = () => {
                                                 {structuredContent.keyHighlights && structuredContent.keyHighlights.length > 0 && (
                                                     <div className="bg-muted/30 p-6 rounded-xl border border-border">
                                                         <h3 className="text-xl font-semibold mb-4 flex items-center">
-                                                            <span className="bg-primary/10 text-primary p-1 rounded mr-2">✨</span>
-                                                            Key Highlights
+                                                            {/* <span className="bg-primary/10 text-primary p-1 rounded mr-2">✨</span> */}
+                                                            Summary Highlights
                                                         </h3>
                                                         <ul className="space-y-2">
                                                             {structuredContent.keyHighlights.map((highlight: string, idx: number) => (
