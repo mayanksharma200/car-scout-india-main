@@ -741,7 +741,8 @@ const CarListing = () => {
         colorMatch &&
         yearMatch &&
         seatingMatch &&
-        featuresMatch
+        featuresMatch &&
+        cityMatch
       )) {
         console.log(`Car ${index} filtered out:`, {
           id: car.id,
