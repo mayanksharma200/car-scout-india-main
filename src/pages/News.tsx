@@ -17,6 +17,9 @@ const News = () => {
   const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
   const { content: newsArticles, loading } = useContent();
   const categories = ["All", "Launch", "Market News", "Electric", "Spy Shots", "Policy", "Review"];
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
 
   // Hard refresh when navigating from article publish success
   useEffect(() => {
@@ -68,6 +71,17 @@ const News = () => {
       day: 'numeric'
     });
   };
+
+  const handleNewsletterSubscribe = () => {
+    if (newsletterEmail && newsletterEmail.includes('@')) {
+      setSubscribed(true);
+      setTimeout(() => {
+        setNewsletterEmail("");
+        setSubscribed(false);
+      }, 3000);
+    }
+  };
+
 
   const featuredArticle = newsArticles.find(article => article.is_featured);
   const regularArticles = newsArticles.filter(article => !article.is_featured);
@@ -254,19 +268,41 @@ const News = () => {
                 <CardTitle>Stay Updated</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Get the latest automotive news and updates delivered to your inbox.
-                </p>
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <Button className="w-full bg-gradient-accent hover:opacity-90">
-                    Subscribe
-                  </Button>
-                </div>
+                {!subscribed ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Get the latest automotive news and updates delivered to your inbox.
+                    </p>
+                    <div className="space-y-3">
+                      <input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleNewsletterSubscribe()}
+                        className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <Button
+                        className="w-full bg-gradient-accent hover:opacity-90"
+                        onClick={handleNewsletterSubscribe}
+                      >
+                        Subscribe
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="mb-3 text-green-600">
+                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">Successfully Subscribed!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Thank you for subscribing to our newsletter.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
