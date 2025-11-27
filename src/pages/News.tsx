@@ -16,10 +16,12 @@ const News = () => {
   const navigate = useNavigate();
   const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
   const { content: newsArticles, loading } = useContent();
-  const categories = ["All", "Launch", "Market News", "Electric", "Spy Shots", "Policy", "Review"];
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
+  // Generate unique categories from articles
+  const categories = ["All", ...Array.from(new Set(newsArticles.map(article => article.category).filter(Boolean)))];
 
   // Hard refresh when navigating from article publish success
   useEffect(() => {
@@ -83,8 +85,14 @@ const News = () => {
   };
 
 
-  const featuredArticle = newsArticles.find(article => article.is_featured);
-  const regularArticles = newsArticles.filter(article => !article.is_featured);
+  // Filter articles based on selected category
+  const filteredArticles = selectedCategory === "All"
+    ? newsArticles
+    : newsArticles.filter(article => article.category === selectedCategory);
+
+  const featuredArticle = filteredArticles.find(article => article.is_featured);
+  const regularArticles = filteredArticles.filter(article => !article.is_featured);
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,9 +114,10 @@ const News = () => {
           {categories.map((category) => (
             <Button
               key={category}
-              variant={category === "All" ? "default" : "outline"}
+              variant={category === selectedCategory ? "default" : "outline"}
               size="sm"
               className="rounded-full"
+              onClick={() => setSelectedCategory(category)}
             >
               {category}
             </Button>
