@@ -100,14 +100,6 @@ const Footer = () => {
                   Car News
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/reviews"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Reviews
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -122,38 +114,6 @@ const Footer = () => {
                 >
                   Car Loan
                 </Link>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Car Insurance
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Car Service
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Sell Your Car
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Car Valuation
-                </a>
               </li>
             </ul>
           </div>
