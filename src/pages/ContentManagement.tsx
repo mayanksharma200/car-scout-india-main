@@ -640,8 +640,30 @@ const ContentManagement = () => {
             <Dialog open={isAddContentOpen} onOpenChange={(open) => {
               setIsAddContentOpen(open);
               if (!open) {
+                // Reset when closing
                 setIsEditMode(false);
                 setEditingId(null);
+              } else if (!isEditMode) {
+                // Reset form when opening in add mode (not edit mode)
+                setNewContent({
+                  title: "",
+                  type: "news",
+                  status: "draft",
+                  description: "",
+                  price: "",
+                  brand: "",
+                  model: "",
+                  category: "",
+                  author: "",
+                  slug: "",
+                  content: "",
+                  excerpt: "",
+                  image_url: ""
+                });
+                setSelectedImageFile(null);
+                setImagePreviewUrl(null);
+                setContentSections([{ id: Date.now().toString(), heading: '', body: '' }]);
+                setKeyHighlights(['']);
               }
             }}>
               <DialogTrigger asChild>
