@@ -832,10 +832,6 @@ const CarListing = () => {
     switch (sortBy) {
       case "price-low":
         filteredCars.sort((a, b) => {
-          // Debug logging for price sorting
-          // console.log(`Comparing ${a.model} (${a.price}) vs ${b.model} (${b.price})`);
-
-          // Treat null/undefined/NaN as invalid (<= 0 check covers 0 and negative)
           const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
           const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
 
@@ -858,6 +854,25 @@ const CarListing = () => {
           return priceB - priceA;
         });
         break;
+      case "popularity":
+        // For popularity, also push N/A prices to bottom as a secondary sort
+        filteredCars.sort((a, b) => {
+          const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
+          const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
+
+          if (priceA <= 0 && priceB > 0) return 1;
+          if (priceA > 0 && priceB <= 0) return -1;
+
+          // If both have valid prices or both have invalid prices, sort by popularity
+          // (assuming isPopular/isBestSeller logic or random for now)
+          if (a.isBestSeller && !b.isBestSeller) return -1;
+          if (!a.isBestSeller && b.isBestSeller) return 1;
+          if (a.isPopular && !b.isPopular) return -1;
+          if (!a.isPopular && b.isPopular) return 1;
+          return 0;
+        });
+        break;
+
       case "rating":
         filteredCars.sort((a, b) => b.rating - a.rating);
         break;
