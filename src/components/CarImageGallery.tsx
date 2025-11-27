@@ -16,11 +16,11 @@ interface CarImageGalleryProps {
   images: (
     | string
     | {
-        id: string;
-        url: string;
-        alt: string;
-        category?: string;
-      }
+      id: string;
+      url: string;
+      alt: string;
+      category?: string;
+    }
   )[];
   carName: string;
   isLoading?: boolean;
@@ -80,7 +80,7 @@ const CarImageGallery = ({
           id: `image-${index}`,
           url: img,
           alt: `${carName} - Image ${index + 1}`,
-          category: "exterior",
+          // category: "exterior",
         };
       }
       return img;
@@ -259,10 +259,9 @@ const CarImageGallery = ({
           <img
             src={currentImage?.url || "/placeholder.svg"}
             alt={currentImage?.alt || carName}
-            className={`w-full h-full object-cover transition-all duration-300 ${
-              isLoading ? "opacity-60" : "group-hover:scale-105"
-            }`}
-            
+            className={`w-full h-full object-cover transition-all duration-300 ${isLoading ? "opacity-60" : "group-hover:scale-105"
+              }`}
+
           />
 
           {/* Overlay Controls */}
@@ -347,9 +346,8 @@ const CarImageGallery = ({
             {/* Horizontal Scrolling Thumbnails */}
             <div
               ref={thumbnailRef}
-              className={`flex gap-2 md:gap-3 overflow-x-auto pb-2 w-full transition-opacity duration-300 ${
-                isLoading ? "opacity-50 pointer-events-none" : ""
-              }`}
+              className={`flex gap-2 md:gap-3 overflow-x-auto pb-2 w-full transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : ""
+                }`}
               style={{
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
@@ -362,17 +360,16 @@ const CarImageGallery = ({
                   onClick={() => goToImage(index)}
                   className={`relative flex-shrink-0 w-16 h-12 md:w-20 md:h-16 rounded-md overflow-hidden 
                             border-2 transition-all duration-200 hover:scale-105 active:scale-95 
-                            ${
-                              index === currentIndex
-                                ? "border-primary shadow-lg scale-105 ring-1 ring-primary/20"
-                                : "border-border hover:border-primary/50"
-                            }`}
+                            ${index === currentIndex
+                      ? "border-primary shadow-lg scale-105 ring-1 ring-primary/20"
+                      : "border-border hover:border-primary/50"
+                    }`}
                 >
                   <img
                     src={image.url}
                     alt={image.alt}
                     className="w-full h-full object-cover"
-                    
+
                   />
                   {/* Individual Loading State */}
                   {isLoading && index === currentIndex && (
@@ -394,11 +391,10 @@ const CarImageGallery = ({
                       <button
                         key={index}
                         onClick={() => goToImage(index)}
-                        className={`w-2 h-2 rounded-full transition-all duration-200 hover:scale-125 ${
-                          index === currentIndex
-                            ? "bg-primary scale-125"
-                            : "bg-muted-foreground/50 hover:bg-muted-foreground/70"
-                        }`}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 hover:scale-125 ${index === currentIndex
+                          ? "bg-primary scale-125"
+                          : "bg-muted-foreground/50 hover:bg-muted-foreground/70"
+                          }`}
                       />
                     ))}
                   {filteredImages.length > 6 && (
@@ -473,9 +469,8 @@ const CarImageGallery = ({
 
             {/* Main Image */}
             <div
-              className={`transition-transform duration-300 max-w-[90vw] max-h-[85vh] cursor-${
-                isZoomed ? "zoom-out" : "zoom-in"
-              } ${isZoomed ? "scale-150" : "scale-100"}`}
+              className={`transition-transform duration-300 max-w-[90vw] max-h-[85vh] cursor-${isZoomed ? "zoom-out" : "zoom-in"
+                } ${isZoomed ? "scale-150" : "scale-100"}`}
               onClick={() => setIsZoomed(!isZoomed)}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
@@ -485,7 +480,7 @@ const CarImageGallery = ({
                 src={currentImage?.url || "/placeholder.svg"}
                 alt={currentImage?.alt || carName}
                 className="max-w-full max-h-full object-contain"
-                
+
               />
             </div>
 
