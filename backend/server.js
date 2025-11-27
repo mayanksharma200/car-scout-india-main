@@ -1907,10 +1907,13 @@ app.put("/api/admin/news/:id", async (req, res) => {
       }
     }
 
+    // Filter out fields that don't exist in news_articles table
+    const { type, views, ...validUpdates } = updates;
+
     const { data, error } = await adminSupabase
       .from("news_articles")
       .update({
-        ...updates,
+        ...validUpdates,
         updated_at: new Date()
       })
       .eq("id", id)
