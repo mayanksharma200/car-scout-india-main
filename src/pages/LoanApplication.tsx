@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle, Car, IndianRupee, Calendar, User, Phone, Mail, MapPin, Building, CreditCard } from "lucide-react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,26 +20,26 @@ const LoanApplication = () => {
     dateOfBirth: "",
     panCard: "",
     aadharCard: "",
-    
+
     // Address Details
     address: "",
     city: "",
     pincode: "",
     state: "",
-    
+
     // Employment Details
     employmentType: "",
     companyName: "",
     workExperience: "",
     monthlyIncome: "",
-    
+
     // Loan Details
     carBrand: "",
     carModel: "",
     carPrice: "",
     loanAmount: "",
     loanTenure: "",
-    
+
     // Documents
     termsAccepted: false
   });
@@ -139,7 +140,7 @@ const LoanApplication = () => {
         return (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold mb-4">Address & Employment Details</h3>
-            
+
             {/* Address Section */}
             <div className="space-y-4">
               <h4 className="font-medium text-lg">Current Address</h4>
@@ -318,7 +319,7 @@ const LoanApplication = () => {
         return (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold mb-4">Review Your Application</h3>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               {/* Personal Details */}
               <Card>
@@ -411,13 +412,13 @@ const LoanApplication = () => {
 
             {/* Terms and Conditions */}
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="terms" 
+              <Checkbox
+                id="terms"
                 checked={formData.termsAccepted}
                 onCheckedChange={(checked) => handleInputChange("termsAccepted", checked as boolean)}
               />
               <label htmlFor="terms" className="text-sm">
-                I agree to the <a href="#" className="text-primary hover:underline">Terms & Conditions</a> and 
+                I agree to the <a href="#" className="text-primary hover:underline">Terms & Conditions</a> and
                 <a href="#" className="text-primary hover:underline ml-1">Privacy Policy</a>
               </label>
             </div>
@@ -432,7 +433,7 @@ const LoanApplication = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-4">
@@ -448,24 +449,21 @@ const LoanApplication = () => {
           <div className="flex items-center space-x-4">
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  currentStep >= step.id 
-                    ? 'bg-primary border-primary text-primary-foreground' 
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${currentStep >= step.id
+                    ? 'bg-primary border-primary text-primary-foreground'
                     : 'border-muted-foreground text-muted-foreground'
-                }`}>
+                  }`}>
                   <step.icon className="w-5 h-5" />
                 </div>
                 <div className="ml-3 hidden md:block">
-                  <p className={`text-sm font-medium ${
-                    currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'
-                  }`}>
+                  <p className={`text-sm font-medium ${currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'
+                    }`}>
                     {step.title}
                   </p>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-12 h-0.5 mx-4 ${
-                    currentStep > step.id ? 'bg-primary' : 'bg-muted'
-                  }`} />
+                  <div className={`w-12 h-0.5 mx-4 ${currentStep > step.id ? 'bg-primary' : 'bg-muted'
+                    }`} />
                 )}
               </div>
             ))}
@@ -476,23 +474,23 @@ const LoanApplication = () => {
         <Card className="max-w-4xl mx-auto">
           <CardContent className="p-8">
             {renderStepContent()}
-            
+
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-8">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={prevStep}
                 disabled={currentStep === 1}
               >
                 Previous
               </Button>
-              
+
               {currentStep < 4 ? (
                 <Button onClick={nextStep} className="bg-gradient-primary hover:opacity-90">
                   Next Step
                 </Button>
               ) : (
-                <Button 
+                <Button
                   className="bg-gradient-accent hover:opacity-90"
                   disabled={!formData.termsAccepted}
                 >
@@ -514,7 +512,7 @@ const LoanApplication = () => {
               <p className="text-sm text-muted-foreground">Get instant loan approval in just 2 hours</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -524,7 +522,7 @@ const LoanApplication = () => {
               <p className="text-sm text-muted-foreground">Competitive interest rates starting from 7.5%</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -536,6 +534,7 @@ const LoanApplication = () => {
           </Card>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
