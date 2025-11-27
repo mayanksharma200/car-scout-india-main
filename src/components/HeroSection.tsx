@@ -537,7 +537,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden" style={{ zoom: "90%" }}>
       {/* Custom keyframe animations */}
       <style>{`
         @keyframes fadeInUp {

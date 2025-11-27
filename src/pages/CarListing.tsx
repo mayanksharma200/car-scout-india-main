@@ -1162,445 +1162,450 @@ const CarListing = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background">
+      <>
         <Header />
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center max-w-md mx-auto px-4">
-            <div className="text-red-500 text-5xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold mb-2">Failed to Load Cars</h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <button
-              onClick={() => {
-                setError(null);
-                loadCarsFromDB();
-              }}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Try Again
-            </button>
+
+        <div className="min-h-screen bg-background">
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center max-w-md mx-auto px-4">
+              <div className="text-red-500 text-5xl mb-4">⚠️</div>
+              <h2 className="text-xl font-semibold mb-2">Failed to Load Cars</h2>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <button
+                onClick={() => {
+                  setError(null);
+                  loadCarsFromDB();
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background" style={{ zoom: "90%" }}>
+    <>
       <Header />
+      <div className="min-h-screen bg-background" style={{ zoom: "90%" }}>
 
-      {/* Ad Banner - Visible on all devices */}
-      <div className="relative z-0">
-        <AdBanner placement="below_navigation" />
-      </div>
-
-      {/* Search Results Header */}
-      {hasSearchResults && (
-        <div className="bg-blue-50 border-b border-blue-200">
-          <div className="container mx-auto px-4 py-3 lg:py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div>
-                <h2 className="text-base lg:text-lg font-semibold text-blue-900">
-                  Search Results
-                  {searchInfo?.query && (
-                    <span className="block sm:inline sm:ml-2 text-blue-600 text-sm lg:text-base">
-                      for "{searchInfo.query}"
-                    </span>
-                  )}
-                </h2>
-                <p className="text-blue-700 text-sm">
-                  Found {filteredAndSortedCars.length} car
-                  {filteredAndSortedCars.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <Button
-                onClick={clearSearch}
-                variant="outline"
-                className="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-auto"
-                size="sm"
-              >
-                Show All Cars
-              </Button>
-            </div>
-
-            {searchInfo?.filters && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {searchInfo.filters.selectedBrand && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-800 text-xs"
-                  >
-                    Brand: {searchInfo.filters.selectedBrand}
-                  </Badge>
-                )}
-                {searchInfo.filters.carType && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-800 text-xs"
-                  >
-                    Type: {searchInfo.filters.carType}
-                  </Badge>
-                )}
-                {searchInfo.filters.fuelTypes?.length > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="bg-blue-100 text-blue-800 text-xs"
-                  >
-                    Fuel: {searchInfo.filters.fuelTypes.join(", ")}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
+        {/* Ad Banner - Visible on all devices */}
+        <div className="relative z-0">
+          <AdBanner placement="below_navigation" />
         </div>
-      )}
 
-      {/* Search & Filter Bar */}
-      <div className="bg-muted/30 py-3 lg:py-6 sticky top-0 z-40 lg:relative">
-        <div className="container mx-auto px-4">
-          <div className="space-y-3 lg:space-y-4">
-            {/* Search Row */}
-            <div className="flex gap-2 lg:gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search cars, brands..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-sm h-9 lg:h-10"
-                />
-              </div>
-              <Select
-                value={filters.city}
-                onValueChange={(value) => setFilters(prev => ({ ...prev, city: value === "all" ? "" : value }))}
-              >
-                <SelectTrigger className="w-20 sm:w-24 lg:w-32 h-9 lg:h-10">
-                  <MapPin className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs lg:text-sm truncate">
-                    {filters.city || "City"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Cities</SelectItem>
-                  {availableCities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Controls Row */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {/* Mobile Filter Sheet */}
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`lg:hidden ${getActiveFiltersCount() > 0
-                        ? "border-primary bg-primary/10"
-                        : ""
-                        }`}
-                    >
-                      <Filter className="w-4 h-4 mr-1" />
-                      <span className="text-xs">Filters</span>
-                      {getActiveFiltersCount() > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-4 text-xs">
-                          {getActiveFiltersCount()}
-                        </Badge>
-                      )}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="left"
-                    className="w-80 sm:w-96 overflow-y-auto"
-                  >
-                    <SheetHeader>
-                      <SheetTitle>Filter Cars</SheetTitle>
-                      <SheetDescription>
-                        Refine your search results
-                      </SheetDescription>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-sm">Filters</h3>
-                        {getActiveFiltersCount() > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearAllFilters}
-                          >
-                            Clear All
-                          </Button>
-                        )}
-                      </div>
-                      <FiltersContent />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-
-                {/* Desktop Filter Toggle */}
+        {/* Search Results Header */}
+        {hasSearchResults && (
+          <div className="bg-blue-50 border-b border-blue-200">
+            <div className="container mx-auto px-4 py-3 lg:py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div>
+                  <h2 className="text-base lg:text-lg font-semibold text-blue-900">
+                    Search Results
+                    {searchInfo?.query && (
+                      <span className="block sm:inline sm:ml-2 text-blue-600 text-sm lg:text-base">
+                        for "{searchInfo.query}"
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-blue-700 text-sm">
+                    Found {filteredAndSortedCars.length} car
+                    {filteredAndSortedCars.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
                 <Button
+                  onClick={clearSearch}
                   variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100 w-full sm:w-auto"
                   size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`hidden lg:flex ${getActiveFiltersCount() > 0
-                    ? "border-primary bg-primary/10"
-                    : ""
-                    }`}
                 >
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filters
-                  {getActiveFiltersCount() > 0 && (
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {getActiveFiltersCount()}
+                  Show All Cars
+                </Button>
+              </div>
+
+              {searchInfo?.filters && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {searchInfo.filters.selectedBrand && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-800 text-xs"
+                    >
+                      Brand: {searchInfo.filters.selectedBrand}
                     </Badge>
                   )}
-                </Button>
-              </div>
+                  {searchInfo.filters.carType && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-800 text-xs"
+                    >
+                      Type: {searchInfo.filters.carType}
+                    </Badge>
+                  )}
+                  {searchInfo.filters.fuelTypes?.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-800 text-xs"
+                    >
+                      Fuel: {searchInfo.filters.fuelTypes.join(", ")}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-              {/* Right Side Controls */}
-              <div className="flex items-center gap-2">
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-20 sm:w-28 lg:w-40 text-xs lg:text-sm h-9 lg:h-10">
-                    <SelectValue />
+        {/* Search & Filter Bar */}
+        <div className="bg-muted/30 py-3 lg:py-6 sticky top-0 z-40 lg:relative">
+          <div className="container mx-auto px-4">
+            <div className="space-y-3 lg:space-y-4">
+              {/* Search Row */}
+              <div className="flex gap-2 lg:gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search cars, brands..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 text-sm h-9 lg:h-10"
+                  />
+                </div>
+                <Select
+                  value={filters.city}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, city: value === "all" ? "" : value }))}
+                >
+                  <SelectTrigger className="w-20 sm:w-24 lg:w-32 h-9 lg:h-10">
+                    <MapPin className="w-4 h-4" />
+                    <span className="hidden sm:inline text-xs lg:text-sm truncate">
+                      {filters.city || "City"}
+                    </span>
                   </SelectTrigger>
-                  <SelectContent className="z-[60]" style={{ zIndex: 1001 }}>
-                    <SelectItem value="popularity">Popular</SelectItem>
-                    <SelectItem value="price-low">Low Price</SelectItem>
-                    <SelectItem value="price-high">High Price</SelectItem>
-                    <SelectItem value="rating">Top Rated</SelectItem>
-                    <SelectItem value="mileage">Best Mileage</SelectItem>
-                    <SelectItem value="year">Newest</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="all">All Cities</SelectItem>
+                    {availableCities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+              </div>
 
-                <div className="flex border border-border rounded-md">
+              {/* Controls Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {/* Mobile Filter Sheet */}
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`lg:hidden ${getActiveFiltersCount() > 0
+                          ? "border-primary bg-primary/10"
+                          : ""
+                          }`}
+                      >
+                        <Filter className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Filters</span>
+                        {getActiveFiltersCount() > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-4 text-xs">
+                            {getActiveFiltersCount()}
+                          </Badge>
+                        )}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent
+                      side="left"
+                      className="w-80 sm:w-96 overflow-y-auto"
+                    >
+                      <SheetHeader>
+                        <SheetTitle>Filter Cars</SheetTitle>
+                        <SheetDescription>
+                          Refine your search results
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold text-sm">Filters</h3>
+                          {getActiveFiltersCount() > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearAllFilters}
+                            >
+                              Clear All
+                            </Button>
+                          )}
+                        </div>
+                        <FiltersContent />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  {/* Desktop Filter Toggle */}
                   <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    variant="outline"
                     size="sm"
-                    onClick={() => setViewMode("grid")}
-                    className="rounded-r-none px-2 lg:px-3 h-9 lg:h-10"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`hidden lg:flex ${getActiveFiltersCount() > 0
+                      ? "border-primary bg-primary/10"
+                      : ""
+                      }`}
                   >
-                    <Grid className="w-3 h-3 lg:w-4 lg:h-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("list")}
-                    className="rounded-l-none border-l px-2 lg:px-3 h-9 lg:h-10"
-                  >
-                    <List className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                    {getActiveFiltersCount() > 0 && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {getActiveFiltersCount()}
+                      </Badge>
+                    )}
                   </Button>
                 </div>
-              </div>
-            </div>
 
-            {/* Active Filters */}
-            {getActiveFiltersCount() > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs lg:text-sm font-medium">
-                  Active filters:
-                </span>
-                {filters.brands.map((brand) => (
-                  <Badge
-                    key={brand}
-                    variant="secondary"
-                    className="cursor-pointer text-xs"
-                    onClick={() => handleFilterChange("brands", brand, false)}
-                  >
-                    {brand} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                ))}
-                {filters.fuelTypes.map((fuel) => (
-                  <Badge
-                    key={fuel}
-                    variant="secondary"
-                    className="cursor-pointer text-xs"
-                    onClick={() => handleFilterChange("fuelTypes", fuel, false)}
-                  >
-                    {fuel} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                ))}
-                {filters.bodyTypes.map((type) => (
-                  <Badge
-                    key={type}
-                    variant="secondary"
-                    className="cursor-pointer text-xs"
-                    onClick={() => handleFilterChange("bodyTypes", type, false)}
-                  >
-                    {type} <X className="w-3 h-3 ml-1" />
-                  </Badge>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllFilters}
-                  className="text-xs h-6 lg:h-8"
-                >
-                  Clear All <X className="w-3 h-3 ml-1" />
-                </Button>
+                {/* Right Side Controls */}
+                <div className="flex items-center gap-2">
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-20 sm:w-28 lg:w-40 text-xs lg:text-sm h-9 lg:h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[60]" style={{ zIndex: 1001 }}>
+                      <SelectItem value="popularity">Popular</SelectItem>
+                      <SelectItem value="price-low">Low Price</SelectItem>
+                      <SelectItem value="price-high">High Price</SelectItem>
+                      <SelectItem value="rating">Top Rated</SelectItem>
+                      <SelectItem value="mileage">Best Mileage</SelectItem>
+                      <SelectItem value="year">Newest</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex border border-border rounded-md">
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                      className="rounded-r-none px-2 lg:px-3 h-9 lg:h-10"
+                    >
+                      <Grid className="w-3 h-3 lg:w-4 lg:h-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("list")}
+                      className="rounded-l-none border-l px-2 lg:px-3 h-9 lg:h-10"
+                    >
+                      <List className="w-3 h-3 lg:w-4 lg:h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Active Filters */}
+              {getActiveFiltersCount() > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs lg:text-sm font-medium">
+                    Active filters:
+                  </span>
+                  {filters.brands.map((brand) => (
+                    <Badge
+                      key={brand}
+                      variant="secondary"
+                      className="cursor-pointer text-xs"
+                      onClick={() => handleFilterChange("brands", brand, false)}
+                    >
+                      {brand} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                  {filters.fuelTypes.map((fuel) => (
+                    <Badge
+                      key={fuel}
+                      variant="secondary"
+                      className="cursor-pointer text-xs"
+                      onClick={() => handleFilterChange("fuelTypes", fuel, false)}
+                    >
+                      {fuel} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                  {filters.bodyTypes.map((type) => (
+                    <Badge
+                      key={type}
+                      variant="secondary"
+                      className="cursor-pointer text-xs"
+                      onClick={() => handleFilterChange("bodyTypes", type, false)}
+                    >
+                      {type} <X className="w-3 h-3 ml-1" />
+                    </Badge>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="text-xs h-6 lg:h-8"
+                  >
+                    Clear All <X className="w-3 h-3 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-4 lg:py-8">
-        <div className="flex gap-4 lg:gap-8">
-          {/* Desktop Sidebar Filters */}
-          <div
-            className={`${showFilters ? "block" : "hidden"
-              } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
-          >
-            {/* Desktop Ad in Sidebar */}
-            <div className="hidden xl:block">
-              <AdBanner placement="left_sidebar" />
-            </div>
-
-            <Card className="relative z-10 pointer-events-auto">
-              <CardContent className="p-4 lg:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-sm lg:text-base">
-                    Advanced Filters
-                  </h3>
-                  {getActiveFiltersCount() > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                      Clear All
-                    </Button>
-                  )}
-                </div>
-                <FiltersContent />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Car Listings */}
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6 gap-3 lg:gap-4">
-              <div className="flex items-center gap-2 lg:gap-4">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
-                  {hasSearchResults ? "Search Results" : "New Cars"} (
-                  {filteredAndSortedCars.length})
-                </h1>
-                {wishlistBatchLoading && (
-                  <div className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground">
-                    <div className="animate-spin rounded-full h-3 w-3 lg:h-4 lg:w-4 border-b-2 border-primary"></div>
-                    <span className="hidden sm:inline">
-                      Checking wishlist...
-                    </span>
-                  </div>
-                )}
+        <div className="container mx-auto px-4 py-4 lg:py-8">
+          <div className="flex gap-4 lg:gap-8">
+            {/* Desktop Sidebar Filters */}
+            <div
+              className={`${showFilters ? "block" : "hidden"
+                } lg:block w-72 xl:w-80 space-y-4 lg:space-y-6 hidden lg:block`}
+            >
+              {/* Desktop Ad in Sidebar */}
+              <div className="hidden xl:block">
+                <AdBanner placement="left_sidebar" />
               </div>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full sm:w-44 lg:w-48 text-xs lg:text-sm relative z-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background border border-border z-50">
-                  <SelectItem value="popularity">Sort by Popularity</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
-                  <SelectItem value="rating">Highest Rated</SelectItem>
-                  <SelectItem value="mileage">Best Mileage</SelectItem>
-                  <SelectItem value="year">Newest First</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
-            {/* Results */}
-            {filteredAndSortedCars.length === 0 ? (
-              <div className="text-center py-8 lg:py-12">
-                <CarIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg lg:text-xl font-semibold mb-2">
-                  No cars found
-                </h3>
-                <p className="text-muted-foreground mb-4 text-sm lg:text-base px-4">
-                  {hasSearchResults
-                    ? "Try adjusting your search criteria or browse all available cars."
-                    : "Try adjusting your filters or search query"}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={clearAllFilters} variant="outline" size="sm">
-                    Clear All Filters
-                  </Button>
-                  {hasSearchResults && (
-                    <Button onClick={clearSearch} size="sm">
-                      View All Cars
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6"
-                      : "space-y-4"
-                  }
-                >
-                  {displayedCars.map((car, index) => (
-                    <React.Fragment key={car.id}>
-                      <CarCard
-                        car={car}
-                        isWishlisted={wishlistStatus[car.id] || false}
-                        onToggleWishlist={() => toggleWishlist(car.id)}
-                        wishlistLoading={wishlistLoading[car.id] || false}
-                      />
-                      {/* Insert ads every 6 cars in grid view, every 4 in mobile */}
-                      {(index + 1) % (viewMode === "grid" ? 6 : 4) === 0 && (
-                        <div
-                          className={viewMode === "grid" ? "col-span-full" : ""}
-                        >
-                          <div className="my-4">
-                            <AdBanner placement="below_results" />
-                          </div>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-
-                {/* Load More Button */}
-                {displayedCars.length < filteredAndSortedCars.length && (
-                  <div className="flex justify-center py-8">
-                    {isLoadingMore ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <span className="ml-3 text-muted-foreground">
-                          Loading more cars...
-                        </span>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={handleLoadMore}
-                        variant="outline"
-                        size="lg"
-                        className="min-w-[200px]"
-                      >
-                        Load More
+              <Card className="relative z-10 pointer-events-auto">
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-sm lg:text-base">
+                      Advanced Filters
+                    </h3>
+                    {getActiveFiltersCount() > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                        Clear All
                       </Button>
                     )}
                   </div>
-                )}
+                  <FiltersContent />
+                </CardContent>
+              </Card>
+            </div>
 
-                {/* End of results indicator */}
-                {displayedCars.length >= filteredAndSortedCars.length && filteredAndSortedCars.length > CARS_PER_PAGE && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>You've reached the end of the results ({filteredAndSortedCars.length} cars total)</p>
+            {/* Car Listings */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6 gap-3 lg:gap-4">
+                <div className="flex items-center gap-2 lg:gap-4">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
+                    {hasSearchResults ? "Search Results" : "New Cars"} (
+                    {filteredAndSortedCars.length})
+                  </h1>
+                  {wishlistBatchLoading && (
+                    <div className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground">
+                      <div className="animate-spin rounded-full h-3 w-3 lg:h-4 lg:w-4 border-b-2 border-primary"></div>
+                      <span className="hidden sm:inline">
+                        Checking wishlist...
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full sm:w-44 lg:w-48 text-xs lg:text-sm relative z-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    <SelectItem value="popularity">Sort by Popularity</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="rating">Highest Rated</SelectItem>
+                    <SelectItem value="mileage">Best Mileage</SelectItem>
+                    <SelectItem value="year">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Results */}
+              {filteredAndSortedCars.length === 0 ? (
+                <div className="text-center py-8 lg:py-12">
+                  <CarIcon className="w-12 h-12 lg:w-16 lg:h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg lg:text-xl font-semibold mb-2">
+                    No cars found
+                  </h3>
+                  <p className="text-muted-foreground mb-4 text-sm lg:text-base px-4">
+                    {hasSearchResults
+                      ? "Try adjusting your search criteria or browse all available cars."
+                      : "Try adjusting your filters or search query"}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button onClick={clearAllFilters} variant="outline" size="sm">
+                      Clear All Filters
+                    </Button>
+                    {hasSearchResults && (
+                      <Button onClick={clearSearch} size="sm">
+                        View All Cars
+                      </Button>
+                    )}
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6"
+                        : "space-y-4"
+                    }
+                  >
+                    {displayedCars.map((car, index) => (
+                      <React.Fragment key={car.id}>
+                        <CarCard
+                          car={car}
+                          isWishlisted={wishlistStatus[car.id] || false}
+                          onToggleWishlist={() => toggleWishlist(car.id)}
+                          wishlistLoading={wishlistLoading[car.id] || false}
+                        />
+                        {/* Insert ads every 6 cars in grid view, every 4 in mobile */}
+                        {(index + 1) % (viewMode === "grid" ? 6 : 4) === 0 && (
+                          <div
+                            className={viewMode === "grid" ? "col-span-full" : ""}
+                          >
+                            <div className="my-4">
+                              <AdBanner placement="below_results" />
+                            </div>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+
+                  {/* Load More Button */}
+                  {displayedCars.length < filteredAndSortedCars.length && (
+                    <div className="flex justify-center py-8">
+                      {isLoadingMore ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <span className="ml-3 text-muted-foreground">
+                            Loading more cars...
+                          </span>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={handleLoadMore}
+                          variant="outline"
+                          size="lg"
+                          className="min-w-[200px]"
+                        >
+                          Load More
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* End of results indicator */}
+                  {displayedCars.length >= filteredAndSortedCars.length && filteredAndSortedCars.length > CARS_PER_PAGE && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>You've reached the end of the results ({filteredAndSortedCars.length} cars total)</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <AdBanner placement="above_footer" />
-      <Footer />
-    </div>
+        <AdBanner placement="above_footer" />
+        <Footer />
+      </div>
+    </>
   );
 };
 
