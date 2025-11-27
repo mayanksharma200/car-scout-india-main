@@ -1377,6 +1377,7 @@ app.get("/api/news", async (req, res) => {
 app.get("/api/news/:slug", async (req, res) => {
   try {
     const { slug } = req.params;
+    console.log(`[API] Fetching news article: ${slug}`);
 
     // Increment views
     await supabase.rpc('increment_news_views', { article_slug: slug });

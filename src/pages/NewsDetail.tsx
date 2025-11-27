@@ -35,10 +35,10 @@ const NewsDetail = () => {
 
             try {
                 setLoading(true);
-                const data = await api.news.getBySlug(slug);
+                const response = await api.news.getBySlug(slug);
 
-                if (data) {
-                    setArticle(data);
+                if (response.success && response.data) {
+                    setArticle(response.data);
                 } else {
                     toast({
                         title: "Error",

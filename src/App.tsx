@@ -104,6 +104,7 @@ const App = () => {
               <Route path="/compare" element={<Compare />} />
               <Route path="/emi-calculator" element={<EMICalculatorPage />} />
               <Route path="/news" element={<News />} />
+              <Route path="/news/:slug" element={<NewsDetail />} />
               <Route path="/loan-application" element={<LoanApplication />} />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
