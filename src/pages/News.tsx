@@ -169,7 +169,7 @@ const News = () => {
                     <img
                       src={article.image_url || "/placeholder.svg"}
                       alt={article.title}
-                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-48 md:h-72 lg:h-80 object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
                   <CardContent className="p-6">
