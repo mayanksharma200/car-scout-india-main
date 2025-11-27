@@ -85,7 +85,10 @@ const CarListing = () => {
     yearRange: [2020, 2025],
     seating: [] as string[],
     features: [] as string[],
+    city: "" as string,
   });
+
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
 
   // Load initial cars from database
   useEffect(() => {
@@ -107,6 +110,7 @@ const CarListing = () => {
     // Load all cars from database
     if (isMounted) {
       loadCarsFromDB();
+      fetchCities();
     }
 
     // Cleanup function
@@ -121,18 +125,21 @@ const CarListing = () => {
     const brandParam = searchParams.get("brand");
     const modelParam = searchParams.get("model");
     const fuelParam = searchParams.get("fuelType");
+    const cityParam = searchParams.get("city");
 
-    if (brandParam || modelParam || fuelParam) {
+    if (brandParam || modelParam || fuelParam || cityParam) {
       console.log("Found URL parameters:", {
         brandParam,
         modelParam,
         fuelParam,
+        cityParam,
       });
 
       setFilters((prev) => ({
         ...prev,
         brands: brandParam ? [brandParam] : [],
         fuelTypes: fuelParam ? [fuelParam] : [],
+        city: cityParam || "",
       }));
 
       setHasSearchResults(true);
@@ -142,6 +149,7 @@ const CarListing = () => {
           selectedBrand: brandParam,
           selectedModel: modelParam,
           selectedFuel: fuelParam,
+          selectedCity: cityParam,
         },
         error: null,
       });
@@ -366,6 +374,14 @@ const CarListing = () => {
       filters: navigationState.filters,
       error: navigationState.error,
     });
+
+    // Set city filter if present in navigation state
+    if (navigationState.filters?.selectedCity) {
+      setFilters(prev => ({
+        ...prev,
+        city: navigationState.filters.selectedCity
+      }));
+    }
     setLoading(false);
 
     window.history.replaceState({}, document.title);
@@ -572,6 +588,18 @@ const CarListing = () => {
     }
   };
 
+  const fetchCities = async () => {
+    try {
+      const response = await fetch("/api/stats");
+      const result = await response.json();
+      if (result.success && result.data.cities && Array.isArray(result.data.cities)) {
+        setAvailableCities(result.data.cities);
+      }
+    } catch (error) {
+      console.error("Failed to fetch cities:", error);
+    }
+  };
+
   const clearSearch = () => {
     console.log("Clearing search, showing all cars");
     setHasSearchResults(false);
@@ -586,6 +614,7 @@ const CarListing = () => {
       yearRange: [2020, 2025],
       seating: [],
       features: [],
+      city: "",
     });
     window.history.pushState({}, "", "/cars");
   };
@@ -616,6 +645,7 @@ const CarListing = () => {
       yearRange: [2020, 2025],
       seating: [],
       features: [],
+      city: "",
     });
   };
 
@@ -627,7 +657,8 @@ const CarListing = () => {
       filters.bodyTypes.length +
       filters.colors.length +
       filters.seating.length +
-      filters.features.length
+      filters.features.length +
+      (filters.city ? 1 : 0)
     );
   };
 
@@ -693,6 +724,12 @@ const CarListing = () => {
         filters.features.length === 0 ||
         filters.features.every((feature) => car.features.includes(feature));
 
+      const cityMatch =
+        !filters.city ||
+        (car[`${filters.city.toLowerCase()}_price`] !== null &&
+          car[`${filters.city.toLowerCase()}_price`] !== undefined &&
+          car[`${filters.city.toLowerCase()}_price`] !== "");
+
       // Debug first few cars that fail filtering
       if (index < 5 && !(
         searchMatch &&
@@ -737,7 +774,10 @@ const CarListing = () => {
         colorMatch &&
         yearMatch &&
         seatingMatch &&
-        featuresMatch
+        yearMatch &&
+        seatingMatch &&
+        featuresMatch &&
+        cityMatch
       );
     });
 
@@ -1156,17 +1196,23 @@ const CarListing = () => {
                   className="pl-10 text-sm h-9 lg:h-10"
                 />
               </div>
-              <Select>
+              <Select
+                value={filters.city}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, city: value === "all" ? "" : value }))}
+              >
                 <SelectTrigger className="w-20 sm:w-24 lg:w-32 h-9 lg:h-10">
                   <MapPin className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs lg:text-sm">
-                    City
+                  <span className="hidden sm:inline text-xs lg:text-sm truncate">
+                    {filters.city || "City"}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mumbai">Mumbai</SelectItem>
-                  <SelectItem value="delhi">Delhi</SelectItem>
-                  <SelectItem value="bangalore">Bangalore</SelectItem>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
