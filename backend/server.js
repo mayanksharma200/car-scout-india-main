@@ -1705,6 +1705,8 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
   }
 });
 
+
+
 // Get all cars for admin (includes inactive/draft cars)
 app.get("/api/admin/cars", async (req, res) => {
   try {

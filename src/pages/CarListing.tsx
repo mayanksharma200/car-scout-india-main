@@ -76,7 +76,7 @@ const CarListing = () => {
   const { isAuthenticated } = useUserAuth();
 
   const [filters, setFilters] = useState({
-    priceRange: [0, 5000000],
+    priceRange: [0, 50000000],
     brands: [] as string[],
     fuelTypes: [] as string[],
     transmissions: [] as string[],
@@ -171,7 +171,7 @@ const CarListing = () => {
         if (minPriceParam || maxPriceParam) {
           newFilters.priceRange = [
             minPriceParam ? parseInt(minPriceParam) : 0,
-            maxPriceParam ? parseInt(maxPriceParam) : 5000000
+            maxPriceParam ? parseInt(maxPriceParam) : 50000000
           ];
         }
 
@@ -660,7 +660,7 @@ const CarListing = () => {
     setHasSearchResults(false);
     setSearchInfo(null);
     setFilters({
-      priceRange: [0, 5000000],
+      priceRange: [0, 50000000],
       brands: [],
       fuelTypes: [],
       transmissions: [],
