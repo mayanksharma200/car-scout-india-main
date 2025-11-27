@@ -610,7 +610,7 @@ const CarManagement = () => {
                   <TableHead>Car Details</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Performance</TableHead>
+                  <TableHead>Photos</TableHead>
                   <TableHead>Last Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -698,7 +698,7 @@ const CarManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{new Date(car.updated_at).toLocaleDateString()}</p>
+                        <p className="text-sm">{new Date(car.updated_at).toLocaleString()}</p>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
