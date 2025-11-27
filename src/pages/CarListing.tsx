@@ -86,6 +86,7 @@ const CarListing = () => {
     seating: [] as string[],
     features: [] as string[],
     city: "" as string,
+    mileageRange: [0, 100],
   });
 
   const [availableCities, setAvailableCities] = useState<string[]>([]);
@@ -133,6 +134,8 @@ const CarListing = () => {
       cityParam ||
       minPriceParam ||
       maxPriceParam ||
+      searchParams.get("minMileage") ||
+      searchParams.get("maxMileage") ||
       fuelTypesParam ||
       transmissionsParam ||
       bodyTypesParam ||
@@ -169,6 +172,15 @@ const CarListing = () => {
           newFilters.priceRange = [
             minPriceParam ? parseInt(minPriceParam) : 0,
             maxPriceParam ? parseInt(maxPriceParam) : 5000000
+          ];
+        }
+
+        const minMileageParam = searchParams.get("minMileage");
+        const maxMileageParam = searchParams.get("maxMileage");
+        if (minMileageParam || maxMileageParam) {
+          newFilters.mileageRange = [
+            minMileageParam ? parseInt(minMileageParam) : 0,
+            maxMileageParam ? parseInt(maxMileageParam) : 100
           ];
         }
 
@@ -658,6 +670,7 @@ const CarListing = () => {
       seating: [],
       features: [],
       city: "",
+      mileageRange: [0, 100],
     });
     window.history.pushState({}, "", "/cars");
   };
@@ -689,6 +702,7 @@ const CarListing = () => {
       seating: [],
       features: [],
       city: "",
+      mileageRange: [0, 100],
     });
   };
 
@@ -701,7 +715,8 @@ const CarListing = () => {
       filters.colors.length +
       filters.seating.length +
       filters.features.length +
-      (filters.city ? 1 : 0)
+      (filters.city ? 1 : 0) +
+      (filters.mileageRange[0] > 0 || filters.mileageRange[1] < 100 ? 1 : 0)
     );
   };
 
@@ -765,6 +780,10 @@ const CarListing = () => {
         filters.seating.length === 0 ||
         filters.seating.includes(car.seating.toString());
 
+      const mileageMatch =
+        car.mileage >= filters.mileageRange[0] &&
+        car.mileage <= filters.mileageRange[1];
+
       const featuresMatch =
         filters.features.length === 0 ||
         filters.features.every((feature) => car.features.includes(feature));
@@ -823,7 +842,10 @@ const CarListing = () => {
         yearMatch &&
         seatingMatch &&
         featuresMatch &&
-        cityMatch
+        seatingMatch &&
+        featuresMatch &&
+        cityMatch &&
+        mileageMatch
       );
     });
 

@@ -238,7 +238,7 @@ const HeroSection = () => {
   const filterOptions = {
     fuelTypes: ["Petrol", "Diesel", "Electric", "Hybrid", "CNG"],
     transmissions: ["Manual", "Automatic", "CVT", "AMT"],
-    bodyTypes: ["Hatchback", "Sedan", "SUV", "Coupe", "Convertible", "MPV"],
+    // bodyTypes: ["Hatchback", "Sedan", "SUV", "Coupe", "Convertible", "MPV"],
     seatingOptions: ["2", "4", "5", "7", "8+"],
     brands: carBrands,
   };
