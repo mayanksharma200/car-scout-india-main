@@ -691,19 +691,7 @@ const CarListing = () => {
   };
 
   const clearAllFilters = () => {
-    setFilters({
-      priceRange: [0, 5000000],
-      brands: [],
-      fuelTypes: [],
-      transmissions: [],
-      bodyTypes: [],
-      colors: [],
-      yearRange: [2020, 2025],
-      seating: [],
-      features: [],
-      city: "",
-      mileageRange: [0, 100],
-    });
+    clearSearch();
   };
 
   const getActiveFiltersCount = () => {
