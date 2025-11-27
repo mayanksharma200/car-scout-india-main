@@ -86,18 +86,10 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  to="/emi-calculator"
+                  to="/disclaimer"
                   className="text-muted-foreground hover:text-primary transition-colors text-sm"
                 >
-                  EMI Calculator
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/news"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Car News
+                  Disclaimer
                 </Link>
               </li>
             </ul>
@@ -115,6 +107,23 @@ const Footer = () => {
                   Car Loan
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/emi-calculator"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  EMI Calculator
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/news"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Car News
+                </Link>
+              </li>
+
             </ul>
           </div>
 
