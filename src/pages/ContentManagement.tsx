@@ -100,6 +100,8 @@ const ContentManagement = () => {
     excerpt: "",
     image_url: ""
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -181,6 +183,53 @@ const ContentManagement = () => {
     }
   };
 
+
+  // Handle Edit
+  const handleEdit = (item: any) => {
+    setIsEditMode(true);
+    setEditingId(item.id);
+    setNewContent({
+      title: item.title || "",
+      type: item.type || "news",
+      status: item.status || "draft",
+      description: item.description || "",
+      price: item.price || "",
+      brand: item.brand || "",
+      model: item.model || "",
+      category: item.category || "",
+      author: item.author || "",
+      slug: item.slug || "",
+      content: item.content || "",
+      excerpt: item.excerpt || "",
+      image_url: item.image_url || ""
+    });
+
+    // Parse structured content if it exists
+    if (item.content && item.type === 'news') {
+      try {
+        const parsed = JSON.parse(item.content);
+        if (parsed.sections) {
+          setContentSections(parsed.sections.length > 0 ? parsed.sections : [{ id: Date.now().toString(), heading: '', body: '' }]);
+        }
+        if (parsed.keyHighlights) {
+          setKeyHighlights(parsed.keyHighlights.length > 0 ? parsed.keyHighlights : ['']);
+        }
+        if (parsed.introduction) {
+          setNewContent(prev => ({ ...prev, content: parsed.introduction }));
+        }
+      } catch (e) {
+        // Not structured JSON, use as-is
+      }
+    }
+
+    // Set image preview if exists
+    if (item.image_url) {
+      setImagePreviewUrl(item.image_url);
+    }
+
+    setIsAddContentOpen(true);
+  };
+
   // Add Content functionality
   const handleAddContent = async () => {
     if (!newContent.title) {
@@ -257,13 +306,26 @@ const ContentManagement = () => {
 
       if (newContent.type === 'news') {
         // Use backend API for news to bypass RLS
-        const response = await api.news.create(contentData);
-        if (response.success) {
-          addedContent = response.data;
-          // Refresh content list
-          refetch();
+        if (isEditMode && editingId) {
+          // Update existing article
+          const response = await api.news.update(editingId, contentData);
+          if (response.success) {
+            addedContent = response.data;
+            // Refresh content list
+            refetch();
+          } else {
+            throw new Error(response.error || "Failed to update news article");
+          }
         } else {
-          throw new Error(response.error || "Failed to create news article");
+          // Create new article
+          const response = await api.news.create(contentData);
+          if (response.success) {
+            addedContent = response.data;
+            // Refresh content list
+            refetch();
+          } else {
+            throw new Error(response.error || "Failed to create news article");
+          }
         }
       } else {
         // Fallback to direct DB for other types (if any)
@@ -295,6 +357,8 @@ const ContentManagement = () => {
       setImagePreviewUrl(null);
       setContentSections([{ id: Date.now().toString(), heading: '', body: '' }]);
       setKeyHighlights(['']);
+      setIsEditMode(false);
+      setEditingId(null);
 
       setIsAddContentOpen(false);
     } catch (error) {
@@ -515,7 +579,13 @@ const ContentManagement = () => {
             </Dialog>
 
             {/* Add Content Dialog */}
-            <Dialog open={isAddContentOpen} onOpenChange={setIsAddContentOpen}>
+            <Dialog open={isAddContentOpen} onOpenChange={(open) => {
+              setIsAddContentOpen(open);
+              if (!open) {
+                setIsEditMode(false);
+                setEditingId(null);
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus className="w-4 h-4" />
@@ -524,7 +594,7 @@ const ContentManagement = () => {
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add New Content</DialogTitle>
+                  <DialogTitle>{isEditMode ? 'Edit Content' : 'Add New Content'}</DialogTitle>
                   <DialogDescription>
                     Create new cars, news articles, or pages for your portal
                   </DialogDescription>
@@ -813,7 +883,7 @@ const ContentManagement = () => {
                     </Button>
                     <Button onClick={handleAddContent} className="flex-1">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create {newContent.type.charAt(0).toUpperCase() + newContent.type.slice(1)}
+                      {isEditMode ? 'Update' : 'Create'} {newContent.type.charAt(0).toUpperCase() + newContent.type.slice(1)}
                     </Button>
                   </div>
                 </div>
@@ -938,7 +1008,7 @@ const ContentManagement = () => {
                             <Button variant="ghost" size="sm">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="sm">

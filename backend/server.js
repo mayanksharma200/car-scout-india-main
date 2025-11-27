@@ -1876,7 +1876,38 @@ app.put("/api/admin/news/:id", async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const { data, error } = await supabase
+    // Create a fresh admin client to ensure we have service role access
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // 1. Check if image is being updated
+    if (updates.image_url) {
+      const { data: currentArticle, error: fetchError } = await adminSupabase
+        .from("news_articles")
+        .select("image_url")
+        .eq("id", id)
+        .single();
+
+      if (!fetchError && currentArticle && currentArticle.image_url) {
+        // If new image is different from old image, and old image is S3, delete old image
+        if (currentArticle.image_url !== updates.image_url &&
+          currentArticle.image_url.includes('amazonaws.com') &&
+          s3UploadService.isConfigured()) {
+          console.log(`Deleting old image for article ${id}: ${currentArticle.image_url}`);
+          await s3UploadService.deleteImageFromS3(currentArticle.image_url);
+        }
+      }
+    }
+
+    const { data, error } = await adminSupabase
       .from("news_articles")
       .update({
         ...updates,
@@ -1900,7 +1931,40 @@ app.delete("/api/admin/news/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { error } = await supabase
+    // Create a fresh admin client to ensure we have service role access
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // 1. Fetch the article first to get the image URL
+    const { data: article, error: fetchError } = await adminSupabase
+      .from("news_articles")
+      .select("image_url")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching article for deletion:", fetchError);
+      // Continue with deletion anyway, just in case it exists but fetch failed (unlikely if ID is valid)
+    }
+
+    // 2. Delete image from S3 if it exists
+    if (article && article.image_url && s3UploadService.isConfigured()) {
+      // Check if it's an S3 URL (contains amazonaws.com)
+      if (article.image_url.includes('amazonaws.com')) {
+        await s3UploadService.deleteImageFromS3(article.image_url);
+      }
+    }
+
+    // 3. Delete the article
+    const { error } = await adminSupabase
       .from("news_articles")
       .delete()
       .eq("id", id);
