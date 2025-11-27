@@ -107,49 +107,100 @@ const NewsDetail = () => {
                             {article.title}
                         </h1>
 
-                        <div className="flex flex-wrap items-center gap-6 text-muted-foreground border-b border-border pb-8">
-                            <div className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                <span className="font-medium text-foreground">{article.author}</span>
+                        <div className="flex items-center justify-between border-b pb-6 mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center text-muted-foreground">
+                                    <User className="w-4 h-4 mr-2" />
+                                    {article.author}
+                                </div>
+                                <div className="flex items-center text-muted-foreground">
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    {formatDate(article.created_at)}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                <span>{formatDate(article.created_at)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                <span>{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
-                            </div>
-                            <div className="ml-auto">
-                                <ShareModal
-                                    title={article.title}
-                                    url={window.location.href}
-                                    image={article.image_url}
-                                    description={article.excerpt}
-                                >
-                                    <Button variant="outline" size="sm" className="gap-2">
-                                        <Share2 className="w-4 h-4" />
-                                        Share
-                                    </Button>
-                                </ShareModal>
-                            </div>
+                            <ShareModal
+                                title={article.title}
+                                url={window.location.href}
+                                description={article.excerpt}
+                            >
+                                <Button variant="outline" size="sm" className="gap-2">
+                                    <Share2 className="w-4 h-4" />
+                                    Share
+                                </Button>
+                            </ShareModal>
                         </div>
-                    </div>
 
-                    <div className="mb-10 rounded-xl overflow-hidden shadow-lg">
-                        <img
-                            src={article.image_url || "/placeholder.svg"}
-                            alt={article.title}
-                            className="w-full h-auto object-cover max-h-[600px]"
-                        />
-                    </div>
+                        <div className="relative h-[400px] w-full mb-10 rounded-xl overflow-hidden shadow-lg">
+                            <img
+                                src={article.image_url || "/placeholder.svg"}
+                                alt={article.title}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
 
-                    <div className="prose prose-lg max-w-none dark:prose-invert">
-                        <p className="text-xl text-muted-foreground leading-relaxed mb-8 font-medium">
-                            {article.excerpt}
-                        </p>
-                        <div className="whitespace-pre-wrap leading-relaxed">
-                            {article.content}
+                        <div className="prose prose-lg max-w-none dark:prose-invert">
+                            {(() => {
+                                try {
+                                    // Try to parse content as JSON for structured data
+                                    const structuredContent = JSON.parse(article.content);
+
+                                    if (structuredContent.sections || structuredContent.keyHighlights) {
+                                        return (
+                                            <div className="space-y-8">
+                                                {/* Introduction */}
+                                                {structuredContent.introduction && (
+                                                    <div className="text-xl leading-relaxed text-muted-foreground">
+                                                        {structuredContent.introduction}
+                                                    </div>
+                                                )}
+
+                                                {/* Key Highlights */}
+                                                {structuredContent.keyHighlights && structuredContent.keyHighlights.length > 0 && (
+                                                    <div className="bg-muted/30 p-6 rounded-xl border border-border">
+                                                        <h3 className="text-xl font-semibold mb-4 flex items-center">
+                                                            <span className="bg-primary/10 text-primary p-1 rounded mr-2">✨</span>
+                                                            Key Highlights
+                                                        </h3>
+                                                        <ul className="space-y-2">
+                                                            {structuredContent.keyHighlights.map((highlight: string, idx: number) => (
+                                                                <li key={idx} className="flex items-start">
+                                                                    <span className="mr-2 mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                                                                    <span>{highlight}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {/* Sections */}
+                                                {structuredContent.sections && structuredContent.sections.map((section: any, idx: number) => (
+                                                    <div key={idx} className="space-y-4">
+                                                        {section.heading && (
+                                                            <h2 className="text-2xl font-bold text-foreground mt-8 mb-4">
+                                                                {section.heading}
+                                                            </h2>
+                                                        )}
+                                                        {section.body && (
+                                                            <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                                                {section.body}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                } catch (e) {
+                                    // If parsing fails, treat as plain text (legacy content)
+                                }
+
+                                // Fallback for plain text content
+                                return (
+                                    <div className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                                        {article.content}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </article>

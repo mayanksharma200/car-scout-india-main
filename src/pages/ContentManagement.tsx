@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useContent } from "@/hooks/useSupabaseData";
 import { useAdminAuthenticatedApi } from "@/hooks/useAdminAuthenticatedApi";
-import { Plus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image } from "lucide-react";
+import { Plus, Minus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,10 @@ const ContentManagement = () => {
   const [apiProvider, setApiProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [adminNews, setAdminNews] = useState<any[]>([]);
+
+  // New state for structured content builder
+  const [contentSections, setContentSections] = useState([{ id: Date.now().toString(), heading: '', body: '' }]);
+  const [keyHighlights, setKeyHighlights] = useState(['']);
 
   useEffect(() => {
     const fetchAdminNews = async () => {
@@ -56,7 +60,7 @@ const ContentManagement = () => {
     };
 
     fetchAdminNews();
-  }, [api, refetch]); // Re-fetch when refetch changes (e.g. after add)
+  }, [api, refetch]);
 
   // Add Content Dialog States
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
@@ -171,6 +175,18 @@ const ContentManagement = () => {
       console.log("Adding new content:", newContent);
 
       // Create content data
+      let finalContent = newContent.content;
+
+      // If we have structured sections or highlights, construct the JSON content
+      if (newContent.type === 'news' && (contentSections.length > 0 || keyHighlights.length > 0)) {
+        const structuredContent = {
+          introduction: newContent.content,
+          sections: contentSections.filter(s => s.heading || s.body),
+          keyHighlights: keyHighlights.filter(k => k)
+        };
+        finalContent = JSON.stringify(structuredContent);
+      }
+
       const contentData = {
         title: newContent.title,
         type: newContent.type as 'car' | 'news' | 'page',
@@ -178,7 +194,7 @@ const ContentManagement = () => {
         author: newContent.author,
         category: newContent.category,
         slug: newContent.slug,
-        content: newContent.content,
+        content: finalContent,
         excerpt: newContent.excerpt,
         image_url: newContent.image_url,
         views: 0
@@ -316,7 +332,7 @@ const ContentManagement = () => {
                   Add Content
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Content</DialogTitle>
                   <DialogDescription>
@@ -438,16 +454,116 @@ const ContentManagement = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="content">Content</Label>
+                        <Label htmlFor="content">Introduction / Main Content</Label>
                         <Textarea
                           id="content"
                           value={newContent.content}
                           onChange={(e) => setNewContent(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Full article content..."
-                          rows={6}
+                          placeholder="Enter the main content or introduction..."
+                          className="min-h-[150px]"
                         />
                       </div>
+
+                      {/* Structured Content Builder */}
+                      <div className="space-y-4 border rounded-md p-4">
+                        <h3 className="font-semibold">Article Sections</h3>
+                        {contentSections.map((section, index) => (
+                          <div key={section.id} className="space-y-2 p-3 bg-muted/30 rounded-md relative group">
+                            <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const newSections = contentSections.filter(s => s.id !== section.id);
+                                  setContentSections(newSections);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                            <Input
+                              placeholder="Section Heading"
+                              value={section.heading}
+                              onChange={(e) => {
+                                const newSections = [...contentSections];
+                                newSections[index].heading = e.target.value;
+                                setContentSections(newSections);
+                              }}
+                              className="font-medium"
+                            />
+                            <Textarea
+                              placeholder="Section Body"
+                              value={section.body}
+                              onChange={(e) => {
+                                const newSections = [...contentSections];
+                                newSections[index].body = e.target.value;
+                                setContentSections(newSections);
+                              }}
+                              className="min-h-[100px]"
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setContentSections([...contentSections, { id: Date.now().toString(), heading: '', body: '' }])}
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Section
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4 border rounded-md p-4">
+                        <h3 className="font-semibold">Key Highlights (Bullet Points)</h3>
+                        {keyHighlights.map((highlight, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              placeholder={`Highlight ${index + 1}`}
+                              value={highlight}
+                              onChange={(e) => {
+                                const newHighlights = [...keyHighlights];
+                                newHighlights[index] = e.target.value;
+                                setKeyHighlights(newHighlights);
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newHighlights = keyHighlights.filter((_, i) => i !== index);
+                                setKeyHighlights(newHighlights);
+                              }}
+                              disabled={keyHighlights.length === 1 && index === 0}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setKeyHighlights([...keyHighlights, ''])}
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Highlight
+                        </Button>
+                      </div>
                     </>
+                  )}
+
+                  {newContent.type !== 'news' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="content">Content</Label>
+                      <Textarea
+                        id="content"
+                        value={newContent.content}
+                        onChange={(e) => setNewContent(prev => ({ ...prev, content: e.target.value }))}
+                        placeholder="Enter content..."
+                        className="min-h-[200px]"
+                      />
+                    </div>
                   )}
 
                   {newContent.type === 'page' && (
