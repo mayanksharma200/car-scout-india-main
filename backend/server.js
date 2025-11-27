@@ -599,20 +599,79 @@ app.get("/api/stats", async (req, res) => {
 
     const uniqueBrandsCount = uniqueBrandsList.length;
 
-    // 3. Count cities
-    // Based on the schema, we have specific price columns for cities
-    const supportedCities = [
-      "mumbai_price",
-      "bangalore_price",
-      "delhi_price",
-      "pune_price",
-      "hyderabad_price",
-      "chennai_price",
-      "kolkata_price",
-      "ahmedabad_price",
-    ];
+    // 3. Count cities and identify available ones
+    // Dynamically discover city columns from the schema by fetching one row
+    // This avoids hardcoding the city list and allows for new cities to be added to the DB schema
 
-    const totalCities = supportedCities.length;
+    let cityColumns = {};
+
+    // Fetch one row to inspect columns
+    const { data: sampleCar, error: sampleError } = await supabase
+      .from("cars")
+      .select("*")
+      .limit(1);
+
+    if (!sampleError && sampleCar && sampleCar.length > 0) {
+      const columns = Object.keys(sampleCar[0]);
+
+      // Filter for columns ending in _price, excluding non-city price columns
+      const potentialCityColumns = columns.filter(col =>
+        col.endsWith("_price") &&
+        col !== "price_min" &&
+        col !== "price_max" &&
+        col !== "ex_showroom_price" &&
+        col !== "on_road_price" &&
+        col !== "exact_price" &&
+        col !== "offer_price" &&
+        col !== "original_price"
+      );
+
+      // Build the city map
+      potentialCityColumns.forEach(col => {
+        const name = col.replace("_price", "");
+        // Capitalize first letter of each word (e.g. "new_delhi" -> "New Delhi")
+        const formattedName = name
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+
+        cityColumns[col] = formattedName;
+      });
+
+      console.log("🏙️ Discovered city columns:", Object.keys(cityColumns));
+    } else {
+      // Fallback if no data or error
+      console.warn("⚠️ Could not discover city columns dynamically, using fallback.");
+    }
+
+    // We need to check which columns have at least one non-null value
+    // Since we can't easily do this in one simple query without dynamic SQL or multiple queries,
+    // we'll fetch a small sample of data or use a count query for each column
+    // For efficiency, let's try to construct a query that checks existence
+
+    let availableCities = [];
+
+    // Check each city column for existence of data
+    // This is a bit heavy but accurate. 
+    // Optimization: We could cache this or use a materialized view in a real prod env
+
+    const cityChecks = Object.keys(cityColumns).map(async (col) => {
+      const { count, error } = await supabase
+        .from("cars")
+        .select(col, { count: "exact", head: true })
+        .eq("status", "active")
+        .not(col, "is", null);
+
+      if (!error && count > 0) {
+        return cityColumns[col];
+      }
+      return null;
+    });
+
+    const results = await Promise.all(cityChecks);
+    availableCities = results.filter(city => city !== null).sort();
+
+    const totalCities = availableCities.length;
 
     res.json({
       success: true,
@@ -620,7 +679,8 @@ app.get("/api/stats", async (req, res) => {
         totalCars: totalCars || 0,
         totalBrands: uniqueBrandsCount || 0,
         totalCities: totalCities,
-        brands: uniqueBrandsList, // Return the actual list of brands
+        brands: uniqueBrandsList,
+        cities: availableCities, // Return the actual list of available cities
       },
     });
   } catch (error) {
