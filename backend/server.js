@@ -30,6 +30,10 @@ if (!supabaseUrl || !supabaseKey) {
   console.error("Required: SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_KEY (or VITE_SUPABASE_ANON_KEY)");
 }
 
+console.log("Supabase Config Check:");
+console.log("URL:", supabaseUrl ? "Set" : "Missing");
+console.log("Key Type:", process.env.SUPABASE_SERVICE_KEY ? "Service Role Key (Good)" : "Fallback/Anon Key (Might cause RLS issues)");
+
 const supabase = createClient(
   supabaseUrl,
   supabaseKey,
@@ -1776,6 +1780,26 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
 });
 
 // ===== ADMIN NEWS ENDPOINTS =====
+
+// Get All News Articles (Admin)
+app.get("/api/admin/news", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("news_articles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data
+    });
+  } catch (error) {
+    console.error("Error fetching admin news:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Create News Article
 app.post("/api/admin/news", async (req, res) => {

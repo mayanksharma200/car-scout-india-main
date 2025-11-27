@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Temporary mock data until database has entries and types are generated
@@ -121,10 +121,10 @@ export function useCars() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCars = async () => {
+  const fetchCars = useCallback(async () => {
     try {
       setLoading(true);
-      // For now, use mock data until tables have proper types
+      // For now, use mock data until database has entries and types are generated
       // The database tables exist and will work once data is added
       setCars(mockCars);
     } catch (err) {
@@ -133,7 +133,7 @@ export function useCars() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const addCar = async (carData: Omit<Car, 'id' | 'views' | 'leads' | 'created_at' | 'updated_at'>) => {
     try {
@@ -156,7 +156,7 @@ export function useCars() {
 
   useEffect(() => {
     fetchCars();
-  }, []);
+  }, [fetchCars]);
 
   return { cars, loading, error, addCar, refetch: fetchCars };
 }
@@ -166,7 +166,7 @@ export function useLeads() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       // Using live-simulated data - database tables are ready
@@ -177,11 +177,11 @@ export function useLeads() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [fetchLeads]);
 
   return { leads, loading, error, refetch: fetchLeads };
 }
@@ -191,7 +191,7 @@ export function useContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchContent = async () => {
+  const fetchContent = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -235,7 +235,7 @@ export function useContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const addContent = async (contentData: Omit<Content, 'id' | 'views' | 'created_at' | 'updated_at'>) => {
     try {
@@ -288,7 +288,7 @@ export function useContent() {
 
   useEffect(() => {
     fetchContent();
-  }, []);
+  }, [fetchContent]);
 
   return { content, loading, error, addContent, refetch: fetchContent };
 }

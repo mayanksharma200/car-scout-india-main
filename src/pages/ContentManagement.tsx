@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useContent } from "@/hooks/useSupabaseData";
+import { useAdminAuthenticatedApi } from "@/hooks/useAdminAuthenticatedApi";
 import { Plus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,13 +18,45 @@ import AdminLayout from "@/components/AdminLayout";
 
 const ContentManagement = () => {
   const { toast } = useToast();
-  const { content: allContent, addContent: addContentToDb, loading } = useContent();
+  const { content: allContent, addContent: addContentToDb, loading, refetch } = useContent();
+  const api = useAdminAuthenticatedApi();
   const [searchQuery, setSearchQuery] = useState("");
   const [contentFilter, setContentFilter] = useState("all");
   const [isApiSyncOpen, setIsApiSyncOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [apiProvider, setApiProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [adminNews, setAdminNews] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAdminNews = async () => {
+      try {
+        const response = await api.news.getAllAdmin();
+        if (response.success) {
+          // Transform API response to match Content interface
+          const transformedNews = response.data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            type: 'news',
+            status: item.status,
+            lastModified: new Date(item.created_at).toLocaleDateString(),
+            views: item.views || 0,
+            slug: item.slug,
+            content: item.content,
+            excerpt: item.excerpt,
+            image_url: item.image_url,
+            author: item.author,
+            category: item.category
+          }));
+          setAdminNews(transformedNews);
+        }
+      } catch (error) {
+        console.error("Failed to fetch admin news:", error);
+      }
+    };
+
+    fetchAdminNews();
+  }, [api, refetch]); // Re-fetch when refetch changes (e.g. after add)
 
   // Add Content Dialog States
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
@@ -53,10 +86,18 @@ const ContentManagement = () => {
     );
   }
   const carContent = allContent.filter(item => item.type === 'car');
-  const newsContent = allContent.filter(item => item.type === 'news');
+  // Use adminNews instead of allContent for news to ensure we see drafts (bypassing RLS)
+  const newsContent = adminNews.length > 0 ? adminNews : allContent.filter(item => item.type === 'news');
   const pageContent = allContent.filter(item => item.type === 'page');
 
-  const filteredContent = allContent.filter(item => {
+  // Merge adminNews with other content for the main list
+  const displayContent = [
+    ...carContent,
+    ...newsContent,
+    ...pageContent
+  ];
+
+  const filteredContent = displayContent.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = contentFilter === "all" || item.type === contentFilter;
     return matchesSearch && matchesFilter;
@@ -143,11 +184,26 @@ const ContentManagement = () => {
         views: 0
       };
 
-      const addedContent = await addContentToDb(contentData);
+      let addedContent;
+
+      if (newContent.type === 'news') {
+        // Use backend API for news to bypass RLS
+        const response = await api.news.create(contentData);
+        if (response.success) {
+          addedContent = response.data;
+          // Refresh content list
+          refetch();
+        } else {
+          throw new Error(response.error || "Failed to create news article");
+        }
+      } else {
+        // Fallback to direct DB for other types (if any)
+        addedContent = await addContentToDb(contentData);
+      }
 
       toast({
         title: "Success",
-        description: `${addedContent?.type.charAt(0).toUpperCase() + addedContent?.type.slice(1)} "${addedContent?.title}" has been created successfully.`,
+        description: `${newContent.type === 'news' ? 'News Article' : 'Content'} "${newContent.title}" has been created successfully.`,
       });
 
       // Reset form
@@ -278,7 +334,7 @@ const ContentManagement = () => {
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
+                        <SelectContent className="bg-background border border-border z-[5100]">
                           <SelectItem value="car">Car Listing</SelectItem>
                           <SelectItem value="news">News Article</SelectItem>
                           <SelectItem value="page">Static Page</SelectItem>
@@ -294,7 +350,7 @@ const ContentManagement = () => {
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
+                        <SelectContent className="bg-background border border-border z-[5100]">
                           <SelectItem value="draft">Draft</SelectItem>
                           <SelectItem value="published">Published</SelectItem>
                           <SelectItem value="scheduled">Scheduled</SelectItem>

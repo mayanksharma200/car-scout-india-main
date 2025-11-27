@@ -266,6 +266,7 @@ export interface ApiClient {
   };
   news: {
     getAll: (params?: any) => Promise<any>;
+    getAllAdmin: () => Promise<any>;
     getBySlug: (slug: string) => Promise<any>;
     create: (newsData: any) => Promise<any>;
     update: (id: string, newsData: any) => Promise<any>;
@@ -438,6 +439,10 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
       },
       getBySlug: async (slug: string) => {
         const response = await fetch(`${API_BASE_URL}/news/${slug}`);
+        return response.json();
+      },
+      getAllAdmin: async () => {
+        const response = await makeAuthenticatedRequest('/admin/news');
         return response.json();
       },
       create: async (newsData: any) => {
