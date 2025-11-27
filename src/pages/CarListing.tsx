@@ -1185,7 +1185,7 @@ const CarListing = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ zoom: "90%" }}>
       <Header />
 
       {/* Ad Banner - Visible on all devices */}
