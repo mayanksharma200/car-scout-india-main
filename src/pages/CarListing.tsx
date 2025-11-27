@@ -76,7 +76,7 @@ const CarListing = () => {
   const { isAuthenticated } = useUserAuth();
 
   const [filters, setFilters] = useState({
-    priceRange: [0, 50000000],
+    priceRange: [0, 50000000000],
     brands: [] as string[],
     fuelTypes: [] as string[],
     transmissions: [] as string[],
