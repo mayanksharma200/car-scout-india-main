@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useContent } from "@/hooks/useSupabaseData";
 import { useAdminAuthenticatedApi } from "@/hooks/useAdminAuthenticatedApi";
-import { Plus, Minus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image } from "lucide-react";
+import { Plus, Minus, RefreshCw, Download, Upload, Eye, Edit, Trash2, Calendar, Globe, Image, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,11 @@ const ContentManagement = () => {
   const [contentSections, setContentSections] = useState([{ id: Date.now().toString(), heading: '', body: '' }]);
   const [keyHighlights, setKeyHighlights] = useState(['']);
 
+  // Trending Topics State
+  const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
+  const [isTrendingTopicsOpen, setIsTrendingTopicsOpen] = useState(false);
+  const [newTopic, setNewTopic] = useState({ title: "", articleSlug: "" });
+
   useEffect(() => {
     const fetchAdminNews = async () => {
       try {
@@ -59,7 +64,19 @@ const ContentManagement = () => {
       }
     };
 
+    const fetchTrendingTopics = async () => {
+      try {
+        const response = await api.trendingTopics.getAll();
+        if (response.success) {
+          setTrendingTopics(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch trending topics:", error);
+      }
+    };
+
     fetchAdminNews();
+    fetchTrendingTopics();
   }, [api, refetch]);
 
   // Add Content Dialog States
@@ -249,6 +266,58 @@ const ContentManagement = () => {
     }
   };
 
+  const handleAddTopic = async () => {
+    if (!newTopic.title) {
+      toast({
+        title: "Error",
+        description: "Please enter a topic title",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedTopics = [...trendingTopics, { id: Date.now().toString(), ...newTopic }];
+      const response = await api.trendingTopics.update(updatedTopics);
+
+      if (response.success) {
+        setTrendingTopics(updatedTopics);
+        setNewTopic({ title: "", articleSlug: "" });
+        toast({
+          title: "Success",
+          description: "Trending topic added successfully",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add trending topic",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveTopic = async (id: string) => {
+    try {
+      const updatedTopics = trendingTopics.filter(t => t.id !== id);
+      const response = await api.trendingTopics.update(updatedTopics);
+
+      if (response.success) {
+        setTrendingTopics(updatedTopics);
+        toast({
+          title: "Success",
+          description: "Trending topic removed successfully",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove trending topic",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
@@ -320,6 +389,87 @@ const ContentManagement = () => {
                       </>
                     )}
                   </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Trending Topics Dialog */}
+            <Dialog open={isTrendingTopicsOpen} onOpenChange={setIsTrendingTopicsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Trending Topics
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Manage Trending Topics</DialogTitle>
+                  <DialogDescription>
+                    Add topics that will appear in the "Trending Topics" section.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Add New Topic</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Topic Title"
+                        value={newTopic.title}
+                        onChange={(e) => setNewTopic(prev => ({ ...prev, title: e.target.value }))}
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <Select
+                        value={newTopic.articleSlug}
+                        onValueChange={(value) => setNewTopic(prev => ({ ...prev, articleSlug: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Link to Article (Optional)" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999]">
+                          <SelectItem value="none">No Link</SelectItem>
+                          {adminNews.map(article => (
+                            <SelectItem key={article.id} value={article.slug}>
+                              {article.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAddTopic} className="w-full mt-2">
+                      <Plus className="w-4 h-4 mr-2" /> Add Topic
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <Label className="mb-2 block">Current Topics</Label>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {trendingTopics.map(topic => (
+                        <div key={topic.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                          <div>
+                            <p className="font-medium">{topic.title}</p>
+                            {topic.articleSlug && topic.articleSlug !== 'none' && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                Links to: {adminNews.find(a => a.slug === topic.articleSlug)?.title || topic.articleSlug}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveTopic(topic.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      {trendingTopics.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No trending topics added yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>

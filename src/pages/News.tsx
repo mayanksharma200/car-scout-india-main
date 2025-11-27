@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Calendar, User, ArrowRight, TrendingUp, Share2 } from "lucide-react";
 import Header from "@/components/Header";
@@ -8,11 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Footer from "@/components/Footer";
 import { useContent } from "@/hooks/useSupabaseData";
+import { trendingTopicsAPI } from "@/services/api";
 
 
 const News = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
+  const { content: newsArticles, loading } = useContent();
+  const categories = ["All", "Launch", "Market News", "Electric", "Spy Shots", "Policy", "Review"];
 
   // Hard refresh when navigating from article publish success
   useEffect(() => {
@@ -26,10 +30,21 @@ const News = () => {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, navigate]);
-  const { content: newsArticles, loading } = useContent();
 
-  const categories = ["All", "Launch", "Market News", "Electric", "Spy Shots", "Policy", "Review"];
-  const trendingTopics = ["Electric Vehicles", "Maruti Swift", "Tata Nexon", "Hyundai Creta", "BS7 Norms"];
+  // Fetch trending topics
+  useEffect(() => {
+    const fetchTrendingTopics = async () => {
+      try {
+        const response = await trendingTopicsAPI.getAll();
+        if (response.success) {
+          setTrendingTopics(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch trending topics:", error);
+      }
+    };
+    fetchTrendingTopics();
+  }, []);
 
   if (loading) {
     return (
@@ -216,8 +231,16 @@ const News = () => {
               <CardContent>
                 <div className="space-y-3">
                   {trendingTopics.map((topic, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
-                      <span className="font-medium">{topic}</span>
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (topic.articleSlug && topic.articleSlug !== 'none') {
+                          navigate(`/news/${topic.articleSlug}`);
+                        }
+                      }}
+                    >
+                      <span className="font-medium">{topic.title || topic}</span>
                       <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     </div>
                   ))}

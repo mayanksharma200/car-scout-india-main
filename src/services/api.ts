@@ -140,6 +140,19 @@ export const wishlistAPI = {
   },
 };
 
+// Trending Topics API endpoints
+export const trendingTopicsAPI = {
+  getAll: async () => {
+    return fetchAPI('/trending-topics');
+  },
+  update: async (topics: any[]) => {
+    return fetchAPI('/trending-topics', {
+      method: 'POST',
+      body: JSON.stringify({ topics }),
+    });
+  },
+};
+
 // Lead API endpoints
 export const leadAPI = {
   // Create a new lead
@@ -246,6 +259,10 @@ export interface ApiClient {
     getFeatured: () => Promise<any>;
     getById: (id: string) => Promise<any>;
     search: (query: string) => Promise<any>;
+  };
+  trendingTopics: {
+    getAll: () => Promise<any>;
+    update: (topics: any[]) => Promise<any>;
   };
   wishlist: {
     getAll: () => Promise<any>;
@@ -466,6 +483,18 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
           method: 'DELETE',
         });
         return response.json();
+      },
+    },
+    trendingTopics: {
+      getAll: async () => {
+        return fetchAPI('/trending-topics');
+      },
+      update: async (topics: any[]) => {
+        return fetchAPI('/trending-topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topics }),
+        });
       },
     },
   };

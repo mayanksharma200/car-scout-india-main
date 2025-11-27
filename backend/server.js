@@ -10,6 +10,12 @@ import dotenv from "dotenv";
 import emailService from "./services/emailService.js";
 import ideogramAPI from "./services/ideogramAPI.js";
 import s3UploadService from "./services/s3UploadService.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -6441,6 +6447,60 @@ const cleanupExpiredTokens = async () => {
 
 // Run cleanup every hour
 setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+
+// ===== TRENDING TOPICS ENDPOINTS =====
+
+const TRENDING_TOPICS_FILE = path.join(__dirname, 'data', 'trending_topics.json');
+
+// Helper to read topics
+const readTrendingTopics = () => {
+  try {
+    if (!fs.existsSync(TRENDING_TOPICS_FILE)) {
+      return [];
+    }
+    const data = fs.readFileSync(TRENDING_TOPICS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Error reading trending topics:", error);
+    return [];
+  }
+};
+
+// Helper to write topics
+const writeTrendingTopics = (topics) => {
+  try {
+    const dir = path.dirname(TRENDING_TOPICS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(TRENDING_TOPICS_FILE, JSON.stringify(topics, null, 2));
+    return true;
+  } catch (error) {
+    console.error("Error writing trending topics:", error);
+    return false;
+  }
+};
+
+app.get("/api/trending-topics", (req, res) => {
+  const topics = readTrendingTopics();
+  res.json({ success: true, data: topics });
+});
+
+app.post("/api/trending-topics", (req, res) => {
+  try {
+    const { topics } = req.body;
+    if (!Array.isArray(topics)) {
+      return res.status(400).json({ success: false, error: "Invalid data format" });
+    }
+    if (writeTrendingTopics(topics)) {
+      res.json({ success: true, data: topics });
+    } else {
+      throw new Error("Failed to save topics");
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // ===== ERROR HANDLING =====
 
