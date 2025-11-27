@@ -265,7 +265,10 @@ const CarImageGallery = ({
           />
 
           {/* Overlay Controls */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300">
+          <div
+            className="absolute inset-0 bg-black/0 transition-colors duration-300 cursor-pointer"
+            onClick={() => setIsFullscreen(true)}
+          >
             {/* Navigation Arrows */}
             {filteredImages.length > 1 && (
               <>
@@ -275,7 +278,10 @@ const CarImageGallery = ({
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white hover:bg-black/80 
                            opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300
                            w-8 h-8 md:w-10 md:h-10 p-0 z-10"
-                  onClick={goToPrevious}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToPrevious();
+                  }}
                 >
                   <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                 </Button>
@@ -285,7 +291,10 @@ const CarImageGallery = ({
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white hover:bg-black/80 
                            opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300
                            w-8 h-8 md:w-10 md:h-10 p-0 z-10"
-                  onClick={goToNext}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToNext();
+                  }}
                 >
                   <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                 </Button>
@@ -293,7 +302,10 @@ const CarImageGallery = ({
             )}
 
             {/* Action Buttons */}
-            <div className="absolute top-3 right-3 flex gap-2 opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10">
+            <div
+              className="absolute top-3 right-3 flex gap-2 opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Button
                 variant="ghost"
                 size="sm"
