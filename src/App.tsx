@@ -10,6 +10,7 @@ import EnvironmentBanner from "@/components/EnvironmentBanner";
 import DevAuthHelper from "@/components/DevAuthHelper";
 import { SupabaseAuthSync } from "@/components/SupabaseAuthSync";
 import GoogleOAuthHandler from "@/components/GoogleOAuthHandler";
+import ScrollToTop from "@/components/ScrollToTop";
 
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -89,6 +90,7 @@ const App = () => {
           {/* Add SupabaseAuthSync at the top level to sync auth state */}
           <UserAuthProvider>
             <SupabaseAuthSync />
+            <ScrollToTop />
 
             {/* Wrap the entire app with UserAuthProvider for regular user authentication */}
             <Routes>
