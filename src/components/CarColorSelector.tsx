@@ -154,9 +154,9 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
 
   const handleColorSelect = async (colorOption: ColorOption) => {
     if (selectedColor?.id === colorOption.id || isChanging) return;
-    
+
     setSelectedColor(colorOption);
-    
+
     try {
       await onColorChange(colorOption);
     } catch (error) {
@@ -188,7 +188,7 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
-        
+
 
         {/* Current Selected Color */}
         {activeColor && (
@@ -213,7 +213,7 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
           </div>
 
           {loadingColors ? (
-            <div className="grid grid-cols-8 gap-3 min-h-[80px] justify-items-center">
+            <div className="flex flex-wrap justify-center gap-4 min-h-[80px]">
               {[...Array(8)].map((_, index) => (
                 <div key={index} className="flex flex-col items-center">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-muted animate-pulse" />
@@ -222,44 +222,41 @@ const CarColorSelector: React.FC<CarColorSelectorProps> = ({
             </div>
           ) : (
             <div
-              className={`grid grid-cols-8 gap-3 min-h-[80px] justify-items-center transition-opacity duration-300 ${
-                isChanging ? 'opacity-50 pointer-events-none' : ''
-              }`}
+              className={`flex flex-wrap justify-center gap-4 min-h-[80px] transition-opacity duration-300 ${isChanging ? 'opacity-50 pointer-events-none' : ''
+                }`}
             >
               {colorOptions.map((colorOption) => {
-              const isSelected = activeColor?.id === colorOption.id;
-              const isCurrentlySelected = selectedColor?.id === colorOption.id && isChanging;
+                const isSelected = activeColor?.id === colorOption.id;
+                const isCurrentlySelected = selectedColor?.id === colorOption.id && isChanging;
 
-              return (
-                <Button
-                  key={colorOption.id}
-                  variant="ghost"
-                  className={`h-auto p-1 hover:bg-muted/50 transition-all duration-200 ${
-                    isSelected ? 'ring-2 ring-primary bg-muted/30' : ''
-                  } ${isChanging ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                  onClick={() => !isChanging && handleColorSelect(colorOption)}
-                  disabled={isChanging}
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="relative">
-                      <div
-                        className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 ${
-                          isCurrentlySelected ? 'scale-110 animate-pulse' : isChanging ? 'scale-95' : 'hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: colorOption.hexCode }}
-                      />
-                      {isSelected && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white drop-shadow-md" />
-                        </div>
-                      )}
-                      {colorOption.isPopular && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border border-white" />
-                      )}
+                return (
+                  <Button
+                    key={colorOption.id}
+                    variant="ghost"
+                    className={`h-auto p-1 hover:bg-muted/50 transition-all duration-200 ${isChanging ? 'cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    onClick={() => !isChanging && handleColorSelect(colorOption)}
+                    disabled={isChanging}
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="relative">
+                        <div
+                          className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-white shadow-md transition-all duration-200 ${isCurrentlySelected ? 'scale-110 animate-pulse' : isChanging ? 'scale-95' : 'hover:scale-105'
+                            }`}
+                          style={{ backgroundColor: colorOption.hexCode }}
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white drop-shadow-md" />
+                          </div>
+                        )}
+                        {colorOption.isPopular && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border border-white" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Button>
-              );
+                  </Button>
+                );
               })}
             </div>
           )}
