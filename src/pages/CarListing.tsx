@@ -734,9 +734,11 @@ const CarListing = () => {
         car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
         car.variant.toLowerCase().includes(searchQuery.toLowerCase());
 
+      // Use price_min for filtering if available, otherwise fallback to price
+      const effectivePrice = car.price_min || car.price || 0;
       const priceMatch =
-        car.price >= filters.priceRange[0] &&
-        car.price <= filters.priceRange[1];
+        effectivePrice >= filters.priceRange[0] &&
+        effectivePrice <= filters.priceRange[1];
 
       const brandMatch =
         filters.brands.length === 0 || filters.brands.includes(car.brand);

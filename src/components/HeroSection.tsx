@@ -294,9 +294,37 @@ const HeroSection = () => {
       params.append("carType", carType);
     }
 
-    // Budget range filter
+    // Budget range filter - Parse string to min/max price
     if (selectedBudget) {
-      params.append("budget", selectedBudget);
+      let min = 0;
+      let max = 50000000; // Default max
+
+      if (selectedBudget === "Under ₹5 Lakh") {
+        max = 500000;
+      } else if (selectedBudget === "₹5-10 Lakh" || selectedBudget === "₹5 - 10 Lakh") {
+        min = 500000;
+        max = 1000000;
+      } else if (selectedBudget === "₹10-15 Lakh") {
+        min = 1000000;
+        max = 1500000;
+      } else if (selectedBudget === "₹15-20 Lakh") {
+        min = 1500000;
+        max = 2000000;
+      } else if (selectedBudget === "₹20-30 Lakh") {
+        min = 2000000;
+        max = 3000000;
+      } else if (selectedBudget === "₹30-50 Lakh") {
+        min = 3000000;
+        max = 5000000;
+      } else if (selectedBudget === "₹50 Lakh - ₹1 Crore") {
+        min = 5000000;
+        max = 10000000;
+      } else if (selectedBudget === "Above ₹1 Crore") {
+        min = 10000000;
+      }
+
+      params.append("minPrice", min.toString());
+      params.append("maxPrice", max.toString());
     }
 
     // Price range (convert from lakh to actual price)
