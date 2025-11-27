@@ -407,8 +407,9 @@ const HeroSection = () => {
       if (result.success) {
         setSearchResults(result.data);
 
-        // Navigate to cars page with comprehensive filter data
-        navigate("/cars", {
+        // Navigate to cars page with comprehensive filter data and URL params
+        const filterParams = buildFilterParams();
+        navigate(`/cars?${filterParams.toString()}`, {
           state: {
             searchResults: result.data,
             searchQuery: query,
@@ -444,7 +445,8 @@ const HeroSection = () => {
       } else {
         console.error("Search failed:", result.error);
         // Still navigate but with empty results and error info
-        navigate("/cars", {
+        const filterParams = buildFilterParams();
+        navigate(`/cars?${filterParams.toString()}`, {
           state: {
             searchResults: [],
             searchQuery: query,
@@ -470,7 +472,8 @@ const HeroSection = () => {
     } catch (error) {
       console.error("Search error:", error);
       // Navigate with error state
-      navigate("/cars", {
+      const filterParams = buildFilterParams();
+      navigate(`/cars?${filterParams.toString()}`, {
         state: {
           searchResults: [],
           error: "Failed to search cars. Please try again.",

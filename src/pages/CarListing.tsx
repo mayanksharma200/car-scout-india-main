@@ -89,28 +89,18 @@ const CarListing = () => {
   });
 
   const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [availableBrands, setAvailableBrands] = useState<string[]>([]);
 
   // Load initial cars from database
   useEffect(() => {
     console.log("CarListing mounted, loading initial cars");
     let isMounted = true;
 
-    // Check if we have search results from navigation
-    if (location.state?.searchResults) {
-      console.log(
-        "Using search results from navigation:",
-        location.state.searchResults
-      );
-      if (isMounted) {
-        handleSearchResults(location.state);
-      }
-      return;
-    }
-
-    // Load all cars from database
+    // Always load all cars from database to ensure filters work correctly
+    // We rely on URL parameters to apply initial filters
     if (isMounted) {
       loadCarsFromDB();
-      fetchCities();
+      fetchStats();
     }
 
     // Cleanup function
@@ -127,34 +117,82 @@ const CarListing = () => {
     const fuelParam = searchParams.get("fuelType");
     const cityParam = searchParams.get("city");
 
-    if (brandParam || modelParam || fuelParam || cityParam) {
+    // New params from HeroSection
+    const minPriceParam = searchParams.get("minPrice");
+    const maxPriceParam = searchParams.get("maxPrice");
+    const fuelTypesParam = searchParams.get("fuelTypes");
+    const transmissionsParam = searchParams.get("transmissions");
+    const bodyTypesParam = searchParams.get("bodyTypes");
+    const seatingOptionsParam = searchParams.get("seatingOptions");
+    const filterBrandsParam = searchParams.get("filterBrands");
+
+    if (
+      brandParam ||
+      modelParam ||
+      fuelParam ||
+      cityParam ||
+      minPriceParam ||
+      maxPriceParam ||
+      fuelTypesParam ||
+      transmissionsParam ||
+      bodyTypesParam ||
+      seatingOptionsParam ||
+      filterBrandsParam
+    ) {
       console.log("Found URL parameters:", {
         brandParam,
         modelParam,
         fuelParam,
         cityParam,
+        minPriceParam,
+        maxPriceParam,
+        fuelTypesParam,
+        transmissionsParam,
+        bodyTypesParam,
+        seatingOptionsParam,
+        filterBrandsParam
       });
 
-      setFilters((prev) => ({
-        ...prev,
-        brands: brandParam ? [brandParam] : [],
-        fuelTypes: fuelParam ? [fuelParam] : [],
-        city: cityParam || "",
-      }));
+      setFilters((prev) => {
+        const newFilters = { ...prev };
+        console.log("Previous filters:", prev);
+
+        if (brandParam) newFilters.brands = [brandParam];
+        if (filterBrandsParam) newFilters.brands = filterBrandsParam.split(",");
+
+        if (fuelParam) newFilters.fuelTypes = [fuelParam];
+        if (fuelTypesParam) newFilters.fuelTypes = fuelTypesParam.split(",");
+
+        if (cityParam) newFilters.city = cityParam;
+
+        if (minPriceParam || maxPriceParam) {
+          newFilters.priceRange = [
+            minPriceParam ? parseInt(minPriceParam) : 0,
+            maxPriceParam ? parseInt(maxPriceParam) : 5000000
+          ];
+        }
+
+        if (transmissionsParam) newFilters.transmissions = transmissionsParam.split(",");
+        if (bodyTypesParam) newFilters.bodyTypes = bodyTypesParam.split(",");
+        if (seatingOptionsParam) newFilters.seating = seatingOptionsParam.split(",");
+
+        console.log("New filters calculated from URL:", newFilters);
+        return newFilters;
+      });
 
       setHasSearchResults(true);
       setSearchInfo({
         query: brandParam ? `Brand: ${brandParam}` : "Filtered Results",
         filters: {
-          selectedBrand: brandParam,
+          selectedBrand: brandParam || filterBrandsParam,
           selectedModel: modelParam,
-          selectedFuel: fuelParam,
+          selectedFuel: fuelParam || fuelTypesParam,
           selectedCity: cityParam,
         },
         error: null,
       });
     }
-  }, [searchParams.toString()]);
+  }, [searchParams]);
 
   // UPDATED: Batch check wishlist status when authenticated and cars change
   useEffect(() => {
@@ -588,15 +626,20 @@ const CarListing = () => {
     }
   };
 
-  const fetchCities = async () => {
+  const fetchStats = async () => {
     try {
       const response = await fetch("/api/stats");
       const result = await response.json();
-      if (result.success && result.data.cities && Array.isArray(result.data.cities)) {
-        setAvailableCities(result.data.cities);
+      if (result.success) {
+        if (result.data.cities && Array.isArray(result.data.cities)) {
+          setAvailableCities(result.data.cities);
+        }
+        if (result.data.brands && Array.isArray(result.data.brands)) {
+          setAvailableBrands(result.data.brands);
+        }
       }
     } catch (error) {
-      console.error("Failed to fetch cities:", error);
+      console.error("Failed to fetch stats:", error);
     }
   };
 
@@ -875,12 +918,14 @@ const CarListing = () => {
     "Volkswagen",
   ].sort();
 
-  // Extract brands from cars to only show available brands
+  // Use availableBrands from API, or fallback to derived brands
   const brands = React.useMemo(() => {
-    const availableBrands = [...new Set(cars.map((car) => car.brand).filter(Boolean))];
-    // Sort brands alphabetically
-    return availableBrands.sort();
-  }, [cars]);
+    if (availableBrands.length > 0) {
+      return availableBrands;
+    }
+    const derivedBrands = [...new Set(cars.map((car) => car.brand).filter(Boolean))];
+    return derivedBrands.sort();
+  }, [cars, availableBrands]);
   const bodyTypes = [
     ...new Set(cars.map((car) => car.bodyType).filter(Boolean)),
   ].sort();
