@@ -13,7 +13,7 @@ import Carlist360Logo from "@/assets/360carlistbg.png";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-  
+
   return (
     <footer className="bg-muted/50 border-t border-border mt-16">
       <div className="container mx-auto px-4 py-12 animate-fade-in">
@@ -25,7 +25,7 @@ const Footer = () => {
               <img
                 src={Carlist360Logo}
                 alt="Carlist360"
-                className="w-48 h-48 object-contain"
+                className="w-48 h-16 object-contain object-left"
               />
               {/* <h3 className="text-xl font-bold text-foreground">Carlist360</h3> */}
             </div>
