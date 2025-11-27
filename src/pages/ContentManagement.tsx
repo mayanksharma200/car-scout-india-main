@@ -54,7 +54,14 @@ const ContentManagement = () => {
           title: item.title,
           type: 'news',
           status: item.status,
-          lastModified: new Date(item.updated_at || item.created_at).toLocaleDateString(),
+          lastModified: new Date(item.updated_at || item.created_at).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
           updated_at: item.updated_at || item.created_at,
           views: item.views || 0,
           slug: item.slug,
@@ -1052,7 +1059,14 @@ const ContentManagement = () => {
                           <Badge variant="secondary">{item.type}</Badge>
                         </TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell>{new Date(item.updated_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(item.updated_at).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}</TableCell>
                         <TableCell>{item.views}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
