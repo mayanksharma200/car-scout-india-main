@@ -698,7 +698,16 @@ const CarManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{new Date(car.updated_at).toLocaleString()}</p>
+                        <p className="text-sm">
+                          {new Date(car.updated_at).toLocaleString('en-IN', {
+                            year: 'numeric',
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </p>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
