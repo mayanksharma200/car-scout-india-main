@@ -105,26 +105,10 @@ const FeaturedCars = () => {
           );
         }
 
-        // If API failed, try Supabase directly
+        // If API failed, we rely on error handling below
         if (!carsData) {
-          console.log("🔄 Falling back to Supabase direct access...");
-          const { data: supabaseData, error: supabaseError } = await supabase
-            .from("cars")
-            .select("*")
-            .eq("status", "active")
-            .order("created_at", { ascending: false })
-            .limit(8);
-
-          if (supabaseError) {
-            console.warn("⚠️ Supabase error, using mock data:", supabaseError);
-            setCars(mockCars);
-          } else if (supabaseData && supabaseData.length > 0) {
-            console.log("✅ Successfully fetched cars from Supabase");
-            carsData = supabaseData;
-          } else {
-            console.log("📝 No cars found in Supabase, using mock data");
-            setCars(mockCars);
-          }
+          console.warn("⚠️ No featured cars data available from API");
+          // setCars(mockCars); // Optional: decide if we want mock data or empty state
         }
 
         if (carsData) {
@@ -199,260 +183,260 @@ const FeaturedCars = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {loading
             ? // Loading skeleton
-              Array.from({ length: 4 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="bg-card rounded-lg border border-border p-4 animate-pulse"
-                >
-                  <div className="h-40 bg-muted rounded-lg mb-4"></div>
-                  <div className="h-4 bg-muted rounded mb-2"></div>
-                  <div className="h-4 bg-muted rounded mb-2 w-3/4"></div>
-                  <div className="h-4 bg-muted rounded w-1/2"></div>
-                </div>
-              ))
+            Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="bg-card rounded-lg border border-border p-4 animate-pulse"
+              >
+                <div className="h-40 bg-muted rounded-lg mb-4"></div>
+                <div className="h-4 bg-muted rounded mb-2"></div>
+                <div className="h-4 bg-muted rounded mb-2 w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-1/2"></div>
+              </div>
+            ))
             : cars.map((car, index) => {
-                // Transform API data to match CarCard interface
-                const transformedCar = {
-                  id: car.id,
-                  brand: car.brand || "Unknown",
-                  model: car.model || "Unknown",
-                  variant: car.variant || "",
-                  price: car.price_min || 0,
-                  exactPrice: car.exact_price || null,  // Add exact_price field
-                  onRoadPrice: car.price_max || car.price_min || 0,
-                  delhiPrice: car.delhi_price || null,  // On-road price Delhi
-                  fuelType: car.fuel_type || "Petrol",
-                  transmission: car.transmission || "Manual",
-                  mileage: parseFloat(
-                    car.mileage?.toString().replace(/[^\d.]/g, "") || "0"
-                  ),
-                  seating: car.seating_capacity || 5,
-                  rating: car.rating || 4.2 + Math.random() * 0.8,
-                  image: (() => {
-                    // Handle both old array format and new angle-mapped object format
-                    if (car.images) {
-                      // If images is an object with angle keys (new format)
-                      if (typeof car.images === 'object' && !Array.isArray(car.images)) {
-                        // Try to get the front_3_4 angle first, then any available angle
-                        return car.images.front_3_4 ||
-                               car.images.front_view ||
-                               car.images.left_side ||
-                               car.images.right_side ||
-                               car.images.rear_view ||
-                               car.images.interior_dash ||
-                               car.images.interior_cabin ||
-                               car.images.interior_steering ||
-                               "/placeholder.svg";
-                      }
-                      
-                      // If images is an array (old format)
-                      if (Array.isArray(car.images) && car.images.length > 0) {
-                        return typeof car.images[0] === "string" ? car.images[0] : "/placeholder.svg";
-                      }
+              // Transform API data to match CarCard interface
+              const transformedCar = {
+                id: car.id,
+                brand: car.brand || "Unknown",
+                model: car.model || "Unknown",
+                variant: car.variant || "",
+                price: car.price_min || 0,
+                exactPrice: car.exact_price || null,  // Add exact_price field
+                onRoadPrice: car.price_max || car.price_min || 0,
+                delhiPrice: car.delhi_price || null,  // On-road price Delhi
+                fuelType: car.fuel_type || "Petrol",
+                transmission: car.transmission || "Manual",
+                mileage: parseFloat(
+                  car.mileage?.toString().replace(/[^\d.]/g, "") || "0"
+                ),
+                seating: car.seating_capacity || 5,
+                rating: car.rating || 4.2 + Math.random() * 0.8,
+                image: (() => {
+                  // Handle both old array format and new angle-mapped object format
+                  if (car.images) {
+                    // If images is an object with angle keys (new format)
+                    if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+                      // Try to get the front_3_4 angle first, then any available angle
+                      return car.images.front_3_4 ||
+                        car.images.front_view ||
+                        car.images.left_side ||
+                        car.images.right_side ||
+                        car.images.rear_view ||
+                        car.images.interior_dash ||
+                        car.images.interior_cabin ||
+                        car.images.interior_steering ||
+                        "/placeholder.svg";
                     }
-                    
-                    // Fallback to placeholder
-                    return "/placeholder.svg";
-                  })(),
-                  isPopular: car.isPopular || Math.random() > 0.5,
-                  isBestSeller: car.isBestSeller || Math.random() > 0.7,
-                  // Additional fields for navigation
-                  bodyType: car.body_type || "Hatchback",
-                  color: "Pearl White",
-                  year: 2024,
-                  features: car.features || [],
-                };
 
-                return (
-                  <div
-                    key={car.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 animate-fade-in hover-scale flex flex-col"
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    {/* Image with badges */}
-                    <div className="relative h-48 bg-gray-100 overflow-hidden">
-                      <img
-                        src={transformedCar.image}
-                        alt={`${transformedCar.brand} ${transformedCar.model}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg";
-                        }}
-                      />
+                    // If images is an array (old format)
+                    if (Array.isArray(car.images) && car.images.length > 0) {
+                      return typeof car.images[0] === "string" ? car.images[0] : "/placeholder.svg";
+                    }
+                  }
 
-                      {/* Badges */}
-                      <div className="absolute top-3 left-3">
-                        {transformedCar.isBestSeller && (
-                          <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                  // Fallback to placeholder
+                  return "/placeholder.svg";
+                })(),
+                isPopular: car.isPopular || Math.random() > 0.5,
+                isBestSeller: car.isBestSeller || Math.random() > 0.7,
+                // Additional fields for navigation
+                bodyType: car.body_type || "Hatchback",
+                color: "Pearl White",
+                year: 2024,
+                features: car.features || [],
+              };
+
+              return (
+                <div
+                  key={car.id}
+                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 animate-fade-in hover-scale flex flex-col"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Image with badges */}
+                  <div className="relative h-48 bg-gray-100 overflow-hidden">
+                    <img
+                      src={transformedCar.image}
+                      alt={`${transformedCar.brand} ${transformedCar.model}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
+                    />
+
+                    {/* Badges */}
+                    <div className="absolute top-3 left-3">
+                      {transformedCar.isBestSeller && (
+                        <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+                          <span className="w-1 h-1 bg-white rounded-full"></span>
+                          Best Seller
+                        </span>
+                      )}
+                      {transformedCar.isPopular &&
+                        !transformedCar.isBestSeller && (
+                          <span className="bg-orange-500 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
                             <span className="w-1 h-1 bg-white rounded-full"></span>
-                            Best Seller
+                            Popular
                           </span>
                         )}
-                        {transformedCar.isPopular &&
-                          !transformedCar.isBestSeller && (
-                            <span className="bg-orange-500 text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
-                              <span className="w-1 h-1 bg-white rounded-full"></span>
-                              Popular
-                            </span>
-                          )}
-                      </div>
-
-                      {/* Action icons */}
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <WishlistButton
-                          carId={car.id}
-                          variant="icon"
-                          className="shadow-sm hover:shadow-md"
-                        />
-                        <button
-                          className="w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all border"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShare(transformedCar);
-                          }}
-                        >
-                          <Share2 className="w-4 h-4 text-gray-600" />
-                        </button>
-                      </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-4 flex flex-col h-full">
-                      <div className="flex-1">
-                        {/* Title and Rating */}
-                        <div className="mb-3">
-                          <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                            {transformedCar.brand} {transformedCar.model}
-                          </h3>
-                          {transformedCar.variant && (
-                            <p className="text-gray-600 text-sm mb-2">
-                              {transformedCar.variant}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center">
-                              <span className="text-orange-400 text-sm">★</span>
-                              <span className="text-sm font-medium text-gray-900 ml-1">
-                                {transformedCar.rating.toFixed(2)}
-                              </span>
-                            </div>
-                            <span className="text-gray-400 text-sm">
-                              | 142 Reviews
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Specifications with icons */}
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M19 7h-1V6a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-5h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM8 6h8v1H8V6zm8 12H8v-4h8v4zm2-6h-1V8H7v4H6V9h12v3z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Fuel</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {transformedCar.fuelType}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Mileage</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {transformedCar.mileage} km/l
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Seating</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {transformedCar.seating} Seater
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Type</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {transformedCar.transmission}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Price */}
-                        <div className="mb-4">
-                          {/* Exact Price (from Excel column J) */}
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-sm text-gray-600 font-medium">Price:</span>
-                            <span className="text-xl font-bold text-blue-600">
-                              {transformedCar.exactPrice || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action button - Always at bottom */}
+                    {/* Action icons */}
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      <WishlistButton
+                        carId={car.id}
+                        variant="icon"
+                        className="shadow-sm hover:shadow-md"
+                      />
                       <button
-                        onClick={() => handleViewDetails(transformedCar)}
-                        className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2 mt-auto"
+                        className="w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all border"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShare(transformedCar);
+                        }}
                       >
-                        View Details
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
+                        <Share2 className="w-4 h-4 text-gray-600" />
                       </button>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Content */}
+                  <div className="p-4 flex flex-col h-full">
+                    <div className="flex-1">
+                      {/* Title and Rating */}
+                      <div className="mb-3">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                          {transformedCar.brand} {transformedCar.model}
+                        </h3>
+                        {transformedCar.variant && (
+                          <p className="text-gray-600 text-sm mb-2">
+                            {transformedCar.variant}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center">
+                            <span className="text-orange-400 text-sm">★</span>
+                            <span className="text-sm font-medium text-gray-900 ml-1">
+                              {transformedCar.rating.toFixed(2)}
+                            </span>
+                          </div>
+                          <span className="text-gray-400 text-sm">
+                            | 142 Reviews
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Specifications with icons */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-blue-600"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M19 7h-1V6a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1v5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-5h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM8 6h8v1H8V6zm8 12H8v-4h8v4zm2-6h-1V8H7v4H6V9h12v3z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Fuel</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {transformedCar.fuelType}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-blue-600"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Mileage</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {transformedCar.mileage} km/l
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-blue-600"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Seating</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {transformedCar.seating} Seater
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-blue-600"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Type</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {transformedCar.transmission}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="mb-4">
+                        {/* Exact Price (from Excel column J) */}
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm text-gray-600 font-medium">Price:</span>
+                          <span className="text-xl font-bold text-blue-600">
+                            {transformedCar.exactPrice || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action button - Always at bottom */}
+                    <button
+                      onClick={() => handleViewDetails(transformedCar)}
+                      className="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-orange-600 transition-all duration-200 flex items-center justify-center gap-2 mt-auto"
+                    >
+                      View Details
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
         </div>
 
         {/* Mobile View All button */}

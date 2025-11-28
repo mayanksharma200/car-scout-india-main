@@ -1454,6 +1454,7 @@ app.get("/api/news/:slug", async (req, res) => {
 // ===== ADMIN CAR CRUD ENDPOINTS =====
 
 // Create a new car
+// Create a new car
 app.post("/api/admin/cars", async (req, res) => {
   try {
     let carData = {
@@ -1533,20 +1534,17 @@ app.post("/api/admin/cars", async (req, res) => {
 
     console.log('[Admin] Creating new car:', carData.brand, carData.model);
 
-    const { data, error } = await supabase
-      .from("cars")
-      .insert([carData])
-      .select()
-      .single();
+    // Prepare columns and values for INSERT
+    const columns = Object.keys(carData);
+    const values = Object.values(carData);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-    if (error) {
-      console.error('[Admin] Error creating car:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to create car',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(
+      `INSERT INTO cars (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+      values
+    );
+
+    const data = rows[0];
 
     console.log('[Admin] ✅ Car created successfully:', data.id);
 
