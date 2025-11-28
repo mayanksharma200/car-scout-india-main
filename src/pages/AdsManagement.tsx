@@ -159,7 +159,7 @@ const AdsManagement = () => {
                                 )}
                             </Button>
 
-                            {adScriptUrl && (
+                            {/* {adScriptUrl && (
                                 <Button
                                     variant="outline"
                                     onClick={() => window.open(adScriptUrl, '_blank')}
@@ -168,7 +168,7 @@ const AdsManagement = () => {
                                     <ExternalLink className="w-4 h-4" />
                                     Test URL
                                 </Button>
-                            )}
+                            )} */}
                         </div>
 
                         <div className="bg-muted p-4 rounded-md">
