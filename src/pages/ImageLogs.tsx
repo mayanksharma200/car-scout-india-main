@@ -47,6 +47,7 @@ const ImageLogs = () => {
     const api = useAdminAuthenticatedApi();
     const [logs, setLogs] = useState<ImageLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [totals, setTotals] = useState({ images: 0, cost: 0 });
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -64,6 +65,9 @@ const ImageLogs = () => {
             const response = await api.settings.getImageLogs(pagination.page, pagination.limit);
             if (response.success) {
                 setLogs(response.data);
+                if (response.totals) {
+                    setTotals(response.totals);
+                }
                 setPagination(prev => ({
                     ...prev,
                     ...response.pagination
@@ -100,6 +104,30 @@ const ImageLogs = () => {
                             Track AI image generation usage and costs
                         </p>
                     </div>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Total Images Generated
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totals.images}</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-muted-foreground">
+                                Total Cost
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">${totals.cost.toFixed(4)}</div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <Card>

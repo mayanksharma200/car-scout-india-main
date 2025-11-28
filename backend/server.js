@@ -5055,6 +5055,20 @@ app.get("/api/admin/image-logs", validateToken, async (req, res) => {
       throw countError;
     }
 
+    // Get total stats (sum of images and cost)
+    // Note: For large datasets, this should be replaced with an RPC call or a materialized view
+    const { data: allStats, error: statsError } = await supabase
+      .from("image_generation_logs")
+      .select("image_count, cost");
+
+    let totalImages = 0;
+    let totalCost = 0;
+
+    if (!statsError && allStats) {
+      totalImages = allStats.reduce((sum, log) => sum + (log.image_count || 0), 0);
+      totalCost = allStats.reduce((sum, log) => sum + (log.cost || 0), 0);
+    }
+
     // Get logs with car details (remove profiles join)
     const { data: logs, error } = await supabase
       .from("image_generation_logs")
@@ -5103,6 +5117,10 @@ app.get("/api/admin/image-logs", validateToken, async (req, res) => {
     res.json({
       success: true,
       data: enrichedLogs,
+      totals: {
+        images: totalImages,
+        cost: totalCost
+      },
       pagination: {
         total: count,
         page: parseInt(page),
