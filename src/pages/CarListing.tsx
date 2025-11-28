@@ -579,22 +579,32 @@ const CarListing = () => {
           const transformed = {
             ...car,
             price: carPrice,
-            exactPrice: (car as any).exact_price || null,  // Base price from Excel
+            exactPrice: (car as any).exact_price || (car as any).specifications?.["Price"] || null,
             onRoadPrice: carOnRoadPrice,
-            delhiPrice: (car as any).delhi_price || null,  // On-road price Delhi
-            fuelType: car.fuel_type || car.fuelType || "Petrol",
-            bodyType: car.body_type || car.bodyType || "Sedan",
-            seating: car.seating_capacity || car.seating || 5,
+            delhiPrice: (car as any).delhi_price || (car as any).specifications?.["Delhi"] || null,
+            fuelType: car.fuel_type || car.fuelType || (car as any).specifications?.["Fuel Type"] || "Petrol",
+            bodyType: car.body_type || car.bodyType || (car as any).specifications?.["Body style"] || "Sedan",
+            seating: car.seating_capacity || car.seating || (car as any).specifications?.["Seating Capacity"]?.replace(' Person', '') || 5,
             rating: 4.2 + Math.random() * 0.8,
             image: carImage,
-            color: "Pearl White",
+            color: car.colors?.split(';')[0] || (car as any).specifications?.["Color Name"]?.split(';')[0] || "Pearl White",
             year: 2024,
             features: car.features || [],
             mileage: parseFloat(
-              car.mileage?.toString()?.replace(/[^\d.]/g, "") || "15"
+              car.mileage?.toString()?.replace(/[^\d.]/g, "") ||
+              (car as any).specifications?.["ARAI Mileage"]?.replace(' kmpl', '') ||
+              "15"
             ),
             isPopular: Math.random() > 0.7,
             isBestSeller: Math.random() > 0.8,
+            // Add city prices for filtering
+            mumbai_price: car.mumbai_price || (car as any).specifications?.["Mumbai"] || null,
+            bangalore_price: car.bangalore_price || (car as any).specifications?.["Bangalore"] || null,
+            pune_price: car.pune_price || (car as any).specifications?.["Pune"] || null,
+            hyderabad_price: car.hyderabad_price || (car as any).specifications?.["Hyderabad"] || null,
+            chennai_price: car.chennai_price || (car as any).specifications?.["Chennai"] || null,
+            kolkata_price: car.kolkata_price || (car as any).specifications?.["Kolkata"] || null,
+            ahmedabad_price: car.ahmedabad_price || (car as any).specifications?.["Ahmedabad"] || null,
           };
 
           if (index < 3) {
