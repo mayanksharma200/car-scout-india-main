@@ -154,7 +154,12 @@ const EMICalculator = () => {
                   <Input
                     type="number"
                     value={interestRate}
-                    onChange={(e) => setInterestRate(Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      if (value <= 15) {
+                        setInterestRate(value);
+                      }
+                    }}
                     className="pl-10"
                     step="0.1"
                     placeholder="Ex: 9.5"
