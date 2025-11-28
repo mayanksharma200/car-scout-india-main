@@ -124,8 +124,8 @@ const CarCard = ({
             ) : (
               <Heart
                 className={`w-4 h-4 ${isWishlisted
-                    ? "fill-red-500 text-red-500"
-                    : "text-muted-foreground"
+                  ? "fill-red-500 text-red-500"
+                  : "text-muted-foreground"
                   } transition-colors`}
               />
             )}
@@ -181,7 +181,7 @@ const CarCard = ({
         </div>
 
         <CardContent className="relative z-10 p-6 flex flex-col h-full">
-          <div className="flex-1">
+          <div>
             {/* Brand and Model */}
             <div className="mb-4">
               <h3 className="font-bold text-lg group-hover:text-primary transition-colors duration-300">
@@ -258,7 +258,7 @@ const CarCard = ({
 
           {/* Action Button - Always at bottom */}
           <Button
-            className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 mt-auto"
+            className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
             onClick={handleCardClick}
           >
             <span>View Details</span>
