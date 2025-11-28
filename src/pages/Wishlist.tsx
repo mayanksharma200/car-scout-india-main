@@ -38,9 +38,72 @@ interface WishlistCar {
     seating: number;
     rating: number;
     image: string;
-    images?: string[];
+    images?: any;
+    color_variant_images?: any;
   };
 }
+
+const getCarImage = (car: any) => {
+  let carImage = "/placeholder.svg";
+
+  // Handle images - prioritize new color_variant_images, then legacy formats
+  if (car.color_variant_images && Object.keys(car.color_variant_images).length > 0) {
+    const firstColor = Object.keys(car.color_variant_images)[0];
+    const imagesObj = car.color_variant_images[firstColor]?.images;
+    if (imagesObj) {
+      carImage = imagesObj.front_3_4 ||
+        imagesObj.front_view ||
+        imagesObj.left_side ||
+        imagesObj.right_side ||
+        Object.values(imagesObj)[0] as string ||
+        "/placeholder.svg";
+    }
+  } else if (car.images) {
+    // If images is an object
+    if (typeof car.images === 'object' && !Array.isArray(car.images)) {
+      // Case A: It's a map of Color Name -> Image Array (The format user provided)
+      const firstKey = Object.keys(car.images)[0];
+      if (firstKey && Array.isArray(car.images[firstKey])) {
+        // Try to find 'default' or use first color
+        const defaultImages = car.images.default;
+        if (defaultImages && Array.isArray(defaultImages) && defaultImages.length > 0 && defaultImages[0]) {
+          carImage = defaultImages[0];
+        } else {
+          // Find first color with valid images
+          for (const key of Object.keys(car.images)) {
+            const imgs = car.images[key];
+            if (Array.isArray(imgs) && imgs.length > 0 && imgs[0]) {
+              carImage = imgs[0];
+              break;
+            }
+          }
+        }
+      } else {
+        // Case B: It's a flat object with angle keys (Legacy format)
+        carImage = car.images.front_3_4 ||
+          car.images.front_view ||
+          car.images.left_side ||
+          car.images.right_side ||
+          car.images.rear_view ||
+          car.images.interior_dash ||
+          car.images.interior_cabin ||
+          car.images.interior_steering ||
+          "/placeholder.svg";
+      }
+    }
+    // Case C: If images is an array (old format)
+    else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
+      carImage = car.images[0] as string;
+    }
+  }
+
+  // Fallback to simple image property if complex logic failed
+  if (carImage === "/placeholder.svg" && car.image && car.image !== "/placeholder.svg") {
+    carImage = car.image;
+  }
+
+  return carImage;
+};
 
 // Debug component for development
 const DebugAuthInfo = () => {
@@ -53,23 +116,23 @@ const DebugAuthInfo = () => {
     loading,
     user: user
       ? {
-          id: user.id,
-          email: user.email,
-          provider: user.provider,
-        }
+        id: user.id,
+        email: user.email,
+        provider: user.provider,
+      }
       : null,
     tokens: tokens
       ? {
-          hasAccessToken: !!tokens.accessToken,
-          tokenType: tokens.tokenType,
-          expiresAt: tokens.expiresAt,
-          isExpired: tokens.expiresAt
-            ? Date.now() >= tokens.expiresAt
-            : "unknown",
-          timeUntilExpiry: tokens.expiresAt
-            ? Math.floor((tokens.expiresAt - Date.now()) / 1000)
-            : "unknown",
-        }
+        hasAccessToken: !!tokens.accessToken,
+        tokenType: tokens.tokenType,
+        expiresAt: tokens.expiresAt,
+        isExpired: tokens.expiresAt
+          ? Date.now() >= tokens.expiresAt
+          : "unknown",
+        timeUntilExpiry: tokens.expiresAt
+          ? Math.floor((tokens.expiresAt - Date.now()) / 1000)
+          : "unknown",
+      }
       : null,
     authHeaders: getAuthHeaders(),
     cookies: document.cookie,
@@ -232,8 +295,7 @@ const Wishlist = () => {
     try {
       setActionLoading(`alert-${carId}`);
       console.log(
-        `🔔 ${
-          !currentValue ? "Enabling" : "Disabling"
+        `🔔 ${!currentValue ? "Enabling" : "Disabling"
         } price alert for car ${carId}...`
       );
 
@@ -253,14 +315,12 @@ const Wishlist = () => {
 
         toast({
           title: `Price alert ${!currentValue ? "enabled" : "disabled"}`,
-          description: `You will ${
-            !currentValue ? "now" : "no longer"
-          } receive price updates for this car.`,
+          description: `You will ${!currentValue ? "now" : "no longer"
+            } receive price updates for this car.`,
         });
 
         console.log(
-          `✅ Price alert ${
-            !currentValue ? "enabled" : "disabled"
+          `✅ Price alert ${!currentValue ? "enabled" : "disabled"
           } successfully`
         );
       } else {
@@ -525,11 +585,10 @@ const Wishlist = () => {
                       </Button>
                       <ShareModal
                         title="My Car Wishlist"
-                        description={`Check out my saved cars on Carlist360 India - ${
-                          savedCars.length
-                        } cars including ${savedCars
-                          .map((item) => `${item.car.brand} ${item.car.model}`)
-                          .join(", ")}`}
+                        description={`Check out my saved cars on Carlist360 India - ${savedCars.length
+                          } cars including ${savedCars
+                            .map((item) => `${item.car.brand} ${item.car.model}`)
+                            .join(", ")}`}
                         url="/wishlist"
                       >
                         <Button variant="outline" size="sm">
@@ -600,10 +659,10 @@ const Wishlist = () => {
                       {/* Car Image */}
                       <div className="aspect-video bg-gradient-to-br from-primary/5 to-primary/10 flex items-center justify-center">
                         <img
-                          src={item.car.images?.[0] || item.car.image || "/placeholder.svg"}
+                          src={getCarImage(item.car)}
                           alt={`${item.car.brand} ${item.car.model}`}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          
+
                         />
                       </div>
                     </div>
@@ -692,8 +751,7 @@ const Wishlist = () => {
                               Updating...
                             </>
                           ) : (
-                            `${
-                              item.priceAlert ? "Disable" : "Enable"
+                            `${item.priceAlert ? "Disable" : "Enable"
                             } Price Alerts`
                           )}
                         </Button>

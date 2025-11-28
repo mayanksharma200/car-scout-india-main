@@ -5304,7 +5304,8 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
           mileage,
           body_type,
           seating_capacity,
-          status
+          status,
+          color_variant_images
         )
       `
       )
@@ -5340,7 +5341,7 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
         const { data: cars, error: carsError } = await supabase
           .from("cars")
           .select(
-            "id, brand, model, variant, price_min, price_max, images, fuel_type, transmission, mileage, body_type, seating_capacity, status"
+            "id, brand, model, variant, price_min, price_max, images, color_variant_images, fuel_type, transmission, mileage, body_type, seating_capacity, status"
           )
           .in("id", carIds);
 
@@ -5431,6 +5432,8 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
               Array.isArray(item.cars.images) && item.cars.images.length > 0
                 ? item.cars.images[0]
                 : "/placeholder.svg",
+            images: item.cars.images,
+            color_variant_images: item.cars.color_variant_images,
           },
         };
       })
