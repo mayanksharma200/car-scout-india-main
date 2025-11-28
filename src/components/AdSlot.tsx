@@ -13,14 +13,56 @@ interface AdSlotProps {
   showFallback?: boolean;
 }
 
+// Cache for ad script URL to avoid multiple API calls
+let cachedAdScriptUrl: string | null = null;
+let fetchingAdScriptUrl: Promise<string> | null = null;
+
+const fetchAdScriptUrl = async (): Promise<string> => {
+  // Return cached URL if available
+  if (cachedAdScriptUrl) {
+    return cachedAdScriptUrl;
+  }
+
+  // Return existing fetch promise if already fetching
+  if (fetchingAdScriptUrl) {
+    return fetchingAdScriptUrl;
+  }
+
+  // Fetch the URL from API
+  fetchingAdScriptUrl = fetch('/api/settings/public/ad_script_url')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.value) {
+        cachedAdScriptUrl = data.value;
+        return data.value;
+      }
+      throw new Error('Failed to fetch ad script URL');
+    })
+    .catch(error => {
+      console.error('Error fetching ad script URL:', error);
+      fetchingAdScriptUrl = null;
+      throw error;
+    });
+
+  return fetchingAdScriptUrl;
+};
+
 const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
   const adRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEmpty, setIsEmpty] = useState(false);
+  const [adScriptUrl, setAdScriptUrl] = useState<string | null>(null);
   const [uniqueId] = useState(
     () => `gpt-${slot.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
+
+  // Fetch ad script URL on mount
+  useEffect(() => {
+    fetchAdScriptUrl()
+      .then(url => setAdScriptUrl(url))
+      .catch(error => console.error('Failed to load ad script URL:', error));
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -34,19 +76,19 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
 
   const checkIfEmpty = useCallback(() => {
     if (!adRef.current) return;
-    
+
     const adElement = document.getElementById(uniqueId);
     if (adElement) {
       const height = adElement.offsetHeight;
       const isHidden = window.getComputedStyle(adElement).display === 'none';
-      
+
       console.log(`📱 Mobile ad check for ${slot.id}:`, {
         isMobile,
         elementHeight: height,
         isHidden: isHidden,
         currentSize: isMobile && slot.mobileSize ? slot.mobileSize : slot.size
       });
-      
+
       if (height === 0 || isHidden) {
         setIsEmpty(true);
         console.log(`📭 Ad slot ${slot.id} is empty - height: ${height}px, hidden: ${isHidden}`);
@@ -58,7 +100,7 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
   }, [uniqueId, slot.id, isMobile, slot.mobileSize, slot.size]);
 
   const loadAd = useCallback(() => {
-    if (!adRef.current || isLoaded) return;
+    if (!adRef.current || isLoaded || !adScriptUrl) return;
 
     // Define multi-size arrays for responsive ads
     const getMultiSizes = () => {
@@ -87,10 +129,11 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
     // Load Google Tag Manager script if not already loaded
     if (!document.querySelector('script[src*="gpt.js"]')) {
       const gptScript = document.createElement("script");
-      gptScript.src = "https://securepubads.g.doubleclick.net/tag/js/gpt.js";
+      gptScript.src = adScriptUrl; // Use dynamic URL from API
       gptScript.async = true;
       gptScript.crossOrigin = "anonymous";
       document.head.appendChild(gptScript);
+      console.log(`📡 Loaded ad script from: ${adScriptUrl}`);
     }
 
     // Initialize googletag if not already done
@@ -130,10 +173,10 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
 
           window.googletag.display(uniqueId);
           setIsLoaded(true);
-          
+
           // Check if ad is empty after a short delay
           setTimeout(checkIfEmpty, 2000);
-          
+
           console.log(`✅ Ad slot ${slot.id} displayed successfully with sizes:`, adSizes);
         } else {
           console.error(`❌ Failed to define ad slot: ${slot.id}`);
@@ -142,7 +185,7 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, showFallback = true }) => {
         console.error(`❌ Error loading ad ${slot.id}:`, error);
       }
     });
-  }, [slot, isMobile, uniqueId, isLoaded, checkIfEmpty]);
+  }, [slot, isMobile, uniqueId, isLoaded, checkIfEmpty, adScriptUrl]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

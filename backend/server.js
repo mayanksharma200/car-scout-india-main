@@ -1981,6 +1981,130 @@ app.delete("/api/admin/news/:id", async (req, res) => {
   }
 });
 
+// ============================================
+// SITE SETTINGS ENDPOINTS
+// ============================================
+
+// Get public setting (no auth required)
+app.get("/api/settings/public/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("setting_key", key)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ success: false, error: "Setting not found" });
+      }
+      throw error;
+    }
+
+    res.json({ success: true, value: data.setting_value });
+  } catch (error) {
+    console.error("Error fetching setting:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get setting (admin only)
+app.get("/api/admin/settings/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    const { data, error } = await adminSupabase
+      .from("site_settings")
+      .select("*")
+      .eq("setting_key", key)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ success: false, error: "Setting not found" });
+      }
+      throw error;
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching setting:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update setting (admin only)
+app.put("/api/admin/settings/:key", async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (!value) {
+      return res.status(400).json({ success: false, error: "Value is required" });
+    }
+
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Check if setting exists
+    const { data: existing } = await adminSupabase
+      .from("site_settings")
+      .select("id")
+      .eq("setting_key", key)
+      .single();
+
+    let result;
+    if (existing) {
+      // Update existing setting
+      const { data, error } = await adminSupabase
+        .from("site_settings")
+        .update({ setting_value: value, updated_at: new Date() })
+        .eq("setting_key", key)
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    } else {
+      // Insert new setting
+      const { data, error } = await adminSupabase
+        .from("site_settings")
+        .insert({ setting_key: key, setting_value: value })
+        .select()
+        .single();
+
+      if (error) throw error;
+      result = data;
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error updating setting:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 
 
 // Get all cars for admin (includes inactive/draft cars)

@@ -46,6 +46,7 @@ import LeadManagement from "./pages/LeadManagement";
 import AdminUserManagement from "./pages/AdminUserManagement";
 // import APISettings from "./pages/APISettings";
 import ContentManagement from "./pages/ContentManagement";
+import AdsManagement from "./pages/AdsManagement";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -195,6 +196,15 @@ const App = () => {
                         element={
                           <AdminRouteGuard>
                             <ContentManagement />
+                          </AdminRouteGuard>
+                        }
+                      />
+
+                      <Route
+                        path="ads"
+                        element={
+                          <AdminRouteGuard>
+                            <AdsManagement />
                           </AdminRouteGuard>
                         }
                       />

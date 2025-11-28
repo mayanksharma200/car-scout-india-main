@@ -310,6 +310,11 @@ export interface ApiClient {
     update: (id: string, newsData: any) => Promise<any>;
     delete: (id: string) => Promise<any>;
   };
+  settings: {
+    getPublic: (key: string) => Promise<any>;
+    get: (key: string) => Promise<any>;
+    update: (key: string, value: string) => Promise<any>;
+  };
 }
 
 // Export createApiClient function for use with authentication context
@@ -525,6 +530,21 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
         return fetchAPI('/upload', {
           method: 'POST',
           body: formData,
+        });
+      },
+    },
+    settings: {
+      getPublic: async (key: string) => {
+        return fetchAPI(`/settings/public/${key}`);
+      },
+      get: async (key: string) => {
+        return fetchAPI(`/admin/settings/${key}`);
+      },
+      update: async (key: string, value: string) => {
+        return fetchAPI(`/admin/settings/${key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
         });
       },
     },

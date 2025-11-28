@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Globe,
+  MonitorPlay,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "Lead Management", href: "/admin/leads", icon: Users },
     { name: "User Management", href: "/admin/users", icon: Users },
     { name: "Content Management", href: "/admin/content", icon: FileText },
+    { name: "Ads Management", href: "/admin/ads", icon: MonitorPlay },
     // { name: "API Settings", href: "/admin/api-settings", icon: Globe },
     // { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
   ];
@@ -78,9 +80,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } transition-all duration-300 bg-card border-r border-border flex flex-col`}
+        className={`${sidebarOpen ? "w-64" : "w-20"
+          } transition-all duration-300 bg-card border-r border-border flex flex-col`}
       >
         {/* Logo */}
         <div className="p-6 border-b border-border">
@@ -104,11 +105,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               <li key={item.name}>
                 <Link
                   to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive(item.href)
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.href)
                       ? "bg-primary/10 text-primary"
                       : "hover:bg-muted text-foreground"
-                  }`}
+                    }`}
                 >
                   <item.icon className="w-5 h-5" />
                   {sidebarOpen && <span>{item.name}</span>}
@@ -201,6 +201,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               {location.pathname === "/admin/leads" && "Lead Management"}
               {location.pathname === "/admin/users" && "User Management"}
               {location.pathname === "/admin/content" && "Content Management"}
+              {location.pathname === "/admin/ads" && "Ads Management"}
               {/* {location.pathname === "/admin/api-settings" && "API Settings"} */}
             </div>
           </div>
