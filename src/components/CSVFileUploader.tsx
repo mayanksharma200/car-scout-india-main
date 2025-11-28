@@ -9,8 +9,11 @@ import { shouldSkipCarEntry, INVALID_CAR_NAMES } from '@/utils/carDataValidation
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import * as XLSX from 'xlsx';
+import { supabase } from '@/integrations/supabase/client';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
 export const CSVFileUploader = () => {
+  const { getAuthHeaders } = useAdminAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<BulkInsertResult | null>(null);
@@ -634,8 +637,16 @@ export const CSVFileUploader = () => {
 
       console.log(`Parsed ${cars.length} cars, importing with update tracking...`);
 
+      // Get current session token from AdminAuthContext
+      const authHeaders = getAuthHeaders();
+      const token = authHeaders['Authorization']?.replace('Bearer ', '');
+
+      if (!token) {
+        throw new Error("Authentication required. Please reload the page and log in again.");
+      }
+
       // Import cars with duplicate checking and update tracking
-      const importResult = await bulkInsertCarsWithTracking(cars);
+      const importResult = await bulkInsertCarsWithTracking(cars, token);
       setResult(importResult);
 
       if (importResult.success && importResult.inserted_count > 0) {
@@ -1202,7 +1213,16 @@ export const CSVFileUploader = () => {
               </div>
             )}
 
-            {result.error_count > 0 && (
+            {result.error && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Import Failed:</strong> {typeof result.error === 'string' ? result.error : JSON.stringify(result.error)}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {result.error_count > 0 && result.details.length > 0 && (
               <div>
                 <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
                   <XCircle className="h-4 w-4 text-red-600" />

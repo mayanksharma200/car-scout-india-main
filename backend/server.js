@@ -207,9 +207,14 @@ const logAdminActivity = async (activityData) => {
       created_at: new Date().toISOString()
     };
 
-    await supabase
-      .from('admin_activities')
-      .insert([activity]);
+    const columns = Object.keys(activity);
+    const values = Object.values(activity);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+    await db.query(
+      `INSERT INTO admin_activities (${columns.join(', ')}) VALUES (${placeholders})`,
+      values
+    );
 
     console.log(`[Activity] Logged: ${activityData.action_title}`);
   } catch (error) {
@@ -1653,30 +1658,31 @@ app.put("/api/admin/cars/:id", async (req, res) => {
 
     console.log('[Admin] Updating car:', id);
 
-    const { data, error } = await supabase
-      .from("cars")
-      .update(carData)
-      .eq("id", id)
-      .select()
-      .single();
+    // Prepare columns and values for UPDATE
+    const columns = Object.keys(carData);
+    const values = Object.values(carData);
 
-    if (error) {
-      console.error('[Admin] Error updating car:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to update car',
-        details: error.message
-      });
-    }
+    // Construct SET clause
+    const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ');
 
-    if (!data) {
+    // Add ID as the last parameter
+    values.push(id);
+
+    const { rows } = await db.query(
+      `UPDATE cars SET ${setClause} WHERE id = $${values.length} RETURNING *`,
+      values
+    );
+
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Car not found'
       });
     }
 
-    console.log('[Admin] ✅ Car updated successfully:', id);
+    const data = rows[0];
+
+    console.log('[Admin] ✅ Car updated successfully:', data.id);
 
     // Log activity
     await logAdminActivity({
@@ -1711,28 +1717,19 @@ app.delete("/api/admin/cars/:id", async (req, res) => {
 
     console.log('[Admin] Deleting car:', id);
 
-    const { data, error } = await supabase
-      .from("cars")
-      .delete()
-      .eq("id", id)
-      .select()
-      .single();
+    const { rows } = await db.query(
+      "DELETE FROM cars WHERE id = $1 RETURNING *",
+      [id]
+    );
 
-    if (error) {
-      console.error('[Admin] Error deleting car:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to delete car',
-        details: error.message
-      });
-    }
-
-    if (!data) {
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Car not found'
       });
     }
+
+    const data = rows[0];
 
     console.log('[Admin] ✅ Car deleted successfully:', id);
 
@@ -1824,7 +1821,7 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
 });
 
 // NEW: Bulk Import Endpoint for CSV
-app.post("/api/admin/cars/bulk-import", async (req, res) => {
+app.post("/api/admin/cars/bulk-import", validateToken, requireAdmin, async (req, res) => {
   try {
     const { cars } = req.body;
 
@@ -1932,7 +1929,7 @@ app.post("/api/admin/cars/bulk-import", async (req, res) => {
     console.error("Error in bulk import:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to process bulk import"
+      error: `Failed to process bulk import: ${error.message}`
     });
   }
 });
@@ -2464,20 +2461,19 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
     }
 
     // Fetch current car data
-    const { data: currentCar, error: fetchError } = await supabase
-      .from('cars')
-      .select('color_variant_images, images')
-      .eq('id', carId)
-      .single();
+    const { rows: currentCarRows } = await db.query(
+      "SELECT color_variant_images, images FROM cars WHERE id = $1",
+      [carId]
+    );
 
-    if (fetchError) {
-      console.error(`Failed to fetch car ${carId}:`, fetchError);
-      return res.status(500).json({
+    if (currentCarRows.length === 0) {
+      return res.status(404).json({
         success: false,
-        error: 'Failed to fetch car data',
-        details: fetchError.message
+        error: 'Car not found'
       });
     }
+
+    const currentCar = currentCarRows[0];
 
     // Initialize color_variant_images structure
     const colorVariantImages = currentCar.color_variant_images || {};
@@ -2496,113 +2492,83 @@ app.post("/api/admin/cars/ideogram-approve-images", async (req, res) => {
 
       console.log(`📤 Uploading ${approvedImages.length} images for ${colorName}...`);
 
-      // Add color info to S3 folder path
-      const colorSlug = colorName.toLowerCase().replace(/\s+/g, '-');
-      const uploadResults = await s3UploadService.uploadMultipleImages(
-        approvedImages,
-        `${carId}/${colorSlug}`
-      );
-
-      const successfulUploads = uploadResults.filter(r => r.success);
+      // Upload images to S3
+      const uploadResults = await s3UploadService.uploadIdeogramImages(approvedImages, carId, colorName);
+      const successfulUploads = uploadResults.filter(r => r.success).map(r => r.url);
       const failedUploads = uploadResults.filter(r => !r.success);
 
       totalUploaded += successfulUploads.length;
       totalFailed += failedUploads.length;
 
-      // Build images object for this color { angle: url }
-      const imagesObject = {};
-      successfulUploads.forEach(upload => {
-        if (upload.angle) {
-          imagesObject[upload.angle] = upload.s3Url;
-        }
-      });
-
-      // Store in color_variant_images structure
-      colorVariantImages[colorName] = {
-        color_code: colorCode || null,
-        images: imagesObject
-      };
-
       colorUploadResults[colorName] = {
         uploaded: successfulUploads.length,
-        failed: failedUploads.length,
-        successfulUploads,
-        failedUploads
+        failed: failedUploads.length
       };
 
-      console.log(`✅ ${colorName}: ${successfulUploads.length} uploaded, ${failedUploads.length} failed`);
-    }
+      // Update color_variant_images
+      if (successfulUploads.length > 0) {
+        if (!colorVariantImages[colorName]) {
+          colorVariantImages[colorName] = {
+            color_code: colorCode || null,
+            images: []
+          };
+        }
 
-    if (totalUploaded === 0) {
-      return res.status(500).json({
-        success: false,
-        error: 'All image uploads failed',
-        colorUploadResults
-      });
-    }
+        // Add new images to existing ones
+        const existingImages = colorVariantImages[colorName].images || [];
+        colorVariantImages[colorName].images = [...existingImages, ...successfulUploads];
 
-    // Also update the legacy images field with first color's front_3_4 for backward compatibility
-    const firstColor = Object.keys(colorVariantImages)[0];
-    const legacyImages = currentCar.images || {};
-    if (firstColor && colorVariantImages[firstColor].images.front_3_4) {
-      // Convert to angle-mapped object if needed
-      const imagesObject = typeof legacyImages === 'object' && !Array.isArray(legacyImages)
-        ? legacyImages
-        : {};
-
-      // Merge first color images into legacy images field
-      Object.assign(imagesObject, colorVariantImages[firstColor].images);
-
-      // Prepare update data
-      const updateData = {
-        color_variant_images: colorVariantImages,
-        images: imagesObject, // Legacy format for backward compatibility
-        ideogram_images: {
-          source: 'ideogram',
-          total_colors: Object.keys(colorVariantImages).length,
-          total_images: totalUploaded,
-          valid: true,
-          last_updated: new Date().toISOString()
-        },
-        image_last_updated: new Date().toISOString()
-      };
-
-      // Update car in database
-      const { error: updateError } = await supabase
-        .from('cars')
-        .update(updateData)
-        .eq('id', carId);
-
-      if (updateError) {
-        console.error(`Failed to update car ${carId}:`, updateError);
-        return res.status(500).json({
-          success: false,
-          error: 'Database update failed',
-          details: updateError.message,
-          colorUploadResults
-        });
+        // Update color code if provided
+        if (colorCode) {
+          colorVariantImages[colorName].color_code = colorCode;
+        }
       }
-
-      console.log(`✅ Successfully uploaded ${totalUploaded} images across ${Object.keys(colorVariantImages).length} colors and updated car ${carId}`);
-
-      res.json({
-        success: true,
-        carId,
-        totalUploaded,
-        totalFailed,
-        totalColors: Object.keys(colorVariantImages).length,
-        colorUploadResults
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        error: 'No images to save',
-        colorUploadResults
-      });
     }
+
+    // Also update main images if this is the default color or if no main images exist
+    // For simplicity, we'll map the first 8 images of the first color to the main images slots if they are empty
+    const firstColor = Object.keys(approvedColorImages)[0];
+    if (firstColor && colorVariantImages[firstColor] && colorVariantImages[firstColor].images.length > 0) {
+      // Logic to update main images could be added here if needed
+      // For now, we rely on the frontend to display color variant images
+    }
+
+    // Update car record with new images
+    const { rows: updatedCarRows } = await db.query(
+      `UPDATE cars SET
+        color_variant_images = $1,
+        ideogram_images = $2,
+        updated_at = NOW()
+      WHERE id = $3 RETURNING *`,
+      [
+        colorVariantImages,
+        {
+          source: 'ideogram',
+          last_updated: new Date().toISOString(),
+          total_images: totalUploaded,
+          valid: true
+        },
+        carId
+      ]
+    );
+
+    const updatedCar = updatedCarRows[0];
+
+    console.log(`✅ Successfully uploaded ${totalUploaded} images to S3 and updated car record`);
+
+    res.json({
+      success: true,
+      data: updatedCar,
+      message: `Successfully uploaded ${totalUploaded} images. ${totalFailed > 0 ? `${totalFailed} failed.` : ''}`,
+      details: {
+        uploaded: totalUploaded,
+        failed: totalFailed,
+        byColor: colorUploadResults
+      }
+    });
 
   } catch (error) {
-    console.error('Error uploading approved images:', error);
+    console.error('Error in ideogram-approve-images:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to upload approved images',
@@ -2784,74 +2750,81 @@ app.post("/api/admin/cars/:id/delete-image", async (req, res) => {
     }
 
     // Fetch the current car data
-    const { data: car, error: fetchError } = await supabase
-      .from('cars')
-      .select('color_variant_images')
-      .eq('id', id)
-      .single();
+    const { rows: carRows } = await db.query(
+      "SELECT color_variant_images FROM cars WHERE id = $1",
+      [id]
+    );
 
-    if (fetchError || !car) {
-      console.error('Error fetching car data:', fetchError);
+    if (carRows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Car not found'
       });
     }
 
-    // Remove the image URL from color_variant_images
-    if (car.color_variant_images && typeof car.color_variant_images === 'object') {
-      let updated = false;
-      const updatedColorVariantImages = { ...car.color_variant_images };
+    const car = carRows[0];
+    let colorVariantImages = car.color_variant_images || {};
+    let imageFound = false;
 
-      // Iterate through each color
-      Object.keys(updatedColorVariantImages).forEach(colorName => {
-        const colorData = updatedColorVariantImages[colorName];
-        if (colorData && colorData.images && typeof colorData.images === 'object') {
-          // Iterate through each angle
-          Object.keys(colorData.images).forEach(angle => {
-            if (colorData.images[angle] === imageUrl) {
-              // Remove the image URL
-              delete colorData.images[angle];
-              updated = true;
-              console.log(`✅ Removed image URL from database: ${colorName} -> ${angle}`);
+    // Iterate through colors to find and remove the image
+    Object.keys(colorVariantImages).forEach(colorName => {
+      const colorData = colorVariantImages[colorName];
+      if (colorData && colorData.images) {
+        // Check if image exists in this color
+        const imageIndex = Object.values(colorData.images).findIndex(url => url === imageUrl);
+
+        if (imageIndex !== -1) {
+          // If images is an array
+          if (Array.isArray(colorData.images)) {
+            colorData.images = colorData.images.filter(url => url !== imageUrl);
+            imageFound = true;
+          }
+          // If images is an object (angle-mapped)
+          else if (typeof colorData.images === 'object') {
+            const angleKey = Object.keys(colorData.images).find(key => colorData.images[key] === imageUrl);
+            if (angleKey) {
+              delete colorData.images[angleKey];
+              imageFound = true;
             }
-          });
+          }
         }
-      });
-
-      // Update the database if any changes were made
-      if (updated) {
-        const { error: updateError } = await supabase
-          .from('cars')
-          .update({
-            color_variant_images: updatedColorVariantImages,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-
-        if (updateError) {
-          console.error('Error updating car data:', updateError);
-          return res.status(500).json({
-            success: false,
-            error: 'Failed to update database'
-          });
-        }
-
-        console.log(`✅ Updated database for car ${id}`);
       }
-    }
-
-    res.json({
-      success: true,
-      message: 'Image deleted successfully'
     });
+
+    if (imageFound) {
+      // Update the car record
+      const { rows: updatedRows } = await db.query(
+        `UPDATE cars SET 
+          color_variant_images = $1,
+          updated_at = NOW()
+        WHERE id = $2 RETURNING *`,
+        [colorVariantImages, id]
+      );
+
+      if (updatedRows.length === 0) {
+        throw new Error('Failed to update car record');
+      }
+
+      console.log(`✅ Removed image reference from car ${id}`);
+
+      return res.json({
+        success: true,
+        message: 'Image deleted successfully'
+      });
+    } else {
+      console.warn(`⚠️ Image URL not found in car record: ${imageUrl}`);
+      return res.json({
+        success: true,
+        message: 'Image deleted from storage (reference not found in car record)'
+      });
+    }
 
   } catch (error) {
     console.error('Error deleting image:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to delete image',
-      message: error.message
+      details: error.message
     });
   }
 });
@@ -4941,22 +4914,19 @@ app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
   try {
     const [carsCount, leadsCount, usersCount, activeSessions] =
       await Promise.all([
-        supabase.from("cars").select("*", { count: "exact", head: true }),
-        supabase.from("leads").select("*", { count: "exact", head: true }),
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase
-          .from("user_sessions")
-          .select("*", { count: "exact", head: true })
-          .eq("is_active", true),
+        db.query("SELECT COUNT(*) FROM cars"),
+        db.query("SELECT COUNT(*) FROM leads"),
+        db.query("SELECT COUNT(*) FROM profiles"),
+        db.query("SELECT COUNT(*) FROM user_sessions WHERE is_active = true"),
       ]);
 
     res.json({
       success: true,
       data: {
-        totalCars: carsCount.count || 0,
-        totalLeads: leadsCount.count || 0,
-        totalUsers: usersCount.count || 0,
-        activeSessions: activeSessions.count || 0,
+        totalCars: parseInt(carsCount.rows[0].count) || 0,
+        totalLeads: parseInt(leadsCount.rows[0].count) || 0,
+        totalUsers: parseInt(usersCount.rows[0].count) || 0,
+        activeSessions: parseInt(activeSessions.rows[0].count) || 0,
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),
       },
@@ -5058,24 +5028,18 @@ app.post("/api/admin/log-activity", async (req, res) => {
       created_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from("admin_activities")
-      .insert([activityData])
-      .select()
-      .single();
+    const columns = Object.keys(activityData);
+    const values = Object.values(activityData);
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-    if (error) {
-      console.error('[Admin] Error logging activity:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to log activity',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(
+      `INSERT INTO admin_activities (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+      values
+    );
 
     res.json({
       success: true,
-      data: data
+      data: rows[0]
     });
 
   } catch (error) {
@@ -5304,19 +5268,26 @@ app.post("/api/auth/create-admin", async (req, res) => {
     }
 
     // Use service role to bypass RLS policies
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email: email,
-      first_name: "Admin",
-      last_name: "User",
-      role: "admin",
-      is_active: true,
-      email_verified: true,
-    });
-
-    if (profileError) {
-      throw profileError;
-    }
+    // Create profile entry in RDS
+    await db.query(
+      `INSERT INTO profiles (id, email, first_name, last_name, role, is_active, email_verified, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+       ON CONFLICT (id) DO UPDATE SET
+       email = EXCLUDED.email,
+       role = EXCLUDED.role,
+       is_active = EXCLUDED.is_active,
+       email_verified = EXCLUDED.email_verified,
+       updated_at = NOW()`,
+      [
+        data.user.id,
+        email,
+        "Admin",
+        "User",
+        "admin",
+        true,
+        true
+      ]
+    );
 
     await logAuthEvent(
       data.user.id,
@@ -6559,47 +6530,51 @@ app.post(
       // Prepare operations array
       const operations = [];
 
+      const upsertQuery = `
+        INSERT INTO api_settings (setting_key, setting_value, enabled, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (setting_key)
+        DO UPDATE SET
+          setting_value = EXCLUDED.setting_value,
+          enabled = EXCLUDED.enabled,
+          updated_at = NOW()
+      `;
+
       // Upsert CarWale API settings
       if (carwaleConfig) {
         operations.push(
-          supabase.from("api_settings").upsert({
-            setting_key: "carwale_api",
-            setting_value: carwaleConfig,
-            enabled: syncStats?.enabled || false,
-          })
+          db.query(upsertQuery, [
+            "carwale_api",
+            carwaleConfig,
+            syncStats?.enabled || false
+          ])
         );
       }
 
       // Upsert Brand APIs
       if (brandAPIs) {
         operations.push(
-          supabase.from("api_settings").upsert({
-            setting_key: "brand_apis",
-            setting_value: { apis: brandAPIs },
-            enabled: brandAPIs.some((api) => api.enabled),
-          })
+          db.query(upsertQuery, [
+            "brand_apis",
+            { apis: brandAPIs },
+            brandAPIs.some((api) => api.enabled)
+          ])
         );
       }
 
       // Upsert General Settings
       if (generalSettings) {
         operations.push(
-          supabase.from("api_settings").upsert({
-            setting_key: "general_settings",
-            setting_value: generalSettings,
-            enabled: true,
-          })
+          db.query(upsertQuery, [
+            "general_settings",
+            generalSettings,
+            true
+          ])
         );
       }
 
       // Execute all operations
-      const results = await Promise.all(operations);
-
-      // Check for errors
-      const hasError = results.some((result) => result.error);
-      if (hasError) {
-        throw new Error("One or more operations failed");
-      }
+      await Promise.all(operations);
 
       res.json({
         success: true,

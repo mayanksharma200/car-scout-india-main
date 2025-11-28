@@ -144,7 +144,8 @@ export const insertCarWithDuplicateCheck = async (carData: CarData): Promise<{
 }> => {
   try {
     // Call the PostgreSQL function for smart upsert
-    const { data, error } = await supabase.rpc('upsert_car_data', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('upsert_car_data', {
       car_data: carData
     });
 
@@ -155,6 +156,14 @@ export const insertCarWithDuplicateCheck = async (carData: CarData): Promise<{
         action: 'SKIPPED',
         message: error.message,
         error
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        success: false,
+        action: 'SKIPPED',
+        message: 'No data returned from operation'
       };
     }
 
@@ -206,7 +215,8 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
     }
 
     // Call the PostgreSQL bulk upsert function
-    const { data, error } = await supabase.rpc('bulk_upsert_cars', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('bulk_upsert_cars', {
       cars_data: carsData
     });
 
@@ -220,6 +230,18 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
         error_count: carsData.length,
         details: [],
         error
+      };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        success: false,
+        total_processed: 0,
+        inserted_count: 0,
+        skipped_count: 0,
+        error_count: carsData.length,
+        details: [],
+        error: 'No data returned from operation'
       };
     }
 
@@ -261,19 +283,33 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
  * Bulk inserts multiple cars with update tracking and change detection
  * This version will UPDATE existing cars if fields have changed
  */
-export const bulkInsertCarsWithTracking = async (carsData: CarData[]): Promise<BulkInsertResult> => {
+export const bulkInsertCarsWithTracking = async (carsData: CarData[], authToken?: string): Promise<BulkInsertResult> => {
   try {
     console.log(`🚗 Processing ${carsData.length} cars for bulk insertion with update tracking...`);
 
     // Use the new backend endpoint for AWS RDS
     const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-    // Get the session token for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
+    let token = authToken;
 
     if (!token) {
-      throw new Error("Authentication required for bulk import");
+      // Get the session token for authentication if not provided
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token;
+
+      // If no token, try to refresh the session
+      if (!token) {
+        console.log('🔄 No active session found, attempting to refresh...');
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error('❌ Session refresh failed:', refreshError);
+        }
+        token = refreshedSession?.access_token;
+      }
+    }
+
+    if (!token) {
+      throw new Error("Authentication required. Please reload the page and log in again.");
     }
 
     const response = await fetch(`${API_BASE_URL}/admin/cars/bulk-import`, {
