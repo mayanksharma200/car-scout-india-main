@@ -314,6 +314,7 @@ export interface ApiClient {
     getPublic: (key: string) => Promise<any>;
     get: (key: string) => Promise<any>;
     update: (key: string, value: string) => Promise<any>;
+    getImageLogs: (page?: number, limit?: number) => Promise<any>;
   };
 }
 
@@ -546,6 +547,10 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ value }),
         });
+      },
+      getImageLogs: async (page = 1, limit = 20) => {
+        const response = await makeAuthenticatedRequest(`/admin/image-logs?page=${page}&limit=${limit}`);
+        return response.json();
       },
     },
   };

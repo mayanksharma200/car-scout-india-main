@@ -11,6 +11,7 @@ import {
   Menu,
   Globe,
   MonitorPlay,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: "User Management", href: "/admin/users", icon: Users },
     { name: "Content Management", href: "/admin/content", icon: FileText },
     { name: "Ads Management", href: "/admin/ads", icon: MonitorPlay },
+    { name: "Image Logs", href: "/admin/image-logs", icon: ImageIcon },
     // { name: "API Settings", href: "/admin/api-settings", icon: Globe },
     // { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
   ];
@@ -106,8 +108,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 <Link
                   to={item.href}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.href)
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-muted text-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted text-foreground"
                     }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -202,6 +204,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               {location.pathname === "/admin/users" && "User Management"}
               {location.pathname === "/admin/content" && "Content Management"}
               {location.pathname === "/admin/ads" && "Ads Management"}
+              {location.pathname === "/admin/image-logs" && "Image Logs"}
               {/* {location.pathname === "/admin/api-settings" && "API Settings"} */}
             </div>
           </div>

@@ -5026,6 +5026,100 @@ app.post("/api/admin/log-activity", async (req, res) => {
   }
 });
 
+// Get image generation logs
+app.get("/api/admin/image-logs", validateToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", req.user.id)
+      .single();
+
+    if (!profile || profile.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: "Unauthorized access",
+      });
+    }
+
+    // Get total count
+    const { count, error: countError } = await supabase
+      .from("image_generation_logs")
+      .select("*", { count: "exact", head: true });
+
+    if (countError) {
+      throw countError;
+    }
+
+    // Get logs with car details (remove profiles join)
+    const { data: logs, error } = await supabase
+      .from("image_generation_logs")
+      .select(`
+        *,
+        cars (
+          id,
+          brand,
+          model,
+          variant
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + parseInt(limit) - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    // Manually fetch profiles for the users
+    let enrichedLogs = logs;
+    if (logs && logs.length > 0) {
+      const userIds = [...new Set(logs.map(log => log.user_id).filter(Boolean))];
+
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, email, first_name, last_name")
+          .in("id", userIds);
+
+        if (!profilesError && profiles) {
+          const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+          enrichedLogs = logs.map(log => ({
+            ...log,
+            profiles: profilesMap.get(log.user_id) || {
+              email: 'Unknown',
+              first_name: 'Unknown',
+              last_name: 'User'
+            }
+          }));
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: enrichedLogs,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    console.error("[Admin] Error fetching image logs:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch image logs",
+      details: error.message,
+    });
+  }
+});
+
 // Development-only endpoints
 if (IS_DEVELOPMENT) {
   app.post("/api/auth/create-test-user", async (req, res) => {
