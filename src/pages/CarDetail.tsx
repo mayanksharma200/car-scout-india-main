@@ -592,8 +592,9 @@ const CarDetail = () => {
                 title={`${car.brand} ${car.model} ${car.variant}`}
                 description={`Check out this ${car.brand} ${car.model
                   } starting from ${formatPrice(car.price)}`}
-                url={window.location.pathname}
+                url={window.location.href}
                 image={Array.isArray(car.images) ? car.images[0] : car.image}
+                dialogTitle="Share this car"
               >
                 <Button variant="outline" size="sm">
                   <Share2 className="w-4 h-4 mr-2" />
