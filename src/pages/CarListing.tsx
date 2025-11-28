@@ -555,12 +555,39 @@ const CarListing = () => {
             }
             // Case C: If images is an array (old format)
             else if (Array.isArray(car.images) && car.images.length > 0 && car.images[0] !== "/placeholder.svg") {
-              carImage = car.images[0] as string;
+              if (car.images[0]) {
+                carImage = car.images[0] as string;
+              }
             }
           }
 
+          // Helper to parse price string like "₹ 17.99 Lakh"
+          const parsePrice = (priceVal: string | number): number => {
+            if (typeof priceVal === 'number') return priceVal;
+            if (!priceVal) return 0;
+            const priceStr = priceVal.toString();
+            const cleanStr = priceStr.replace(/[^\d.]/g, '');
+            const val = parseFloat(cleanStr);
+            if (isNaN(val)) return 0;
+            if (priceStr.toLowerCase().includes('lakh')) return val * 100000;
+            if (priceStr.toLowerCase().includes('crore')) return val * 10000000;
+            return val;
+          };
+
           // Handle null/undefined prices - set a default price if null
-          const carPrice = car.price_min || car.price || 0; // Default to 0 if null
+          // Prioritize price_min (numeric), then exact_price (numeric), then parse from specifications
+          let carPrice = 0;
+
+          if (car.price_min) {
+            carPrice = Number(car.price_min);
+          } else if (car.price) {
+            carPrice = parsePrice(car.price);
+          }
+
+          if (!carPrice && (car as any).specifications?.["Price"]) {
+            carPrice = parsePrice((car as any).specifications["Price"]);
+          }
+
           const carOnRoadPrice = car.price_max || car.onRoadPrice || carPrice + 50000; // Default on-road price
 
           // Debug logging for first few cars
@@ -851,9 +878,12 @@ const CarListing = () => {
 
     switch (sortBy) {
       case "price-low":
+        console.log("Sorting by price-low");
         filteredCars.sort((a, b) => {
           const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
           const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
+
+          // console.log(`Comparing A: ${a.brand} ${a.model} (${priceA}) vs B: ${b.brand} ${b.model} (${priceB})`);
 
           // Push invalid prices (<= 0) to the bottom
           if (priceA <= 0 && priceB > 0) return 1;
@@ -863,6 +893,7 @@ const CarListing = () => {
         });
         break;
       case "price-high":
+        console.log("Sorting by price-high");
         filteredCars.sort((a, b) => {
           const priceA = typeof a.price === 'number' && !isNaN(a.price) ? a.price : 0;
           const priceB = typeof b.price === 'number' && !isNaN(b.price) ? b.price : 0;
