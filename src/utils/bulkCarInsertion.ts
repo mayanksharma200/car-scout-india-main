@@ -257,37 +257,38 @@ export const bulkInsertCars = async (carsData: CarData[]): Promise<BulkInsertRes
  * Bulk inserts multiple cars with update tracking and change detection
  * This version will UPDATE existing cars if fields have changed
  */
+/**
+ * Bulk inserts multiple cars with update tracking and change detection
+ * This version will UPDATE existing cars if fields have changed
+ */
 export const bulkInsertCarsWithTracking = async (carsData: CarData[]): Promise<BulkInsertResult> => {
   try {
     console.log(`🚗 Processing ${carsData.length} cars for bulk insertion with update tracking...`);
 
-    // DEBUG: Log first car data being sent to see exact values
-    if (carsData.length > 0) {
-      console.log('🔍 FIRST CAR DATA BEING SENT TO SUPABASE - Basic fields:', {
-        fuel_type: carsData[0].fuel_type,
-        transmission: carsData[0].transmission,
-        engine_capacity: carsData[0].engine_capacity,
-        mileage: carsData[0].mileage,
-        price_min: carsData[0].price_min
-      });
-      console.log('🔍 DEDICATED COLUMNS IN CAR DATA:', {
-        mumbai_price: carsData[0].mumbai_price,
-        bangalore_price: carsData[0].bangalore_price,
-        delhi_price: carsData[0].delhi_price,
-        colors: carsData[0].colors,
-        airbags: carsData[0].airbags,
-        sunroof: carsData[0].sunroof,
-        warranty_years: carsData[0].warranty_years
-      });
+    // Use the new backend endpoint for AWS RDS
+    const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+    // Get the session token for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    if (!token) {
+      throw new Error("Authentication required for bulk import");
     }
 
-    // Call the PostgreSQL bulk upsert function WITH TRACKING
-    const { data, error } = await supabase.rpc('bulk_upsert_cars_with_tracking', {
-      cars_data: carsData
+    const response = await fetch(`${API_BASE_URL}/admin/cars/bulk-import`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ cars: carsData })
     });
 
-    if (error) {
-      console.error('❌ Error during bulk insert with tracking:', error);
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error('❌ Error during bulk insert:', result.error);
       return {
         success: false,
         total_processed: 0,
@@ -296,18 +297,11 @@ export const bulkInsertCarsWithTracking = async (carsData: CarData[]): Promise<B
         skipped_count: 0,
         error_count: carsData.length,
         details: [],
-        error
+        error: result.error
       };
     }
 
-    const result = data[0];
-
-    console.log('\n📊 Bulk Insert with Tracking Results:');
-    console.log(`   Total Processed: ${result.total_processed}`);
-    console.log(`   ✅ Inserted: ${result.inserted_count}`);
-    console.log(`   🔄 Updated: ${result.updated_count}`);
-    console.log(`   ⏭️  Skipped: ${result.skipped_count}`);
-    console.log(`   ❌ Errors: ${result.error_count}`);
+    console.log('\n📊 Bulk Insert Results:', result);
 
     return {
       success: true,
@@ -316,7 +310,7 @@ export const bulkInsertCarsWithTracking = async (carsData: CarData[]): Promise<B
       updated_count: result.updated_count,
       skipped_count: result.skipped_count,
       error_count: result.error_count,
-      details: result.details
+      details: result.details || []
     };
   } catch (err) {
     console.error('❌ Unexpected error during bulk insert with tracking:', err);

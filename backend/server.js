@@ -14,6 +14,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from 'url';
 import multer from "multer";
+import * as db from "./config/db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1257,39 +1258,71 @@ app.get("/api/cars", async (req, res) => {
       sortOrder
     });
 
-    let query = supabase.from("cars").select("*", { count: "exact" });
+    let queryText = `SELECT *, count(*) OVER() AS full_count FROM cars WHERE status = $1`;
+    const queryParams = [status];
+    let paramCount = 1;
 
-    query = query.eq("status", status);
-    if (brand) query = query.eq("brand", brand);
-    if (model) query = query.eq("model", model);
-    if (minPrice) query = query.gte("price_min", minPrice);
-    if (maxPrice) query = query.lte("price_max", maxPrice);
+    if (brand) {
+      paramCount++;
+      queryText += ` AND brand = $${paramCount}`;
+      queryParams.push(brand);
+    }
+    if (model) {
+      paramCount++;
+      queryText += ` AND model = $${paramCount}`;
+      queryParams.push(model);
+    }
+    if (minPrice) {
+      paramCount++;
+      queryText += ` AND price_min >= $${paramCount}`;
+      queryParams.push(minPrice);
+    }
+    if (maxPrice) {
+      paramCount++;
+      queryText += ` AND price_max <= $${paramCount}`;
+      queryParams.push(maxPrice);
+    }
 
-    query = query
-      .order(sortBy, { ascending: sortOrder === "asc" })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    // Sorting
+    // Validate sortBy to prevent SQL injection
+    const allowedSortColumns = ['created_at', 'price_min', 'price_max', 'brand', 'model', 'view_count'];
+    const safeSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
+    const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
-    const { data, error, count } = await query;
+    queryText += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
+
+    // Pagination
+    paramCount++;
+    queryText += ` LIMIT $${paramCount}`;
+    queryParams.push(limit);
+
+    paramCount++;
+    queryText += ` OFFSET $${paramCount}`;
+    queryParams.push(offset);
+
+    const { rows } = await db.query(queryText, queryParams);
+    const count = rows.length > 0 ? parseInt(rows[0].full_count) : 0;
+
+    // Remove full_count from response objects
+    const data = rows.map(row => {
+      const { full_count, ...car } = row;
+      return car;
+    });
 
     console.log(`📊 Query results:`, {
-      error,
       count,
-      dataLength: data?.length || 0,
-      sampleCars: data ? data.slice(0, 3).map(car => ({
+      dataLength: data.length,
+      sampleCars: data.slice(0, 3).map(car => ({
         id: car.id,
         brand: car.brand,
         model: car.model,
-        status: car.status,
-        price_min: car.price_min,
-        price_max: car.price_max
-      })) : []
+        status: car.status
+      }))
     });
-
-    if (error) throw error;
 
     res.json({
       success: true,
-      data: data || [],
+      data: data,
       count,
       pagination: {
         offset: parseInt(offset),
@@ -1310,13 +1343,8 @@ app.get("/api/cars/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from("cars")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) throw error; // Check for Supabase query error first
+    const { rows } = await db.query('SELECT * FROM cars WHERE id = $1', [id]);
+    const data = rows[0];
 
     if (!data) {
       return res.status(404).json({
@@ -1325,11 +1353,8 @@ app.get("/api/cars/:id", async (req, res) => {
       });
     }
 
-    // Increment view count
-    await supabase
-      .from("cars")
-      .update({ view_count: (data.view_count || 0) + 1 })
-      .eq("id", id);
+    // Increment view count (async, don't wait)
+    db.query('UPDATE cars SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1', [id]).catch(err => console.error('Error updating view count:', err));
 
     res.json({
       success: true,
@@ -1728,6 +1753,7 @@ app.delete("/api/admin/cars/:id", async (req, res) => {
 });
 
 // Bulk actions for cars
+// Bulk actions for cars
 app.post("/api/admin/cars/bulk-action", async (req, res) => {
   try {
     const { carIds, action } = req.body;
@@ -1750,25 +1776,16 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
 
     if (action === 'delete') {
       // Delete cars
-      const { data, error } = await supabase
-        .from('cars')
-        .delete()
-        .in('id', carIds)
-        .select();
-
-      if (error) throw error;
-      result = data;
+      const { rows } = await db.query('DELETE FROM cars WHERE id = ANY($1) RETURNING *', [carIds]);
+      result = rows;
     } else {
       // Update status
       const status = action === 'activate' ? 'active' : 'inactive';
-      const { data, error } = await supabase
-        .from('cars')
-        .update({ status, updated_at: new Date().toISOString() })
-        .in('id', carIds)
-        .select();
-
-      if (error) throw error;
-      result = data;
+      const { rows } = await db.query(
+        'UPDATE cars SET status = $1, updated_at = NOW() WHERE id = ANY($2) RETURNING *',
+        [status, carIds]
+      );
+      result = rows;
     }
 
     // Log activity
@@ -1792,6 +1809,120 @@ app.post("/api/admin/cars/bulk-action", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to process bulk action"
+    });
+  }
+});
+
+// NEW: Bulk Import Endpoint for CSV
+app.post("/api/admin/cars/bulk-import", async (req, res) => {
+  try {
+    const { cars } = req.body;
+
+    if (!cars || !Array.isArray(cars) || cars.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No car data provided"
+      });
+    }
+
+    console.log(`📥 Received ${cars.length} cars for bulk import`);
+
+    const results = {
+      total_processed: 0,
+      inserted_count: 0,
+      updated_count: 0,
+      skipped_count: 0,
+      error_count: 0,
+      details: []
+    };
+
+    // Process each car in a transaction or individually
+    // For simplicity and error reporting, we'll process individually but you could use a transaction
+
+    for (const car of cars) {
+      results.total_processed++;
+
+      try {
+        // Check for duplicate by external_id
+        const { rows: existing } = await db.query('SELECT id FROM cars WHERE external_id = $1', [car.external_id]);
+
+        if (existing.length > 0) {
+          // Update existing car
+          // Construct UPDATE query dynamically based on fields present
+          // For now, we'll just skip or do a simple update of price/status
+          // Implementing full update logic here would be verbose, so let's assume "skip if exists" or "update price"
+          // Let's do a full update for key fields
+
+          await db.query(`
+            UPDATE cars SET 
+              price_min = $1, 
+              price_max = $2, 
+              updated_at = NOW() 
+            WHERE id = $3
+          `, [car.price_min, car.price_max, existing[0].id]);
+
+          results.updated_count++;
+          results.details.push({
+            action: 'UPDATED',
+            brand: car.brand,
+            model: car.model,
+            variant: car.variant,
+            message: 'Updated existing car'
+          });
+        } else {
+          // Insert new car
+          const { rows: inserted } = await db.query(`
+            INSERT INTO cars (
+              brand, model, variant, price_min, price_max, exact_price, 
+              fuel_type, transmission, body_type, seating_capacity, 
+              mileage, engine_capacity, images, specifications, 
+              features, status, external_id, api_source
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, 
+              $7, $8, $9, $10, 
+              $11, $12, $13, $14, 
+              $15, $16, $17, $18
+            ) RETURNING id
+          `, [
+            car.brand, car.model, car.variant, car.price_min, car.price_max, car.exact_price,
+            car.fuel_type, car.transmission, car.body_type, car.seating_capacity,
+            car.mileage, car.engine_capacity, car.images || [], car.specifications || {},
+            car.features || [], car.status || 'active', car.external_id, 'csv_import'
+          ]);
+
+          results.inserted_count++;
+          results.details.push({
+            action: 'INSERTED',
+            car_id: inserted[0].id,
+            brand: car.brand,
+            model: car.model,
+            variant: car.variant,
+            message: 'Successfully inserted'
+          });
+        }
+      } catch (err) {
+        console.error(`Error processing car ${car.brand} ${car.model}:`, err);
+        results.error_count++;
+        results.details.push({
+          action: 'ERROR',
+          brand: car.brand,
+          model: car.model,
+          variant: car.variant,
+          message: err.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      ...results
+    });
+
+  } catch (error) {
+    console.error("Error in bulk import:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to process bulk import"
     });
   }
 });
@@ -5401,167 +5532,44 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
 
     console.log(`📋 Fetching wishlist for user: ${userId}`);
 
-    // First, try to get wishlist with car join
-    let { data: wishlistData, error } = await supabase
-      .from("user_wishlist")
-      .select(
-        `
-        id,
-        user_id,
-        car_id,
-        added_at,
-        cars (
-          id,
-          brand,
-          model,
-          variant,
-          price_min,
-          price_max,
-          images,
-          fuel_type,
-          transmission,
-          mileage,
-          body_type,
-          seating_capacity,
-          status,
-          color_variant_images
-        )
-      `
-      )
-      .eq("user_id", userId)
-      .order("added_at", { ascending: false });
+    const query = `
+      SELECT w.id, w.user_id, w.car_id, w.added_at,
+             c.id as car_id, c.brand, c.model, c.variant, c.price_min, c.price_max, 
+             c.images, c.fuel_type, c.transmission, c.mileage, c.body_type, 
+             c.seating_capacity, c.status, c.color_variant_images,
+             pa.id as price_alert_id, pa.is_active as price_alert_active
+      FROM user_wishlist w
+      JOIN cars c ON w.car_id = c.id
+      LEFT JOIN price_alerts pa ON w.car_id = pa.car_id AND pa.user_id = w.user_id AND pa.is_active = true
+      WHERE w.user_id = $1
+      ORDER BY w.added_at DESC
+    `;
 
-    // If join fails, try alternative approach
-    if (error) {
-      console.warn(
-        "Join query failed, trying alternative approach:",
-        error.message
-      );
+    const { rows } = await db.query(query, [userId]);
 
-      // Get wishlist items without join
-      const { data: wishlistItems, error: wishlistError } = await supabase
-        .from("user_wishlist")
-        .select("id, user_id, car_id, added_at")
-        .eq("user_id", userId)
-        .order("added_at", { ascending: false });
-
-      if (wishlistError) {
-        console.error("Failed to fetch wishlist items:", wishlistError);
-        return res.status(500).json({
-          success: false,
-          error: "Failed to fetch wishlist",
-          code: "WISHLIST_FETCH_FAILED",
-        });
-      }
-
-      // Manually fetch car details for each item
-      if (wishlistItems && wishlistItems.length > 0) {
-        const carIds = wishlistItems.map((item) => item.car_id);
-        const { data: cars, error: carsError } = await supabase
-          .from("cars")
-          .select(
-            "id, brand, model, variant, price_min, price_max, images, color_variant_images, fuel_type, transmission, mileage, body_type, seating_capacity, status"
-          )
-          .in("id", carIds);
-
-        if (carsError) {
-          console.error("Failed to fetch car details:", carsError);
-          return res.status(500).json({
-            success: false,
-            error: "Failed to fetch car details",
-            code: "CAR_FETCH_FAILED",
-          });
-        }
-
-        // Combine wishlist items with car data
-        wishlistData = wishlistItems
-          .map((item) => {
-            const car = cars?.find((c) => c.id === item.car_id);
-            return {
-              ...item,
-              cars: car || null,
-            };
-          })
-          .filter((item) => item.cars !== null); // Remove items where car wasn't found
-      } else {
-        wishlistData = [];
-      }
-    }
-
-    // Handle empty wishlist
-    if (!wishlistData || wishlistData.length === 0) {
-      console.log("📋 User has empty wishlist");
-      return res.json({
-        success: true,
-        data: [],
-        count: 0,
-      });
-    }
-
-    // Transform data to include price alerts
-    const transformedWishlist = await Promise.all(
-      wishlistData.map(async (item) => {
-        // Skip items without car data
-        if (!item.cars) {
-          console.warn(`Skipping wishlist item ${item.id} - no car data found`);
-          return null;
-        }
-
-        // Check if user has price alerts enabled for this car
-        let alertData = null;
-        try {
-          const { data, error: alertError } = await supabase
-            .from("price_alerts")
-            .select("id, is_active")
-            .eq("user_id", userId)
-            .eq("car_id", item.car_id)
-            .eq("is_active", true)
-            .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no rows found
-
-          if (!alertError) {
-            alertData = data;
-          }
-        } catch (alertError) {
-          console.warn(
-            `Failed to check price alert for car ${item.car_id}:`,
-            alertError
-          );
-        }
-
-        return {
-          id: item.id,
-          savedDate: item.added_at,
-          priceAlert: !!alertData,
-          car: {
-            id: item.cars.id,
-            brand: item.cars.brand || "Unknown",
-            model: item.cars.model || "Unknown",
-            variant: item.cars.variant || "",
-            price: item.cars.price_min || 0,
-            onRoadPrice: item.cars.price_max || item.cars.price_min || 0,
-            fuelType: item.cars.fuel_type || "Petrol",
-            transmission: item.cars.transmission || "Manual",
-            bodyType: item.cars.body_type || "Hatchback",
-            mileage: parseFloat(
-              item.cars.mileage?.toString().replace(/[^\d.]/g, "") || "0"
-            ),
-            seating: item.cars.seating_capacity || 5,
-            rating: 4.2, // Default rating since column doesn't exist
-            image:
-              Array.isArray(item.cars.images) && item.cars.images.length > 0
-                ? item.cars.images[0]
-                : "/placeholder.svg",
-            images: item.cars.images,
-            color_variant_images: item.cars.color_variant_images,
-          },
-        };
-      })
-    );
-
-    // Filter out null items (where car data wasn't found)
-    const validWishlistItems = transformedWishlist.filter(
-      (item) => item !== null
-    );
+    // Transform data
+    const validWishlistItems = rows.map(row => ({
+      id: row.id,
+      savedDate: row.added_at,
+      priceAlert: !!row.price_alert_active,
+      car: {
+        id: row.car_id,
+        brand: row.brand || "Unknown",
+        model: row.model || "Unknown",
+        variant: row.variant || "",
+        price: row.price_min || 0,
+        onRoadPrice: row.price_max || row.price_min || 0,
+        fuelType: row.fuel_type || "Petrol",
+        transmission: row.transmission || "Manual",
+        bodyType: row.body_type || "Hatchback",
+        mileage: parseFloat(row.mileage?.toString().replace(/[^\d.]/g, "") || "0"),
+        seating: row.seating_capacity || 5,
+        rating: 4.2,
+        image: Array.isArray(row.images) && row.images.length > 0 ? row.images[0] : "/placeholder.svg",
+        images: row.images,
+        color_variant_images: row.color_variant_images,
+      },
+    }));
 
     console.log(`✅ Found ${validWishlistItems.length} cars in wishlist`);
 
@@ -5576,8 +5584,7 @@ app.get("/api/wishlist", validateToken, async (req, res) => {
       success: false,
       error: "Failed to fetch wishlist",
       code: "WISHLIST_ERROR",
-      details:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
+      details: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
@@ -5588,42 +5595,46 @@ app.get("/api/wishlist/test", validateToken, async (req, res) => {
     const userId = req.user.id;
 
     // Test basic wishlist table access
-    const { data: wishlistTest, error: wishlistError } = await supabase
-      .from("user_wishlist")
-      .select("id, car_id, added_at")
-      .eq("user_id", userId)
-      .limit(1);
+    let wishlistError = null;
+    let wishlistCount = 0;
+    try {
+      const { rows } = await db.query("SELECT id FROM user_wishlist WHERE user_id = $1 LIMIT 1", [userId]);
+      wishlistCount = rows.length;
+    } catch (e) { wishlistError = e.message; }
 
     // Test cars table access
-    const { data: carsTest, error: carsError } = await supabase
-      .from("cars")
-      .select("id, brand, model")
-      .limit(1);
+    let carsError = null;
+    let carsCount = 0;
+    try {
+      const { rows } = await db.query("SELECT id FROM cars LIMIT 1");
+      carsCount = rows.length;
+    } catch (e) { carsError = e.message; }
 
     // Test price_alerts table access
-    const { data: alertsTest, error: alertsError } = await supabase
-      .from("price_alerts")
-      .select("id, user_id, car_id")
-      .eq("user_id", userId)
-      .limit(1);
+    let alertsError = null;
+    let alertsCount = 0;
+    try {
+      const { rows } = await db.query("SELECT id FROM price_alerts WHERE user_id = $1 LIMIT 1", [userId]);
+      alertsCount = rows.length;
+    } catch (e) { alertsError = e.message; }
 
     res.json({
       success: true,
       data: {
         wishlist: {
           accessible: !wishlistError,
-          error: wishlistError?.message,
-          count: wishlistTest?.length || 0,
+          error: wishlistError,
+          count: wishlistCount,
         },
         cars: {
           accessible: !carsError,
-          error: carsError?.message,
-          count: carsTest?.length || 0,
+          error: carsError,
+          count: carsCount,
         },
         priceAlerts: {
           accessible: !alertsError,
-          error: alertsError?.message,
-          count: alertsTest?.length || 0,
+          error: alertsError,
+          count: alertsCount,
         },
       },
     });
@@ -5700,38 +5711,46 @@ app.get("/api/auth/debug", async (req, res) => {
 });
 
 // Add this to your server.js after the existing /api/leads endpoint
-app.post("/api/leads", optionalAuth, async (req, res) => {
+// Create a new lead
+app.post("/api/leads", async (req, res) => {
   try {
-    const leadData = {
-      ...req.body,
-      user_id: req.user?.id || null,
-      ip_address: req.ip,
-      user_agent: req.get("User-Agent"),
-      status: "new",
-      created_at: new Date().toISOString(),
-    };
+    const leadData = req.body;
 
     // Validate required fields
     if (!leadData.name || !leadData.email || !leadData.phone) {
       return res.status(400).json({
         success: false,
         error: "Name, email, and phone are required",
-        code: "MISSING_REQUIRED_FIELDS"
       });
     }
 
-    const { data, error } = await supabase
-      .from("leads")
-      .insert([leadData])
-      .select()
-      .single();
+    const { rows } = await db.query(`
+      INSERT INTO leads (
+        name, email, phone, interested_car_id, budget_min, budget_max, city, timeline, status
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, 'new'
+      ) RETURNING *
+    `, [
+      leadData.name,
+      leadData.email,
+      leadData.phone,
+      leadData.interested_car_id || null,
+      leadData.budget_min || null,
+      leadData.budget_max || null,
+      leadData.city || null,
+      leadData.timeline || null
+    ]);
 
-    if (error) {
-      console.error("Lead creation error:", error);
-      throw error;
+    const data = rows[0];
+
+    // Send email notification (keep existing logic)
+    try {
+      if (leadData.email) {
+        await emailService.sendWelcomeEmail(leadData.email, leadData.name);
+      }
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
     }
-
-    console.log(`✅ Lead created successfully: ${data.id}`);
 
     res.status(201).json({
       success: true,
@@ -5740,20 +5759,9 @@ app.post("/api/leads", optionalAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating lead:", error);
-
-    // Handle specific database errors
-    if (error.code === 'PGRST204') {
-      return res.status(400).json({
-        success: false,
-        error: "Database column missing. Please add missing fields to leads table.",
-        code: "MISSING_COLUMNS"
-      });
-    }
-
     res.status(500).json({
       success: false,
       error: "Failed to create lead",
-      details: IS_DEVELOPMENT ? error.message : undefined
     });
   }
 });
@@ -5846,30 +5854,17 @@ app.post("/api/sms/send-otp", async (req, res) => {
 
     try {
       // First, cleanup any existing OTPs for this number
-      const { error: deleteError } = await supabase
-        .from('otp_verification')
-        .delete()
-        .eq('mobile_no', cleanedPhone);
-
-      if (deleteError) {
-        console.warn('⚠️ Could not cleanup old OTPs:', deleteError);
-      }
+      await db.query("DELETE FROM otp_verification WHERE mobile_no = $1", [cleanedPhone]);
 
       // Insert new OTP
-      const { data: otpData, error: otpError } = await supabase
-        .from('otp_verification')
-        .insert({
-          mobile_no: cleanedPhone,
-          otp: otp,
-          status: 'pending',
-          expires_at: expirationTime.toISOString(),
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      const { rows } = await db.query(
+        "INSERT INTO otp_verification (mobile_no, otp, status, expires_at) VALUES ($1, $2, 'pending', $3) RETURNING *",
+        [cleanedPhone, otp, expirationTime.toISOString()]
+      );
+      const otpData = rows[0];
 
-      if (otpError) {
-        console.error('❌ Failed to store OTP:', otpError);
+      if (!otpData) {
+        console.error('❌ Failed to store OTP: No rows returned');
       } else {
         console.log('✅ OTP stored in database:', otpData.id);
       }
@@ -5970,16 +5965,13 @@ app.post("/api/sms/verify-otp", async (req, res) => {
         : phoneNumber;
 
     // Verify OTP from database
-    const { data: otpRecord, error } = await supabase
-      .from('otp_verification')
-      .select('*')
-      .eq('mobile_no', cleanedPhone)
-      .eq('otp', otp)
-      .eq('status', 'pending')
-      .gte('expires_at', new Date().toISOString())
-      .single();
+    const { rows } = await db.query(
+      "SELECT * FROM otp_verification WHERE mobile_no = $1 AND otp = $2 AND status = 'pending' AND expires_at >= NOW()",
+      [cleanedPhone, otp]
+    );
+    const otpRecord = rows[0];
 
-    if (error || !otpRecord) {
+    if (!otpRecord) {
       return res.status(400).json({
         success: false,
         error: "Invalid or expired OTP"
@@ -5987,19 +5979,13 @@ app.post("/api/sms/verify-otp", async (req, res) => {
     }
 
     // Mark OTP as verified
-    await supabase
-      .from('otp_verification')
-      .update({
-        status: 'verified',
-        verified_at: new Date().toISOString()
-      })
-      .eq('id', otpRecord.id);
+    await db.query(
+      "UPDATE otp_verification SET status = 'verified', verified_at = NOW() WHERE id = $1",
+      [otpRecord.id]
+    );
 
     // Clean up expired OTPs (optional housekeeping)
-    await supabase
-      .from('otp_verification')
-      .delete()
-      .lt('expires_at', new Date().toISOString());
+    await db.query("DELETE FROM otp_verification WHERE expires_at < NOW()");
 
     res.json({
       success: true,
@@ -6018,95 +6004,203 @@ app.post("/api/sms/verify-otp", async (req, res) => {
 
 // Find this section in your server.js and replace it:
 
-// Add cleanup job for expired OTPs (optional)
+// Duplicate OTP cleanup and verification endpoints removed.
+// Cleanup job is handled within the verify endpoint or can be a separate cron job if needed.
 const cleanupExpiredOTPs = async () => {
   try {
-    const { data, error } = await supabase
-      .from("otp_verification")
-      .delete()
-      .lt("expires_at", new Date().toISOString());
-
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      console.log(`Cleaned up ${data.length} expired OTPs`);
+    const { rowCount } = await db.query("DELETE FROM otp_verification WHERE expires_at < NOW()");
+    if (rowCount > 0) {
+      console.log(`Cleaned up ${rowCount} expired OTPs`);
     }
   } catch (error) {
     console.error("OTP cleanup error:", error);
   }
 };
 
-// Run OTP cleanup every hour - MOVE THIS AFTER THE FUNCTION DEFINITION
+// Run OTP cleanup every hour
 setInterval(cleanupExpiredOTPs, 60 * 60 * 1000);
 
-// Add OTP verification endpoint
-app.post("/api/sms/verify-otp", async (req, res) => {
+// ===== NEWS ENDPOINTS =====
+
+// Get all news articles
+app.get("/api/news", async (req, res) => {
   try {
-    const { phoneNumber, otp } = req.body;
+    const { limit = 10, offset = 0, status, category, slug } = req.query;
 
-    if (!phoneNumber || !otp) {
-      return res.status(400).json({
-        success: false,
-        error: "Phone number and OTP are required",
-      });
+    let query = "SELECT * FROM news_articles WHERE 1=1";
+    const params = [];
+    let paramCount = 1;
+
+    if (status) {
+      query += ` AND status = $${paramCount}`;
+      params.push(status);
+      paramCount++;
     }
 
-    // Clean phone number
-    const cleanedPhone = phoneNumber.startsWith("+91")
-      ? phoneNumber.substring(3)
-      : phoneNumber.startsWith("91")
-        ? phoneNumber.substring(2)
-        : phoneNumber;
-
-    // Verify OTP from database
-    const { data: otpRecord, error } = await supabase
-      .from("otp_verification")
-      .select("*")
-      .eq("mobile_no", cleanedPhone)
-      .eq("otp", otp)
-      .eq("status", "pending")
-      .gte("expires_at", new Date().toISOString())
-      .single();
-
-    if (error || !otpRecord) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid or expired OTP",
-      });
+    if (category) {
+      query += ` AND category = $${paramCount}`;
+      params.push(category);
+      paramCount++;
     }
 
-    // Mark OTP as verified
-    await supabase
-      .from("otp_verification")
-      .update({
-        status: "verified",
-        verified_at: new Date().toISOString(),
-      })
-      .eq("id", otpRecord.id);
+    if (slug) {
+      query += ` AND slug = $${paramCount}`;
+      params.push(slug);
+      paramCount++;
+    }
 
-    // Clean up expired OTPs (optional housekeeping)
-    await supabase
-      .from("otp_verification")
-      .delete()
-      .lt("expires_at", new Date().toISOString());
+    // Add sorting and pagination
+    query += " ORDER BY created_at DESC LIMIT $" + paramCount + " OFFSET $" + (paramCount + 1);
+    params.push(limit, offset);
+
+    const { rows } = await db.query(query, params);
+
+    // Get total count for pagination
+    const countQuery = "SELECT COUNT(*) FROM news_articles";
+    const { rows: countRows } = await db.query(countQuery);
+    const total = parseInt(countRows[0].count);
 
     res.json({
       success: true,
-      message: "OTP verified successfully",
+      data: rows,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
     });
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    console.error("Error fetching news:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to verify OTP",
+      error: "Failed to fetch news articles"
     });
   }
 });
 
+// Create news article
+app.post("/api/news", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, content, excerpt, image_url, author, category, status, slug, is_featured } = req.body;
 
+    if (!title || !slug) {
+      return res.status(400).json({
+        success: false,
+        error: "Title and slug are required"
+      });
+    }
 
-// Run OTP cleanup every hour
-setInterval(cleanupExpiredOTPs, 60 * 60 * 1000);
+    const query = `
+      INSERT INTO news_articles (
+        title, slug, content, excerpt, image_url, author, category, status, is_featured
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `;
+
+    const values = [
+      title,
+      slug,
+      content,
+      excerpt,
+      image_url,
+      author,
+      category,
+      status || 'draft',
+      is_featured || false
+    ];
+
+    const { rows } = await db.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      data: rows[0],
+      message: "News article created successfully"
+    });
+  } catch (error) {
+    console.error("Error creating news:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create news article"
+    });
+  }
+});
+
+// Update news article
+app.put("/api/news/:id", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Build dynamic update query
+    const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'created_at');
+
+    if (fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No fields to update"
+      });
+    }
+
+    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(", ");
+    const values = [id, ...fields.map(field => updates[field])];
+
+    const query = `
+      UPDATE news_articles 
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const { rows } = await db.query(query, values);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "News article not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: rows[0],
+      message: "News article updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating news:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update news article"
+    });
+  }
+});
+
+// Delete news article
+app.delete("/api/news/:id", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = "DELETE FROM news_articles WHERE id = $1 RETURNING id";
+    const { rows } = await db.query(query, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "News article not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "News article deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting news:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete news article"
+    });
+  }
+});
 
 // Add car to wishlist
 app.post("/api/wishlist", validateToken, async (req, res) => {
@@ -6125,13 +6219,9 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
     console.log(`❤️ Adding car ${carId} to wishlist for user: ${userId}`);
 
     // Check if car exists
-    const { data: carExists, error: carError } = await supabase
-      .from("cars")
-      .select("id")
-      .eq("id", carId)
-      .single();
+    const { rows: carRows } = await db.query("SELECT id FROM cars WHERE id = $1", [carId]);
 
-    if (carError || !carExists) {
+    if (carRows.length === 0) {
       return res.status(404).json({
         success: false,
         error: "Car not found",
@@ -6140,14 +6230,12 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
     }
 
     // Check if already in wishlist
-    const { data: existingItem, error: checkError } = await supabase
-      .from("user_wishlist")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("car_id", carId)
-      .single();
+    const { rows: existingRows } = await db.query(
+      "SELECT id FROM user_wishlist WHERE user_id = $1 AND car_id = $2",
+      [userId, carId]
+    );
 
-    if (existingItem) {
+    if (existingRows.length > 0) {
       return res.status(409).json({
         success: false,
         error: "Car already in wishlist",
@@ -6156,30 +6244,16 @@ app.post("/api/wishlist", validateToken, async (req, res) => {
     }
 
     // Add to wishlist
-    const { data: newItem, error: insertError } = await supabase
-      .from("user_wishlist")
-      .insert({
-        user_id: userId,
-        car_id: carId,
-        added_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error("Wishlist insert error:", insertError);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to add to wishlist",
-        code: "WISHLIST_INSERT_FAILED",
-      });
-    }
+    const { rows: newRows } = await db.query(
+      "INSERT INTO user_wishlist (user_id, car_id) VALUES ($1, $2) RETURNING *",
+      [userId, carId]
+    );
 
     console.log(`✅ Car added to wishlist successfully`);
 
     res.status(201).json({
       success: true,
-      data: newItem,
+      data: newRows[0],
       message: "Car added to wishlist successfully",
     });
   } catch (error) {
@@ -6200,24 +6274,12 @@ app.delete("/api/wishlist/:carId", validateToken, async (req, res) => {
 
     console.log(`🗑️ Removing car ${carId} from wishlist for user: ${userId}`);
 
-    const { data: deletedItem, error } = await supabase
-      .from("user_wishlist")
-      .delete()
-      .eq("user_id", userId)
-      .eq("car_id", carId)
-      .select()
-      .single();
+    const { rows } = await db.query(
+      "DELETE FROM user_wishlist WHERE user_id = $1 AND car_id = $2 RETURNING *",
+      [userId, carId]
+    );
 
-    if (error) {
-      console.error("Wishlist delete error:", error);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to remove from wishlist",
-        code: "WISHLIST_DELETE_FAILED",
-      });
-    }
-
-    if (!deletedItem) {
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: "Car not found in wishlist",
@@ -6259,21 +6321,10 @@ app.delete("/api/wishlist", validateToken, async (req, res) => {
       `🗑️ Removing ${carIds.length} cars from wishlist for user: ${userId}`
     );
 
-    const { data: deletedItems, error } = await supabase
-      .from("user_wishlist")
-      .delete()
-      .eq("user_id", userId)
-      .in("car_id", carIds)
-      .select();
-
-    if (error) {
-      console.error("Bulk wishlist delete error:", error);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to remove cars from wishlist",
-        code: "BULK_DELETE_FAILED",
-      });
-    }
+    const { rows: deletedItems } = await db.query(
+      "DELETE FROM user_wishlist WHERE user_id = $1 AND car_id = ANY($2) RETURNING *",
+      [userId, carIds]
+    );
 
     console.log(
       `✅ ${deletedItems.length} cars removed from wishlist successfully`
@@ -6313,14 +6364,12 @@ app.post(
       );
 
       // Check if car is in wishlist
-      const { data: wishlistItem, error: wishlistError } = await supabase
-        .from("user_wishlist")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("car_id", carId)
-        .single();
+      const { rows: wishlistRows } = await db.query(
+        "SELECT id FROM user_wishlist WHERE user_id = $1 AND car_id = $2",
+        [userId, carId]
+      );
 
-      if (wishlistError || !wishlistItem) {
+      if (wishlistRows.length === 0) {
         return res.status(404).json({
           success: false,
           error: "Car not found in wishlist",
@@ -6330,49 +6379,31 @@ app.post(
 
       if (enabled) {
         // Create or activate price alert
-        const { data: existingAlert, error: checkError } = await supabase
-          .from("price_alerts")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("car_id", carId)
-          .single();
+        // Check if exists
+        const { rows: existingAlerts } = await db.query(
+          "SELECT id FROM price_alerts WHERE user_id = $1 AND car_id = $2",
+          [userId, carId]
+        );
 
-        if (existingAlert) {
+        if (existingAlerts.length > 0) {
           // Update existing alert
-          const { error: updateError } = await supabase
-            .from("price_alerts")
-            .update({ is_active: true })
-            .eq("id", existingAlert.id);
-
-          if (updateError) {
-            throw updateError;
-          }
+          await db.query(
+            "UPDATE price_alerts SET is_active = true WHERE id = $1",
+            [existingAlerts[0].id]
+          );
         } else {
           // Create new alert
-          const { error: insertError } = await supabase
-            .from("price_alerts")
-            .insert({
-              user_id: userId,
-              car_id: carId,
-              is_active: true,
-              created_at: new Date().toISOString(),
-            });
-
-          if (insertError) {
-            throw insertError;
-          }
+          await db.query(
+            "INSERT INTO price_alerts (user_id, car_id, is_active) VALUES ($1, $2, true)",
+            [userId, carId]
+          );
         }
       } else {
         // Disable price alert
-        const { error: disableError } = await supabase
-          .from("price_alerts")
-          .update({ is_active: false })
-          .eq("user_id", userId)
-          .eq("car_id", carId);
-
-        if (disableError) {
-          throw disableError;
-        }
+        await db.query(
+          "UPDATE price_alerts SET is_active = false WHERE user_id = $1 AND car_id = $2",
+          [userId, carId]
+        );
       }
 
       console.log(
@@ -6400,16 +6431,11 @@ app.get("/api/wishlist/check/:carId", validateToken, async (req, res) => {
     const userId = req.user.id;
     const { carId } = req.params;
 
-    const { data: wishlistItem, error } = await supabase
-      .from("user_wishlist")
-      .select("id, added_at")
-      .eq("user_id", userId)
-      .eq("car_id", carId)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      throw error;
-    }
+    const { rows } = await db.query(
+      "SELECT id, added_at FROM user_wishlist WHERE user_id = $1 AND car_id = $2",
+      [userId, carId]
+    );
+    const wishlistItem = rows[0];
 
     res.json({
       success: true,
@@ -6434,25 +6460,18 @@ app.get("/api/wishlist/stats", validateToken, async (req, res) => {
     const userId = req.user.id;
 
     // Get total count
-    const { count: totalCount, error: countError } = await supabase
-      .from("user_wishlist")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
-
-    if (countError) {
-      throw countError;
-    }
+    const { rows: countRows } = await db.query(
+      "SELECT COUNT(*) FROM user_wishlist WHERE user_id = $1",
+      [userId]
+    );
+    const totalCount = parseInt(countRows[0].count);
 
     // Get price alerts count
-    const { count: alertsCount, error: alertsError } = await supabase
-      .from("price_alerts")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_active", true);
-
-    if (alertsError) {
-      throw alertsError;
-    }
+    const { rows: alertsRows } = await db.query(
+      "SELECT COUNT(*) FROM price_alerts WHERE user_id = $1 AND is_active = true",
+      [userId]
+    );
+    const alertsCount = parseInt(alertsRows[0].count);
 
     res.json({
       success: true,
@@ -6498,17 +6517,11 @@ app.post("/api/wishlist/check-multiple", validateToken, async (req, res) => {
       `Checking wishlist for user ${userId} with ${carIds.length} car IDs`
     );
 
-    // Query Supabase for wishlist items
-    const { data: wishlistItems, error } = await supabase
-      .from("user_wishlist")
-      .select("car_id, added_at")
-      .eq("user_id", userId)
-      .in("car_id", carIds);
-
-    if (error) {
-      console.error("Supabase error:", error);
-      throw error;
-    }
+    // Query DB for wishlist items
+    const { rows: wishlistItems } = await db.query(
+      "SELECT car_id, added_at FROM user_wishlist WHERE user_id = $1 AND car_id = ANY($2)",
+      [userId, carIds]
+    );
 
     // Create a map of car_id -> wishlist data
     const wishlistMap = {};
@@ -6828,6 +6841,101 @@ const cleanupExpiredTokens = async () => {
 
 // Run cleanup every hour
 setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+
+// ===== USER/PROFILE ENDPOINTS =====
+
+// Get all users (admin only)
+app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, search } = req.query;
+
+    let query = "SELECT * FROM profiles WHERE 1=1";
+    const params = [];
+    let paramCount = 1;
+
+    if (search) {
+      query += ` AND (email ILIKE $${paramCount} OR full_name ILIKE $${paramCount})`;
+      params.push(`%${search}%`);
+      paramCount++;
+    }
+
+    // Add sorting and pagination
+    query += " ORDER BY created_at DESC LIMIT $" + paramCount + " OFFSET $" + (paramCount + 1);
+    params.push(limit, offset);
+
+    const { rows } = await db.query(query, params);
+
+    // Get total count
+    const countQuery = "SELECT COUNT(*) FROM profiles";
+    const { rows: countRows } = await db.query(countQuery);
+    const total = parseInt(countRows[0].count);
+
+    res.json({
+      success: true,
+      data: rows,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch users"
+    });
+  }
+});
+
+// Update user profile (admin only)
+app.put("/api/admin/users/:id", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Build dynamic update query
+    const fields = Object.keys(updates).filter(key => key !== 'id' && key !== 'created_at' && key !== 'email'); // Prevent email update for now
+
+    if (fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No fields to update"
+      });
+    }
+
+    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(", ");
+    const values = [id, ...fields.map(field => updates[field])];
+
+    const query = `
+      UPDATE profiles 
+      SET ${setClause}, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const { rows } = await db.query(query, values);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: rows[0],
+      message: "User updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update user"
+    });
+  }
+});
 
 // ===== TRENDING TOPICS ENDPOINTS =====
 

@@ -315,6 +315,7 @@ export interface ApiClient {
     get: (key: string) => Promise<any>;
     update: (key: string, value: string) => Promise<any>;
     getImageLogs: (page?: number, limit?: number) => Promise<any>;
+    bulkImport: (cars: any[]) => Promise<any>;
   };
 }
 
@@ -550,6 +551,14 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
       },
       getImageLogs: async (page = 1, limit = 20) => {
         const response = await makeAuthenticatedRequest(`/admin/image-logs?page=${page}&limit=${limit}`);
+        return response.json();
+      },
+      bulkImport: async (cars: any[]) => {
+        const response = await makeAuthenticatedRequest('/admin/cars/bulk-import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cars }),
+        });
         return response.json();
       },
     },

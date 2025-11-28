@@ -242,9 +242,22 @@ export function useContent() {
   const addContent = async (contentData: Omit<Content, 'id' | 'views' | 'created_at' | 'updated_at'>) => {
     try {
       if (contentData.type === 'news') {
-        const { data, error } = await supabase
-          .from('news_articles' as any)
-          .insert([{
+        // Get current session for token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        if (!token) {
+          throw new Error('Authentication required');
+        }
+
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        const response = await fetch(`${apiUrl}/news`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
             title: contentData.title,
             slug: contentData.slug || contentData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             author: contentData.author,
@@ -253,13 +266,17 @@ export function useContent() {
             content: contentData.content,
             excerpt: contentData.excerpt,
             image_url: contentData.image_url,
-          }])
-          .select()
-          .single();
+            is_featured: contentData.is_featured
+          })
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create news article');
+        }
 
-        const typedData = data as any;
+        const result = await response.json();
+        const typedData = result.data;
 
         const newContent: Content = {
           id: typedData.id,
@@ -272,6 +289,7 @@ export function useContent() {
           content: typedData.content,
           excerpt: typedData.excerpt,
           image_url: typedData.image_url,
+          is_featured: typedData.is_featured,
           views: typedData.views || 0,
           created_at: typedData.created_at,
           updated_at: typedData.updated_at
