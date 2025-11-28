@@ -1283,7 +1283,7 @@ const CarListing = () => {
                       {filters.city || "City"}
                     </span>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[1002]">
                     <SelectItem value="all">All Cities</SelectItem>
                     {availableCities.map((city) => (
                       <SelectItem key={city} value={city}>
