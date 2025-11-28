@@ -86,7 +86,7 @@ const ShareModal = ({ title, description, url, image, children, dialogTitle = "S
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95%] sm:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden px-4 py-6 sm:p-6">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
@@ -179,7 +179,7 @@ const ShareModal = ({ title, description, url, image, children, dialogTitle = "S
                 id="share-url"
                 value={shareUrl}
                 readOnly
-                className="flex-1 min-w-0"
+                className="flex-1"
               />
               <Button
                 variant="outline"
