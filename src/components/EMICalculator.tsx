@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import LoanModal from "@/components/LoanModal"; // Import the new component
+import { useToast } from "@/hooks/use-toast";
 
 const EMICalculator = () => {
+  const { toast } = useToast();
   const [carPrice, setCarPrice] = useState(1000000);
   const [downPayment, setDownPayment] = useState(200000);
   const [loanTenure, setLoanTenure] = useState(5);
@@ -158,6 +160,12 @@ const EMICalculator = () => {
                       const value = Number(e.target.value);
                       if (value <= 15) {
                         setInterestRate(value);
+                      } else {
+                        toast({
+                          title: "Limit Reached",
+                          description: "Interest rate cannot exceed 15%",
+                          variant: "destructive",
+                        });
                       }
                     }}
                     className="pl-10"
