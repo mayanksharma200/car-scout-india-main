@@ -571,18 +571,13 @@ app.get("/api/health", (req, res) => {
 // Car endpoints (unchanged)
 app.get("/api/cars/featured", async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("cars")
-      .select("*")
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(8);
-
-    if (error) throw error;
+    const { rows } = await db.query(
+      "SELECT * FROM cars WHERE status = 'active' ORDER BY created_at DESC LIMIT 8"
+    );
 
     res.json({
       success: true,
-      data: data || [],
+      data: rows || [],
     });
   } catch (error) {
     console.error("Error fetching featured cars:", error);
@@ -1294,11 +1289,11 @@ app.get("/api/cars", async (req, res) => {
     // Pagination
     paramCount++;
     queryText += ` LIMIT $${paramCount}`;
-    queryParams.push(limit);
+    queryParams.push(parseInt(limit));
 
     paramCount++;
     queryText += ` OFFSET $${paramCount}`;
-    queryParams.push(offset);
+    queryParams.push(parseInt(offset));
 
     const { rows } = await db.query(queryText, queryParams);
     const count = rows.length > 0 ? parseInt(rows[0].full_count) : 0;
@@ -1380,24 +1375,39 @@ app.get("/api/news", async (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    let query = supabase
-      .from("news_articles")
-      .select("*", { count: 'exact' })
-      .eq('status', 'published')
-      .order('published_at', { ascending: false });
+    const queryParams = [];
+    let queryText = "SELECT *, count(*) OVER() AS full_count FROM news_articles WHERE status = 'published'";
+    let paramCount = 0;
 
     if (category && category !== 'All') {
-      query = query.eq('category', category);
+      paramCount++;
+      queryText += ` AND category = $${paramCount}`;
+      queryParams.push(category);
     }
 
     if (featured === 'true') {
-      query = query.eq('is_featured', true);
+      // Assuming is_featured is a boolean column
+      queryText += ` AND is_featured = true`;
     }
 
-    const { data, error, count } = await query.range(offset, offset + parseInt(limit) - 1);
+    queryText += " ORDER BY published_at DESC";
 
-    if (error) throw error;
+    paramCount++;
+    queryText += ` LIMIT $${paramCount}`;
+    queryParams.push(parseInt(limit));
+
+    paramCount++;
+    queryText += ` OFFSET $${paramCount}`;
+    queryParams.push(offset);
+
+    const { rows } = await db.query(queryText, queryParams);
+    const count = rows.length > 0 ? parseInt(rows[0].full_count) : 0;
+
+    // Remove full_count from response objects
+    const data = rows.map(row => {
+      const { full_count, ...article } = row;
+      return article;
+    });
 
     res.json({
       success: true,
@@ -1420,19 +1430,21 @@ app.get("/api/news/:slug", async (req, res) => {
     const { slug } = req.params;
     console.log(`[API] Fetching news article: ${slug}`);
 
-    // Increment views
-    await supabase.rpc('increment_news_views', { article_slug: slug });
+    // Increment views (async)
+    // Note: increment_news_views RPC might not exist in RDS, so we do direct update
+    db.query("UPDATE news_articles SET views = COALESCE(views, 0) + 1 WHERE slug = $1", [slug])
+      .catch(err => console.error("Error incrementing views:", err));
 
-    const { data, error } = await supabase
-      .from("news_articles")
-      .select("*")
-      .eq("slug", slug)
-      .eq("status", "published")
-      .single();
+    const { rows } = await db.query(
+      "SELECT * FROM news_articles WHERE slug = $1 AND status = 'published'",
+      [slug]
+    );
 
-    if (error) throw error;
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Article not found" });
+    }
 
-    res.json({ success: true, data });
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
     console.error("Error fetching news article:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -1933,21 +1945,15 @@ app.post("/api/admin/cars/bulk-import", async (req, res) => {
 app.get("/api/admin/news", async (req, res) => {
   try {
     console.log("[Admin] Fetching all news articles...");
-    const { data, error } = await supabase
-      .from("news_articles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { rows } = await db.query(
+      "SELECT * FROM news_articles ORDER BY created_at DESC"
+    );
 
-    if (error) {
-      console.error("[Admin] Error fetching news from DB:", error);
-      throw error;
-    }
-
-    console.log(`[Admin] Fetched ${data?.length || 0} articles from DB`);
+    console.log(`[Admin] Fetched ${rows.length} articles from DB`);
 
     res.json({
       success: true,
-      data: data
+      data: rows
     });
   } catch (error) {
     console.error("Error fetching admin news:", error);
@@ -1960,43 +1966,19 @@ app.post("/api/admin/news", async (req, res) => {
   try {
     const { title, content, excerpt, category, image_url, author, status, is_featured, slug } = req.body;
 
-    // Create a fresh admin client to ensure we have service role access
-    const adminSupabase = createClient(
-      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     // Generate slug if not provided
     const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-    const { data, error } = await adminSupabase
-      .from("news_articles")
-      .insert([{
-        title,
-        slug: finalSlug,
-        content,
-        excerpt,
-        category,
-        image_url,
-        author,
-        status: status || 'draft',
-        is_featured: is_featured || false,
-        published_at: status === 'published' ? new Date() : null
-      }])
-      .select()
-      .single();
+    const { rows } = await db.query(
+      `INSERT INTO news_articles (
+        title, content, excerpt, category, image_url, author, status, is_featured, slug, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING *`,
+      [title, content, excerpt, category, image_url, author, status, is_featured || false, finalSlug]
+    );
 
-    if (error) throw error;
-
-    res.json({ success: true, data });
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error("Error creating news:", error);
+    console.error("Error creating news article:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2005,57 +1987,26 @@ app.post("/api/admin/news", async (req, res) => {
 app.put("/api/admin/news/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { title, content, excerpt, category, image_url, author, status, is_featured, slug } = req.body;
 
-    // Create a fresh admin client to ensure we have service role access
-    const adminSupabase = createClient(
-      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+    // Generate slug if not provided
+    const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+    const { rows } = await db.query(
+      `UPDATE news_articles SET
+        title = $1, content = $2, excerpt = $3, category = $4, image_url = $5,
+        author = $6, status = $7, is_featured = $8, slug = $9, updated_at = NOW()
+      WHERE id = $10 RETURNING *`,
+      [title, content, excerpt, category, image_url, author, status, is_featured || false, finalSlug, id]
     );
 
-    // 1. Check if image is being updated
-    if (updates.image_url) {
-      const { data: currentArticle, error: fetchError } = await adminSupabase
-        .from("news_articles")
-        .select("image_url")
-        .eq("id", id)
-        .single();
-
-      if (!fetchError && currentArticle && currentArticle.image_url) {
-        // If new image is different from old image, and old image is S3, delete old image
-        if (currentArticle.image_url !== updates.image_url &&
-          currentArticle.image_url.includes('amazonaws.com') &&
-          s3UploadService.isConfigured()) {
-          console.log(`Deleting old image for article ${id}: ${currentArticle.image_url}`);
-          await s3UploadService.deleteImageFromS3(currentArticle.image_url);
-        }
-      }
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Article not found" });
     }
 
-    // Filter out fields that don't exist in news_articles table
-    const { type, views, ...validUpdates } = updates;
-
-    const { data, error } = await adminSupabase
-      .from("news_articles")
-      .update({
-        ...validUpdates,
-        updated_at: new Date()
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    res.json({ success: true, data });
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
-    console.error("Error updating news:", error);
+    console.error("Error updating news article:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2254,50 +2205,66 @@ app.get("/api/admin/cars", async (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    let query = supabase
-      .from("cars")
-      .select("*", { count: 'exact' });
+    const queryParams = [];
+    let queryText = "SELECT *, count(*) OVER() AS full_count FROM cars WHERE 1=1";
+    let paramCount = 0;
 
     // Filters
     if (status) {
-      query = query.eq('status', status);
+      paramCount++;
+      queryText += ` AND status = $${paramCount}`;
+      queryParams.push(status);
     }
 
     if (brand) {
-      query = query.eq('brand', brand);
+      paramCount++;
+      queryText += ` AND brand = $${paramCount}`;
+      queryParams.push(brand);
     }
 
     if (fuel_type) {
-      query = query.eq('fuel_type', fuel_type);
+      paramCount++;
+      queryText += ` AND fuel_type = $${paramCount}`;
+      queryParams.push(fuel_type);
     }
 
     if (transmission) {
-      query = query.eq('transmission', transmission);
+      paramCount++;
+      queryText += ` AND transmission = $${paramCount}`;
+      queryParams.push(transmission);
     }
 
     if (search) {
-      query = query.or(`brand.ilike.%${search}%,model.ilike.%${search}%,variant.ilike.%${search}%`);
+      paramCount++;
+      queryText += ` AND (brand ILIKE $${paramCount} OR model ILIKE $${paramCount} OR variant ILIKE $${paramCount})`;
+      queryParams.push(`%${search}%`);
     }
 
     // Sorting
-    query = query.order(sort_by, { ascending: sort_order === 'asc' });
+    // Validate sort_by to prevent SQL injection
+    const allowedSortColumns = ['created_at', 'price_min', 'price_max', 'brand', 'model', 'view_count', 'status'];
+    const safeSortBy = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
+    const safeSortOrder = sort_order === 'asc' ? 'ASC' : 'DESC';
+
+    queryText += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
 
     // Pagination
-    query = query.range(offset, offset + parseInt(limit) - 1);
+    paramCount++;
+    queryText += ` LIMIT $${paramCount}`;
+    queryParams.push(parseInt(limit));
 
-    const { data, error, count } = await query;
+    paramCount++;
+    queryText += ` OFFSET $${paramCount}`;
+    queryParams.push(offset);
 
-    if (error) {
-      console.error('[Admin] Error fetching cars:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch cars',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(queryText, queryParams);
+    const count = rows.length > 0 ? parseInt(rows[0].full_count) : 0;
 
-    const totalPages = Math.ceil(count / parseInt(limit));
+    // Remove full_count from response objects
+    const data = rows.map(row => {
+      const { full_count, ...car } = row;
+      return car;
+    });
 
     res.json({
       success: true,
@@ -2306,16 +2273,14 @@ app.get("/api/admin/cars", async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: count,
-        totalPages: totalPages,
-        hasMore: parseInt(page) < totalPages
+        totalPages: Math.ceil(count / parseInt(limit))
       }
     });
-
   } catch (error) {
-    console.error('[Admin] Error in get cars:', error);
+    console.error('[Admin] Error fetching cars:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: 'Failed to fetch cars',
       details: error.message
     });
   }
@@ -3054,42 +3019,54 @@ app.get("/api/admin/leads", async (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    let query = supabase
-      .from("leads")
-      .select("*", { count: 'exact' });
+    const queryParams = [];
+    let queryText = "SELECT *, count(*) OVER() AS full_count FROM leads WHERE 1=1";
+    let paramCount = 0;
 
     // Filters
-    if (status) {
-      query = query.eq('status', status);
+    if (status && status !== 'all') {
+      paramCount++;
+      queryText += ` AND status = $${paramCount}`;
+      queryParams.push(status);
     }
 
-    if (source) {
-      query = query.eq('source', source);
+    if (source && source !== 'all') {
+      paramCount++;
+      queryText += ` AND source = $${paramCount}`;
+      queryParams.push(source);
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,city.ilike.%${search}%`);
+      paramCount++;
+      queryText += ` AND (name ILIKE $${paramCount} OR email ILIKE $${paramCount} OR phone ILIKE $${paramCount} OR city ILIKE $${paramCount})`;
+      queryParams.push(`%${search}%`);
     }
 
     // Sorting
-    query = query.order(sort_by, { ascending: sort_order === 'asc' });
+    // Validate sort_by to prevent SQL injection
+    const allowedSortColumns = ['created_at', 'name', 'email', 'phone', 'city', 'status', 'source'];
+    const safeSortBy = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
+    const safeSortOrder = sort_order === 'asc' ? 'ASC' : 'DESC';
+
+    queryText += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
 
     // Pagination
-    query = query.range(offset, offset + parseInt(limit) - 1);
+    paramCount++;
+    queryText += ` LIMIT $${paramCount}`;
+    queryParams.push(parseInt(limit));
 
-    const { data, error, count } = await query;
+    paramCount++;
+    queryText += ` OFFSET $${paramCount}`;
+    queryParams.push(offset);
 
-    if (error) {
-      console.error('[Admin] Error fetching leads:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch leads',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(queryText, queryParams);
+    const count = rows.length > 0 ? parseInt(rows[0].full_count) : 0;
 
-    const totalPages = Math.ceil(count / parseInt(limit));
+    // Remove full_count from response objects
+    const data = rows.map(row => {
+      const { full_count, ...lead } = row;
+      return lead;
+    });
 
     res.json({
       success: true,
@@ -3098,16 +3075,14 @@ app.get("/api/admin/leads", async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total: count,
-        totalPages: totalPages,
-        hasMore: parseInt(page) < totalPages
+        totalPages: Math.ceil(count / parseInt(limit))
       }
     });
-
   } catch (error) {
-    console.error('[Admin] Error in get leads:', error);
+    console.error('[Admin] Error fetching leads:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: 'Failed to fetch leads',
       details: error.message
     });
   }
@@ -3118,90 +3093,48 @@ app.delete("/api/admin/leads/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'Lead ID is required'
-      });
+    const { rows } = await db.query(
+      "DELETE FROM leads WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Lead not found" });
     }
 
-    const { error } = await supabase
-      .from("leads")
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('[Admin] Error deleting lead:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to delete lead',
-        details: error.message
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Lead deleted successfully'
-    });
-
+    res.json({ success: true, message: "Lead deleted successfully" });
   } catch (error) {
-    console.error('[Admin] Error in delete lead:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
+    console.error("Error deleting lead:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Update a lead by ID
+// Update Lead (Admin)
 app.put("/api/admin/leads/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const leadData = req.body;
+    const { status, notes, assigned_to, priority } = req.body;
 
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'Lead ID is required'
-      });
+    const { rows } = await db.query(
+      `UPDATE leads SET
+        status = COALESCE($1, status),
+        notes = COALESCE($2, notes),
+        assigned_to = COALESCE($3, assigned_to),
+        priority = COALESCE($4, priority),
+        updated_at = NOW()
+      WHERE id = $5 RETURNING *`,
+      [status, notes, assigned_to, priority, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Lead not found" });
     }
 
-    // Remove fields that shouldn't be updated
-    const { id: _, created_at, user_id, ip_address, user_agent, ...updateData } = leadData;
-
-    // Add updated_at timestamp
-    updateData.updated_at = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("leads")
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[Admin] Error updating lead:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to update lead',
-        details: error.message
-      });
-    }
-
-    res.json({
-      success: true,
-      data: data,
-      message: 'Lead updated successfully'
-    });
-
+    res.json({ success: true, data: rows[0], message: "Lead updated successfully" });
   } catch (error) {
-    console.error('[Admin] Error in update lead:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
+    console.error("Error updating lead:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
