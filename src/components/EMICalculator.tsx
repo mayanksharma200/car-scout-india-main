@@ -129,7 +129,18 @@ const EMICalculator = () => {
                   <Input
                     type="number"
                     value={loanTenure}
-                    onChange={(e) => setLoanTenure(Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      if (value <= 20) {
+                        setLoanTenure(value);
+                      } else {
+                        toast({
+                          title: "Limit Reached",
+                          description: "Loan tenure cannot exceed 20 years",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
                     className="pl-10"
                     placeholder="Ex: 5"
                   />
@@ -137,14 +148,14 @@ const EMICalculator = () => {
                 <Slider
                   value={[loanTenure]}
                   onValueChange={(value) => setLoanTenure(value[0])}
-                  max={7}
+                  max={20}
                   min={1}
                   step={1}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>1 Year</span>
-                  <span>7 Years</span>
+                  <span>20 Years</span>
                 </div>
               </div>
 
