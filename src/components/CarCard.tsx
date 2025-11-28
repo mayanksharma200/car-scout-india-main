@@ -180,7 +180,7 @@ const CarCard = ({
           </div>
         </div>
 
-        <CardContent className="relative z-10 p-6 pb-0 flex flex-col h-full">
+        <CardContent className="relative z-10 p-6 flex-1 flex flex-col">
           <div>
             {/* Brand and Model */}
             <div className="mb-4">
@@ -256,15 +256,16 @@ const CarCard = ({
             </div>
           </div>
 
-          {/* Action Button - Always at bottom */}
-          <Button
-            className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            onClick={handleCardClick}
-          >
-            <span>View Details</span>
-            <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
-          </Button>
         </CardContent>
+
+        {/* Action Button - Always at bottom */}
+        <Button
+          className="w-full group/btn bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-none rounded-b-lg"
+          onClick={handleCardClick}
+        >
+          <span>View Details</span>
+          <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
+        </Button>
 
         {/* Hover glow effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
