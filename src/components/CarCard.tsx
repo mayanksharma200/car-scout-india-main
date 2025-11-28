@@ -180,7 +180,7 @@ const CarCard = ({
           </div>
         </div>
 
-        <CardContent className="relative z-10 p-6 flex flex-col h-full">
+        <CardContent className="relative z-10 p-6 pb-0 flex flex-col h-full">
           <div>
             {/* Brand and Model */}
             <div className="mb-4">
