@@ -13,6 +13,7 @@ import {
   Upload,
   Database,
   MonitorPlay,
+  Image as ImageIcon,
 } from "lucide-react";
 import ImageDebugTest from "@/components/ImageDebugTest";
 // import CarBatchImageUpdater from "@/components/CarBatchImageUpdater";
@@ -386,6 +387,15 @@ const AdminDashboard = () => {
                 {sidebarOpen && <span>Ads Management</span>}
               </Link>
             </li>
+            <li>
+              <Link
+                to="/admin/image-logs"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted text-foreground"
+              >
+                <ImageIcon className="w-5 h-5" />
+                {sidebarOpen && <span>Image Logs</span>}
+              </Link>
+            </li>
             {/* <li>
               <Link
                 to="/admin/analytics"
@@ -472,8 +482,8 @@ const AdminDashboard = () => {
                       <p className="text-3xl font-bold">{stat.value}</p>
                       <p
                         className={`text-sm ${stat.trend === "up"
-                            ? "text-green-600"
-                            : "text-red-600"
+                          ? "text-green-600"
+                          : "text-red-600"
                           }`}
                       >
                         {stat.change} from last month
