@@ -3429,10 +3429,17 @@ app.put("/api/admin/users/:id", async (req, res) => {
     // Add updated_at timestamp
     updateData.updated_at = new Date().toISOString();
 
+    // If email is missing (required for upsert if profile doesn't exist), fetch it from auth
+    if (!updateData.email) {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(id);
+      if (!authError && authUser) {
+        updateData.email = authUser.email;
+      }
+    }
+
     const { data, error } = await supabase
       .from("profiles")
-      .update(updateData)
-      .eq('id', id)
+      .upsert({ id, ...updateData })
       .select()
       .single();
 
