@@ -61,7 +61,8 @@ const CarCard = ({
 }: CarCardProps) => {
   const navigate = useNavigate();
 
-  const handleCardClick = () => {
+  const handleCardClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const slug = getCarSlugFromCar(car);
     navigate(`/cars/${slug}`);
   };
@@ -122,19 +123,17 @@ const CarCard = ({
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
             ) : (
               <Heart
-                className={`w-4 h-4 ${
-                  isWishlisted
+                className={`w-4 h-4 ${isWishlisted
                     ? "fill-red-500 text-red-500"
                     : "text-muted-foreground"
-                } transition-colors`}
+                  } transition-colors`}
               />
             )}
           </Button>
           <ShareModal
             title={`${car.brand} ${car.model} ${car.variant}`}
-            description={`Check out this ${car.brand} ${
-              car.model
-            } starting from ${formatPrice(car.price)}`}
+            description={`Check out this ${car.brand} ${car.model
+              } starting from ${formatPrice(car.price)}`}
             url={`/cars/${getCarSlugFromCar(car)}`}
             image={car.image}
           >
