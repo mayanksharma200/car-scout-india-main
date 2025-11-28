@@ -122,6 +122,7 @@ const NewsDetail = () => {
                                 title={article.title}
                                 url={window.location.href}
                                 description={article.excerpt}
+                                dialogTitle="Share this article"
                             >
                                 <Button variant="outline" size="sm" className="gap-2">
                                     <Share2 className="w-4 h-4" />

@@ -18,13 +18,18 @@ interface ShareModalProps {
   url: string;
   image?: string;
   children?: React.ReactNode;
+  dialogTitle?: string;
 }
 
-const ShareModal = ({ title, description, url, image, children }: ShareModalProps) => {
+const ShareModal = ({ title, description, url, image, children, dialogTitle = "Share" }: ShareModalProps) => {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const shareUrl = typeof window !== 'undefined' ? window.location.origin + url : url;
+  // Fix URL duplication: if url already starts with http, don't prepend origin
+  const shareUrl = typeof window !== 'undefined' && !url.startsWith('http')
+    ? window.location.origin + url
+    : url;
+
   const encodedTitle = encodeURIComponent(title);
   const encodedDescription = encodeURIComponent(description);
   const encodedUrl = encodeURIComponent(shareUrl);
@@ -83,7 +88,7 @@ const ShareModal = ({ title, description, url, image, children }: ShareModalProp
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Share this car</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {/* Preview Card */}
