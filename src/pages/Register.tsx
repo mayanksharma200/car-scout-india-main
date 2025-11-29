@@ -7,13 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useUserAuth } from "@/contexts/UserAuthContext";
 
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp, signInWithGoogle, signInWithFacebook, user, loading } =
-    useAuth();
+  const { signUp, googleLogin, user, loading } = useUserAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,14 +200,16 @@ const Register = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await signUp(formData.email, formData.password, {
+      const { success, error } = await signUp({
+        email: formData.email,
+        password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
       });
 
-      if (error) {
-        if (error.message.includes("User already registered")) {
+      if (!success) {
+        if (error?.includes("User already exists")) {
           toast({
             title: "Account Already Exists",
             description:
@@ -218,7 +219,7 @@ const Register = () => {
         } else {
           toast({
             title: "Registration Failed",
-            description: error.message,
+            description: error || "Failed to create account",
             variant: "destructive",
           });
         }
@@ -228,10 +229,10 @@ const Register = () => {
       toast({
         title: "Account Created Successfully!",
         description:
-          "Please check your email and click the confirmation link to complete your registration.",
+          "Your account has been created and you are now logged in.",
       });
 
-      // Don't navigate immediately - wait for email confirmation
+      // Navigation is handled by the useEffect that watches 'user'
     } catch (error) {
       toast({
         title: "Registration Failed",
@@ -245,12 +246,12 @@ const Register = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await signInWithGoogle();
+      const { success, error } = await googleLogin();
 
-      if (error) {
+      if (!success) {
         toast({
           title: "Google Sign In Failed",
-          description: error.message,
+          description: error,
           variant: "destructive",
         });
       }
@@ -264,46 +265,10 @@ const Register = () => {
   };
 
   const handleFacebookSignIn = async () => {
-    try {
-      const { error } = await signInWithFacebook();
-
-      if (error) {
-        console.error("Facebook sign in error:", error);
-
-        // Handle specific OAuth configuration errors
-        if (
-          error.message?.includes("invalid_client") ||
-          error.message?.includes("OAuth")
-        ) {
-          toast({
-            title: "Facebook Sign In Not Configured",
-            description:
-              "Facebook OAuth is not set up yet. Please use email/password registration for now.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Facebook Sign In Failed",
-            description:
-              error.message || "An error occurred during Facebook sign in.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Redirecting...",
-          description:
-            "You're being redirected to Facebook for authentication.",
-        });
-      }
-    } catch (error) {
-      console.error("Facebook sign in exception:", error);
-      toast({
-        title: "Facebook Sign In Failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Coming Soon",
+      description: "Facebook login is not yet supported.",
+    });
   };
 
   return (

@@ -47,6 +47,16 @@ interface UserAuthContextType {
     password: string,
     rememberMe?: boolean
   ) => Promise<{ success: boolean; error?: string }>;
+  signUp: (
+    userData: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      city?: string;
+    }
+  ) => Promise<{ success: boolean; error?: string }>;
   googleLogin: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshTokens: () => Promise<boolean>;
@@ -531,6 +541,71 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Sign Up function
+  const signUp = async (
+    userData: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      city?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log("Attempting user registration...");
+      setLoading(true);
+
+      const fullName = `${userData.firstName} ${userData.lastName}`.trim();
+
+      const response = await fetch(`${backendUrl}/auth/register`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          fullName,
+          phone: userData.phone,
+          city: userData.city
+        }),
+      });
+
+      const result = await response.json();
+      console.log("Registration response:", result);
+
+      if (!response.ok || !result.success) {
+        return {
+          success: false,
+          error: result.error || "Registration failed",
+        };
+      }
+
+      // Automatically log in the user
+      const tokenData = {
+        accessToken: result.data.token, // Note: register returns 'token' not 'accessToken' in the current controller implementation
+        expiresIn: 7 * 24 * 60 * 60, // Default 7 days
+        tokenType: "Bearer",
+      };
+
+      saveTokens(tokenData, result.data.user);
+      scheduleTokenRefresh(tokenData.expiresIn);
+
+      console.log("User registration successful");
+      return { success: true };
+    } catch (error: any) {
+      console.error("User registration error:", error);
+      return {
+        success: false,
+        error: error.message || "An unexpected error occurred",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Logout function
   const logout = async (): Promise<void> => {
     try {
@@ -700,6 +775,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: loading ? null : !!(user && tokens),
     loading,
     login,
+    signUp,
     googleLogin,
     logout,
     refreshTokens,

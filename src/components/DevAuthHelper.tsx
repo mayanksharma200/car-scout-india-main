@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useUserAuth } from "@/contexts/UserAuthContext";
 import { Badge } from "@/components/ui/badge";
 import { User, UserPlus } from "lucide-react";
 
@@ -16,7 +16,7 @@ const DevAuthHelper = () => {
   const [creating, setCreating] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const { toast } = useToast();
-  const { signIn, user } = useAuth();
+  const { login, signUp, user } = useUserAuth();
 
   // Only show in local development (not on deployed environments like fly.dev)
   const isLocalDevelopment =
@@ -32,26 +32,24 @@ const DevAuthHelper = () => {
   const createTestUser = async () => {
     setCreating(true);
     try {
-      const backendUrl =
-        import.meta.env.VITE_API_URL || "/api";
-      const response = await fetch(`${backendUrl}/auth/recreate-test-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const result = await signUp({
+        email: "test@Carlist360.com",
+        password: "password123", // Changed to meet complexity requirements if needed, but keeping simple for now
+        firstName: "Test",
+        lastName: "User",
+        phone: "9876543210",
+        city: "Mumbai"
       });
-
-      const result = await response.json();
 
       if (result.success) {
         toast({
           title: "Test User Created",
-          description: `Email: ${result.data.email}, Password: ${result.data.password} (Email confirmed)`,
+          description: `Email: test@Carlist360.com, Password: password123`,
         });
       } else {
-        throw new Error(result.message);
+        throw new Error(result.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Failed to Create Test User",
         description: error.message,
@@ -65,17 +63,17 @@ const DevAuthHelper = () => {
   const signInTestUser = async () => {
     setSigningIn(true);
     try {
-      const { error } = await signIn("test@Carlist360.com", "test123456");
+      const result = await login("test@Carlist360.com", "password123");
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
       toast({
         title: "Signed In",
         description: "Successfully signed in as test user",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Sign In Failed",
         description: error.message,
@@ -114,7 +112,7 @@ const DevAuthHelper = () => {
               className="w-full"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              {creating ? "Creating..." : "Create Confirmed Test User"}
+              {creating ? "Creating..." : "Create Test User"}
             </Button>
             <Button
               size="sm"
@@ -128,7 +126,7 @@ const DevAuthHelper = () => {
             <p className="text-xs text-muted-foreground text-center">
               Email: test@Carlist360.com
               <br />
-              Password: test123456
+              Password: password123
             </p>
           </div>
         )}

@@ -1,17 +1,17 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
+import { useUserAuth } from '@/contexts/UserAuthContext';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const AuthStatus = () => {
-  const { user, loading, session } = useAuth();
+  const { user, loading, tokens } = useUserAuth();
 
   // Only show in local development (not on deployed environments like fly.dev)
   const isLocalDevelopment = import.meta.env.DEV &&
     (window.location.hostname === 'localhost' ||
-     window.location.hostname === '127.0.0.1' ||
-     window.location.hostname.includes('local'));
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('local'));
 
   if (!isLocalDevelopment) {
     return null;
@@ -42,28 +42,28 @@ const AuthStatus = () => {
               {loading ? "Yes" : "No"}
             </Badge>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium">User:</span>
             <Badge variant={user ? "default" : "outline"} className="text-xs">
               {user ? "Authenticated" : "Not authenticated"}
             </Badge>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium">Session:</span>
-            <Badge variant={session ? "default" : "outline"} className="text-xs">
-              {session ? "Active" : "None"}
+            <Badge variant={tokens ? "default" : "outline"} className="text-xs">
+              {tokens ? "Active" : "None"}
             </Badge>
           </div>
-          
+
           {user && (
             <div className="mt-3 p-2 bg-white rounded border">
               <p className="text-xs font-medium mb-1">User Details:</p>
               <p className="text-xs text-muted-foreground">
                 Email: {user.email}<br />
                 ID: {user.id?.slice(0, 8)}...<br />
-                Created: {new Date(user.created_at).toLocaleDateString()}
+                Role: {user.role}
               </p>
             </div>
           )}

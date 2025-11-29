@@ -1,59 +1,17 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'profiles'>;
+import { useUserAuth } from '@/contexts/UserAuthContext';
 
 export const useUserRole = () => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, loading } = useUserAuth();
 
-  useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          throw error;
-        }
-
-        setProfile(data);
-      } catch (err: any) {
-        console.error('Error fetching user profile:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
-
-  const isAdmin = profile?.role === 'admin';
-  const isUser = profile?.role === 'user';
+  const isAdmin = user?.role === 'admin';
+  const isUser = user?.role === 'user';
 
   return {
-    profile,
+    profile: user,
     loading,
-    error,
+    error: null,
     isAdmin,
     isUser,
-    role: profile?.role
+    role: user?.role
   };
 };
