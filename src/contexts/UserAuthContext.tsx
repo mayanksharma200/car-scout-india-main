@@ -260,6 +260,13 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         JSON.stringify(enhancedTokenData)
       );
 
+      // Set a flag to indicate we have a session (since we're using the access token for refresh)
+      cookieUtils.set("hasRefreshToken", "true", {
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        secure: window.location.protocol === "https:",
+        sameSite: "lax",
+      });
+
       setTokens(enhancedTokenData);
       setUser(normalizedUser);
 
@@ -347,11 +354,15 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Also check if any refresh token exists in document.cookie string
     const hasHttpOnlyToken = document.cookie.includes("refreshToken=");
 
-    const hasToken = hasIndicator || hasDevToken || hasHttpOnlyToken;
+    // Also check if we have a stored access token (since we use it for refresh)
+    const hasAccessToken = !!cookieUtils.get(ACCESS_TOKEN_KEY);
+
+    const hasToken = hasIndicator || hasDevToken || hasHttpOnlyToken || hasAccessToken;
     console.log("Refresh token available:", hasToken ? "Yes" : "No", {
       hasIndicator,
       hasDevToken,
       hasHttpOnlyToken,
+      hasAccessToken
     });
     return hasToken;
   }, []);
@@ -381,11 +392,24 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         console.log("Refreshing user access token...");
 
+        // Get the current token from state or storage
+        let currentToken = tokens?.accessToken;
+        if (!currentToken) {
+          const stored = getStoredTokens();
+          currentToken = stored?.accessToken;
+        }
+
+        if (!currentToken) {
+          console.error("No token available for refresh");
+          return false;
+        }
+
         const response = await fetch(`${backendUrl}/auth/refresh`, {
           method: "POST",
           credentials: "include", // Important for httpOnly cookies
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${currentToken}`
           },
           body: JSON.stringify({}),
         });
@@ -431,7 +455,7 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     refreshPromise.current = refreshOperation();
     return refreshPromise.current;
-  }, [backendUrl, getStoredUser, saveTokens, clearTokens]);
+  }, [backendUrl, getStoredUser, saveTokens, clearTokens, tokens?.accessToken, getStoredTokens]);
 
   // Schedule automatic token refresh
   const scheduleTokenRefresh = useCallback(
