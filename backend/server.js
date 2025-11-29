@@ -4444,57 +4444,51 @@ app.post("/api/auth/forgot-password/reset", async (req, res) => {
 // User routes
 app.get("/api/user/profile", validateToken, async (req, res) => {
   try {
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", req.user.id)
-      .single();
+    const userId = req.user.userId; // validateToken sets req.user.userId
 
-    if (error && error.code !== "PGRST116") {
-      throw error;
-    }
+    // Fetch profile from RDS
+    const result = await db.query("SELECT * FROM profiles WHERE id = $1", [userId]);
+    let userProfile = result.rows[0];
 
-    let userProfile = profile;
+    // If profile doesn't exist, create it (this shouldn't happen normally if signup works correctly, but good for safety)
+    if (!userProfile) {
+      console.log("Profile not found for user, creating new profile...");
+      const fullName = req.user.full_name || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
 
-    if (!profile) {
-      const { data: newProfile, error: createError } = await supabase
-        .from("profiles")
-        .insert({
-          id: req.user.id,
-          role: "user",
-          first_name: req.user.firstName,
-          last_name: req.user.lastName,
-          phone: req.user.phone,
-          city: req.user.city,
-          is_active: true,
-          email_verified: req.user.emailVerified,
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      userProfile = newProfile;
+      const insertResult = await db.query(
+        `INSERT INTO profiles (id, email, full_name, role, phone, city, email_verified, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+         RETURNING *`,
+        [
+          userId,
+          req.user.email,
+          fullName,
+          "user",
+          req.user.phone || null,
+          req.user.city || null,
+          req.user.emailVerified || false,
+          true
+        ]
+      );
+      userProfile = insertResult.rows[0];
     }
 
     // Merge user data with profile data
+    // Note: RDS profile has full_name, phone, city. 
+    // We need to split full_name for frontend compatibility if needed, but we moved to full_name in frontend.
+
     const completeUserData = {
       ...req.user,
       id: userProfile.id,
-      firstName: userProfile.first_name,
-      lastName: userProfile.last_name,
-      role: "user",
+      email: userProfile.email,
+      full_name: userProfile.full_name,
+      role: userProfile.role,
       phone: userProfile.phone,
       city: userProfile.city,
-      // Preserve Google OAuth fields if they exist
-      given_name: req.user.given_name || userProfile.first_name,
-      family_name: req.user.family_name || userProfile.last_name,
-      name: req.user.name || `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim(),
-      user_metadata: req.user.user_metadata || {
-        given_name: userProfile.first_name,
-        family_name: userProfile.last_name,
-        full_name: `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim(),
-        provider: req.user.provider || "email",
-      },
+      emailVerified: userProfile.email_verified,
+      // Add firstName/lastName for backward compatibility if needed by other components
+      firstName: userProfile.full_name ? userProfile.full_name.split(' ')[0] : '',
+      lastName: userProfile.full_name ? userProfile.full_name.split(' ').slice(1).join(' ') : '',
     };
 
     console.log("📋 Profile endpoint returning complete user data:", completeUserData);
@@ -4502,8 +4496,7 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: completeUserData, // Return the merged user data
-        profile: userProfile,
+        user: completeUserData
       },
     });
   } catch (error) {
@@ -4511,6 +4504,7 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch profile",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
