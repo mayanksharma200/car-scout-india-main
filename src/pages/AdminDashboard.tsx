@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface Activity {
   id: string;
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const { logout } = useAdminAuth();
 
   // Fetch recent activities
   const fetchActivities = async () => {
@@ -428,7 +430,7 @@ const AdminDashboard = () => {
               <Button variant="ghost" size="sm">
                 <Settings className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={logout}>
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
