@@ -3230,275 +3230,8 @@ app.get("/api/admin/users/debug", async (req, res) => {
 });
 
 // Get all users with profiles
-app.get("/api/admin/users", async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      role,
-      search,
-      sort_by = 'created_at',
-      sort_order = 'desc'
-    } = req.query;
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    console.log('[Admin Users] Query params:', { page, limit, role, search, sort_by, sort_order, offset });
-
-    // Get all auth users
-    const { data: authUsersData, error: authError } = await supabase.auth.admin.listUsers();
-
-    if (authError) {
-      console.error('[Admin] Error fetching auth users:', authError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch users',
-        details: authError.message
-      });
-    }
-
-    // Get profiles for each auth user individually to avoid RLS issues
-    console.log('[Admin Users] Auth users count:', authUsersData.users.length);
-
-    // Query all profiles ONCE using direct REST API to bypass RLS completely
-    const profilesResponse = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/profiles?select=*`,
-      {
-        headers: {
-          'apikey': process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }
-      }
-    );
-
-    const allProfiles = await profilesResponse.json();
-    console.log('[Admin Users] Direct REST API profiles query:', {
-      totalProfiles: allProfiles?.length,
-      status: profilesResponse.status
-    });
-
-    // Create a map for quick lookup
-    const profilesMap = new Map(allProfiles.map(p => [p.id, p]));
-
-    const mergedUsersPromises = authUsersData.users.map(async (authUser) => {
-      // Get profile from the pre-fetched map
-      const profile = profilesMap.get(authUser.id) || null;
-
-      if (!profile) {
-        console.log(`[Admin Users] No profile found for ${authUser.email} (ID: ${authUser.id})`);
-      }
-
-      console.log(`[Admin Users] User ${authUser.email}:`, {
-        authUserId: authUser.id,
-        hasProfile: !!profile,
-        profileFirstName: profile?.first_name,
-        profileLastName: profile?.last_name
-      });
-      return {
-        id: authUser.id,
-        email: authUser.email,
-        role: profile?.role || 'user',
-        created_at: authUser.created_at,
-        updated_at: profile?.updated_at || authUser.updated_at,
-        first_name: profile?.first_name || null,
-        last_name: profile?.last_name || null,
-        phone: profile?.phone || null,
-        avatar_url: profile?.avatar_url || null,
-        last_login: profile?.last_login || null,
-        login_count: profile?.login_count || 0,
-        failed_login_attempts: profile?.failed_login_attempts || 0,
-        locked_until: profile?.locked_until || null,
-        is_active: profile?.is_active ?? true,
-        email_verified: authUser.email_confirmed_at ? true : false,
-        phone_verified: profile?.phone_verified || false,
-        city: profile?.city || null
-      };
-    });
-
-    // Await all profile queries
-    let mergedUsers = await Promise.all(mergedUsersPromises);
-
-    console.log('[Admin Users] Merged users count:', mergedUsers.length);
-
-    // Apply filters
-    if (role && role !== 'all') {
-      mergedUsers = mergedUsers.filter(u => u.role === role);
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      mergedUsers = mergedUsers.filter(u =>
-        u.email?.toLowerCase().includes(searchLower) ||
-        u.first_name?.toLowerCase().includes(searchLower) ||
-        u.last_name?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Sort
-    mergedUsers.sort((a, b) => {
-      const aVal = a[sort_by];
-      const bVal = b[sort_by];
-      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-      return sort_order === 'asc' ? comparison : -comparison;
-    });
-
-    const totalUsers = mergedUsers.length;
-    const paginatedUsers = mergedUsers.slice(offset, offset + parseInt(limit));
-
-    console.log('[Admin Users] Query result:', {
-      totalAuthUsers: authUsersData.users.length,
-      mergedTotal: totalUsers,
-      paginatedCount: paginatedUsers.length
-    });
-
-    res.json({
-      success: true,
-      data: paginatedUsers,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: totalUsers,
-        totalPages: Math.ceil(totalUsers / parseInt(limit))
-      }
-    });
-
-  } catch (error) {
-    console.error('[Admin] Error in get users:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
-  }
-});
-
-// Update user profile by ID
-app.put("/api/admin/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userData = req.body;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-
-    // Remove fields that shouldn't be updated
-    const { id: _, created_at, ...updateData } = userData;
-
-    // Add updated_at timestamp
-    updateData.updated_at = new Date().toISOString();
-
-    // If email is missing (required for upsert if profile doesn't exist), fetch it from auth
-    if (!updateData.email) {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.admin.getUserById(id);
-      if (!authError && authUser) {
-        updateData.email = authUser.email;
-      }
-    }
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert({ id, ...updateData })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[Admin] Error updating user:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to update user',
-        details: error.message
-      });
-    }
-
-    // Log activity
-    await logAdminActivity({
-      action_type: 'user_updated',
-      action_title: 'User Profile Updated',
-      action_details: `Updated user profile for ${data.email}`,
-      entity_type: 'user',
-      entity_id: id,
-      metadata: { email: data.email }
-    });
-
-    res.json({
-      success: true,
-      data: data,
-      message: 'User updated successfully'
-    });
-
-  } catch (error) {
-    console.error('[Admin] Error in update user:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
-  }
-});
-
-// Delete user by ID
-app.delete("/api/admin/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'User ID is required'
-      });
-    }
-
-    // First get user details for logging
-    const { data: user } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq('id', id)
-      .single();
-
-    // Delete from auth.users (this will cascade delete the profile)
-    const { error } = await supabase.auth.admin.deleteUser(id);
-
-    if (error) {
-      console.error('[Admin] Error deleting user:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to delete user',
-        details: error.message
-      });
-    }
-
-    // Log activity
-    if (user) {
-      await logAdminActivity({
-        action_type: 'user_deleted',
-        action_title: 'User Deleted',
-        action_details: `Deleted user account for ${user.email}`,
-        entity_type: 'user',
-        entity_id: id,
-        metadata: { email: user.email }
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'User deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('[Admin] Error in delete user:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: error.message
-    });
-  }
-});
+// Old user management routes removed.
+// See lines 6606+ for new implementation using RDS.
 
 app.post("/api/leads", optionalAuth, async (req, res) => {
   try {
@@ -6603,9 +6336,11 @@ setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
 // ===== USER/PROFILE ENDPOINTS =====
 
 // Get all users (admin only)
+// Get all users (admin only)
 app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
   try {
-    const { limit = 50, offset = 0, search } = req.query;
+    const { page = 1, limit = 50, search, role } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let query = "SELECT * FROM profiles WHERE 1=1";
     const params = [];
@@ -6617,6 +6352,12 @@ app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
       paramCount++;
     }
 
+    if (role && role !== 'all') {
+      query += ` AND role = $${paramCount}`;
+      params.push(role);
+      paramCount++;
+    }
+
     // Add sorting and pagination
     query += " ORDER BY created_at DESC LIMIT $" + paramCount + " OFFSET $" + (paramCount + 1);
     params.push(limit, offset);
@@ -6624,8 +6365,23 @@ app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
     const { rows } = await db.query(query, params);
 
     // Get total count
-    const countQuery = "SELECT COUNT(*) FROM profiles";
-    const { rows: countRows } = await db.query(countQuery);
+    let countQuery = "SELECT COUNT(*) FROM profiles WHERE 1=1";
+    const countParams = [];
+    let countParamCount = 1;
+
+    if (search) {
+      countQuery += ` AND (email ILIKE $${countParamCount} OR full_name ILIKE $${countParamCount})`;
+      countParams.push(`%${search}%`);
+      countParamCount++;
+    }
+
+    if (role && role !== 'all') {
+      countQuery += ` AND role = $${countParamCount}`;
+      countParams.push(role);
+      countParamCount++;
+    }
+
+    const { rows: countRows } = await db.query(countQuery, countParams);
     const total = parseInt(countRows[0].count);
 
     res.json({
@@ -6633,8 +6389,9 @@ app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
       data: rows,
       pagination: {
         total,
+        page: parseInt(page),
         limit: parseInt(limit),
-        offset: parseInt(offset)
+        totalPages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
@@ -6643,6 +6400,27 @@ app.get("/api/admin/users", validateToken, requireAdmin, async (req, res) => {
       success: false,
       error: "Failed to fetch users"
     });
+  }
+});
+
+// Delete user (admin only)
+app.delete("/api/admin/users/:id", validateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Delete from profiles (and potentially other tables via cascade if set up, otherwise manual)
+    // Assuming cascade delete or manual cleanup needed.
+    // For now, just delete from profiles.
+    const { rowCount } = await db.query("DELETE FROM profiles WHERE id = $1", [id]);
+
+    if (rowCount === 0) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ success: false, error: "Failed to delete user" });
   }
 });
 

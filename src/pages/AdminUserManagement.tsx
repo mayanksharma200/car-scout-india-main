@@ -29,12 +29,12 @@ import {
 } from "@/components/ui/select";
 import { Search, Trash2, Edit, UserCheck, UserX, Mail, Calendar, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface User {
   id: string;
   email: string;
-  first_name: string | null;
-  last_name: string | null;
+  full_name: string | null;
   phone: string | null;
   city: string | null;
   role: string;
@@ -55,10 +55,11 @@ const AdminUserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editFormData, setEditFormData] = useState({ first_name: "", last_name: "", phone: "", city: "", role: "" });
+  const [editFormData, setEditFormData] = useState({ full_name: "", phone: "", city: "", role: "" });
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
+  const { getAuthHeaders } = useAdminAuth();
 
   const limit = 20;
 
@@ -81,7 +82,9 @@ const AdminUserManagement = () => {
         params.append('role', roleFilter);
       }
 
-      const response = await fetch(`/api/admin/users?${params}`);
+      const response = await fetch(`/api/admin/users?${params}`, {
+        headers: getAuthHeaders()
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -132,6 +135,7 @@ const AdminUserManagement = () => {
       setDeleting(true);
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: "DELETE",
+        headers: getAuthHeaders()
       });
 
       const result = await response.json();
@@ -172,6 +176,7 @@ const AdminUserManagement = () => {
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: "PUT",
         headers: {
+          ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(editFormData),
@@ -246,7 +251,9 @@ const AdminUserManagement = () => {
         params.append('role', roleFilter);
       }
 
-      const response = await fetch(`/api/admin/users?${params}`);
+      const response = await fetch(`/api/admin/users?${params}`, {
+        headers: getAuthHeaders()
+      });
       const result = await response.json();
 
       if (!result.success) {
@@ -272,8 +279,7 @@ const AdminUserManagement = () => {
       // Prepare CSV headers
       const headers = [
         "Email",
-        "First Name",
-        "Last Name",
+        "Full Name",
         "Phone",
         "City",
         "Role",
@@ -286,8 +292,7 @@ const AdminUserManagement = () => {
       // Prepare CSV rows
       const rows = allUsers.map((user: User) => [
         user.email,
-        user.first_name || "",
-        user.last_name || "",
+        user.full_name || "",
         user.phone || "",
         user.city || "",
         user.role,
@@ -463,9 +468,7 @@ const AdminUserManagement = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {user.first_name || user.last_name ? (
-                              `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                            ) : (
+                            {user.full_name || (
                               <span className="text-muted-foreground italic">
                                 Not set
                               </span>
@@ -507,8 +510,7 @@ const AdminUserManagement = () => {
                                 onClick={() => {
                                   setSelectedUser(user);
                                   setEditFormData({
-                                    first_name: user.first_name || "",
-                                    last_name: user.last_name || "",
+                                    full_name: user.full_name || "",
                                     phone: user.phone || "",
                                     city: user.city || "",
                                     role: user.role,
@@ -588,9 +590,7 @@ const AdminUserManagement = () => {
                 </p>
                 <p className="text-sm">
                   <strong>Name:</strong>{" "}
-                  {selectedUser.first_name || selectedUser.last_name
-                    ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim()
-                    : "Not set"}
+                  {selectedUser.full_name || "Not set"}
                 </p>
                 <p className="text-sm">
                   <strong>Phone:</strong> {selectedUser.phone || "Not set"}
@@ -641,32 +641,17 @@ const AdminUserManagement = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    First Name
+                    Full Name
                   </label>
                   <Input
-                    value={editFormData.first_name}
+                    value={editFormData.full_name}
                     onChange={(e) =>
                       setEditFormData({
                         ...editFormData,
-                        first_name: e.target.value,
+                        full_name: e.target.value,
                       })
                     }
-                    placeholder="Enter first name"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Last Name
-                  </label>
-                  <Input
-                    value={editFormData.last_name}
-                    onChange={(e) =>
-                      setEditFormData({
-                        ...editFormData,
-                        last_name: e.target.value,
-                      })
-                    }
-                    placeholder="Enter last name"
+                    placeholder="Enter full name"
                   />
                 </div>
                 <div>
