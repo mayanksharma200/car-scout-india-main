@@ -15,6 +15,8 @@ import path from "path";
 import { fileURLToPath } from 'url';
 import multer from "multer";
 import * as db from "./config/db.js";
+import * as authController from "./controllers/authController.js";
+import { authenticateUser, authorizeAdmin } from "./middleware/authMiddleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,6 +190,14 @@ if (IS_PRODUCTION) {
   console.log("⚠️ Rate limiting disabled in development");
 }
 
+// ===== AUTH ROUTES =====
+app.post("/api/auth/register", authController.register);
+app.post("/api/auth/login", authController.login);
+app.post("/api/auth/logout", authController.logout);
+app.post("/api/auth/refresh", authController.refresh);
+app.post("/api/auth/admin/login", authController.adminLogin);
+app.get("/api/auth/me", authenticateUser, authController.getMe);
+
 // ===== ADMIN ACTIVITY LOGGING HELPER =====
 
 /**
@@ -346,7 +356,7 @@ const validateToken = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    // Handle "undefined" or "null" string tokens which cause malformed errors
+    // Handle "undefined" or "null" string tokens
     if (!token || token === 'undefined' || token === 'null') {
       return res.status(401).json({
         success: false,
@@ -356,131 +366,50 @@ const validateToken = async (req, res, next) => {
     }
 
     try {
-      // 1. Try verifying as a custom backend token
-      const decoded = jwt.verify(token, TOKEN_CONFIG.secret, {
-        issuer: TOKEN_CONFIG.issuer,
-        audience: TOKEN_CONFIG.audience,
-      });
+      const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-prod';
+      const decoded = jwt.verify(token, JWT_SECRET);
 
-      // Verify user exists and is active
-      const { data: user, error } = await supabase.auth.admin.getUserById(
-        decoded.userId
-      );
-      if (error || !user) {
+      // Verify user exists in DB
+      const result = await db.query('SELECT * FROM profiles WHERE id = $1', [decoded.userId]);
+      const user = result.rows[0];
+
+      if (!user) {
         throw new Error("User not found");
       }
 
-      // Check account status
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_active, role, failed_login_attempts, locked_until, first_name, last_name")
-        .eq("id", decoded.userId)
-        .single();
-
-      if (profile) {
-        if (!profile.is_active) {
-          return res.status(401).json({
-            success: false,
-            error: "Account is deactivated",
-            code: "ACCOUNT_DEACTIVATED",
-          });
-        }
-
-        if (profile.locked_until && new Date(profile.locked_until) > new Date()) {
-          return res.status(401).json({
-            success: false,
-            error: "Account is temporarily locked",
-            code: "ACCOUNT_LOCKED",
-          });
-        }
+      if (user.role === 'user' && user.is_active === false) {
+        return res.status(401).json({
+          success: false,
+          error: "Account is deactivated",
+          code: "ACCOUNT_DEACTIVATED",
+        });
       }
 
       req.user = {
-        id: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-        firstName: decoded.firstName,
-        lastName: decoded.lastName,
-        emailVerified: decoded.emailVerified,
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        ...decoded
       };
 
-      return next();
-
-    } catch (jwtError) {
-      // 2. If custom token fails, try validating as a Supabase session token
-      // This is necessary because the frontend uses Supabase Auth directly
-
-      // Only try fallback if it was a verification error, not a logic error above
-      if (jwtError.name === 'JsonWebTokenError' || jwtError.name === 'TokenExpiredError') {
-        try {
-          const { data: { user }, error: supabaseError } = await supabase.auth.getUser(token);
-
-          if (supabaseError || !user) {
-            // If both fail, return the original JWT error or generic unauthorized
-            console.error("Supabase token validation failed:", supabaseError?.message);
-            throw jwtError;
-          }
-
-          // Fetch profile to get role
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role, first_name, last_name, is_active, city")
-            .eq("id", user.id)
-            .single();
-
-          if (profile && !profile.is_active) {
-            return res.status(401).json({
-              success: false,
-              error: "Account is deactivated",
-              code: "ACCOUNT_DEACTIVATED",
-            });
-          }
-
-          // Populate req.user from Supabase user and profile
-          req.user = {
-            id: user.id,
-            email: user.email,
-            role: profile?.role || 'user',
-            firstName: profile?.first_name || user.user_metadata?.first_name,
-            lastName: profile?.last_name || user.user_metadata?.last_name,
-            emailVerified: user.email_confirmed_at ? true : false,
-          };
-
-          return next();
-        } catch (fallbackError) {
-          // If fallback also fails, throw the original error to be handled by the outer catch
-          throw jwtError;
-        }
-      } else {
-        throw jwtError;
-      }
-    }
-  } catch (error) {
-    console.error("Token validation error:", error.message);
-
-    if (error.name === "TokenExpiredError") {
+      next();
+    } catch (err) {
+      console.error("Token verification failed:", err.message);
       return res.status(401).json({
         success: false,
-        error: "Token has expired",
-        code: "TOKEN_EXPIRED",
-      });
-    }
-
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        success: false,
-        error: "Invalid token",
+        error: "Invalid or expired token",
         code: "INVALID_TOKEN",
       });
     }
-
-    res.status(401).json({
+  } catch (error) {
+    console.error("Auth middleware error:", error);
+    return res.status(500).json({
       success: false,
-      error: "Token validation failed",
-      code: "VALIDATION_FAILED",
+      error: "Internal server error during authentication",
     });
   }
 };
+
 
 // Admin role validation
 const requireAdmin = (req, res, next) => {
@@ -5234,85 +5163,8 @@ if (IS_DEVELOPMENT) {
 }
 
 // Admin creation endpoint
-app.post("/api/auth/create-admin", async (req, res) => {
-  try {
-    const { email, password, adminKey } = req.body;
-
-    const expectedAdminKey = process.env.ADMIN_CREATION_KEY;
-    if (!expectedAdminKey || adminKey !== expectedAdminKey) {
-      return res.status(403).json({
-        success: false,
-        error: "Invalid admin creation key",
-      });
-    }
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: "Email and password are required",
-      });
-    }
-
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        firstName: "Admin",
-        lastName: "User",
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    // Use service role to bypass RLS policies
-    // Create profile entry in RDS
-    await db.query(
-      `INSERT INTO profiles (id, email, first_name, last_name, role, is_active, email_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-       ON CONFLICT (id) DO UPDATE SET
-       email = EXCLUDED.email,
-       role = EXCLUDED.role,
-       is_active = EXCLUDED.is_active,
-       email_verified = EXCLUDED.email_verified,
-       updated_at = NOW()`,
-      [
-        data.user.id,
-        email,
-        "Admin",
-        "User",
-        "admin",
-        true,
-        true
-      ]
-    );
-
-    await logAuthEvent(
-      data.user.id,
-      "admin_created",
-      req.ip,
-      req.get("User-Agent"),
-      true
-    );
-
-    res.json({
-      success: true,
-      message: "Admin user created successfully",
-      data: {
-        email,
-        userId: data.user.id,
-      },
-    });
-  } catch (error) {
-    console.error("Error creating admin user:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+// Admin creation endpoint
+app.post("/api/auth/create-admin", authController.createAdmin);
 
 // Supabase token exchange endpoint
 app.post("/api/auth/supabase-token", async (req, res) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import * as React from "react";
 import {
   Card,
   CardContent,
@@ -13,14 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react";
 
 const AdminSetup = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = React.useState({
     email: "",
     password: "",
     adminKey: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [isVisible, setIsVisible] = React.useState(true);
   const { toast } = useToast();
 
   // Only show in development environment

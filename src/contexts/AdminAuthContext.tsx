@@ -78,7 +78,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
   const verifySession = async (accessToken: string): Promise<boolean> => {
     try {
-      const response = await fetch(`${backendUrl}/user/profile`, {
+      const response = await fetch(`${backendUrl}/auth/me`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -87,7 +87,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
 
       if (response.ok) {
         const result = await response.json();
-        return result.success && result.data?.profile?.role === "admin";
+        return result.success && result.data?.role === "admin";
       }
       return false;
     } catch (error) {
@@ -104,7 +104,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({
       setLoading(true);
 
       // Step 1: Login via backend
-      const loginResponse = await fetch(`${backendUrl}/auth/login`, {
+      const loginResponse = await fetch(`${backendUrl}/auth/admin/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

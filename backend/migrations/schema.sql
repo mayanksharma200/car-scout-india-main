@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS news_articles (
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY, -- Links to Supabase Auth ID (or just a UUID if we migrate auth later)
   email TEXT UNIQUE NOT NULL,
+  password_hash TEXT, -- For AWS RDS Auth
   full_name TEXT,
   role VARCHAR(50) DEFAULT 'user', -- 'user', 'admin'
   phone TEXT,

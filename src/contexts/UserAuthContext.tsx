@@ -12,8 +12,8 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
-  phone?:string,
-  city?:string,
+  phone?: string,
+  city?: string,
   role: string;
   emailVerified: boolean;
   provider?: string;
@@ -188,18 +188,18 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
     import.meta.env.VITE_API_URL || "/api";
 
 
-    const updateUser = useCallback((userData: Partial<User>) => {
-      setUser((prev) => {
-        if (!prev) return prev; // no user yet
-        const updated = { ...prev, ...userData };
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev; // no user yet
+      const updated = { ...prev, ...userData };
 
-        // Also update cookie storage
-        cookieStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
-        console.log("User updated:", updated);
+      // Also update cookie storage
+      cookieStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      console.log("User updated:", updated);
 
-        return updated;
-      });
-    }, []);
+      return updated;
+    });
+  }, []);
 
 
   // Save tokens and user data to cookies
@@ -574,14 +574,14 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadUserProfile = useCallback(async () => {
     try {
       console.log("Loading complete user profile data...");
-      
+
       // Check if we have valid tokens before making the request
       if (!tokens?.accessToken) {
         console.warn("No access token available for profile request");
         return;
       }
-      
-      const response = await fetch(`${backendUrl}/user/profile`, {
+
+      const response = await fetch(`${backendUrl}/auth/me`, {
         method: "GET",
         credentials: "include",
         headers: getAuthHeaders(),

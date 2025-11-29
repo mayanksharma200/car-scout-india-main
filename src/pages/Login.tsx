@@ -302,9 +302,8 @@ const Login = () => {
                     placeholder="your.email@example.com"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
-                    className={`pl-10 ${
-                      validationErrors.email ? "border-destructive" : ""
-                    }`}
+                    className={`pl-10 ${validationErrors.email ? "border-destructive" : ""
+                      }`}
                     required
                     autoComplete="email"
                   />
@@ -329,9 +328,8 @@ const Login = () => {
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className={`pl-10 pr-10 ${
-                      validationErrors.password ? "border-destructive" : ""
-                    }`}
+                    className={`pl-10 pr-10 ${validationErrors.password ? "border-destructive" : ""
+                      }`}
                     required
                     autoComplete="current-password"
                   />
@@ -406,8 +404,8 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Google Sign-In Button */}
-              <Button
+              {/* Google Sign-In Button - Disabled for RDS Migration */}
+              {/* <Button
                 type="button"
                 variant="outline"
                 onClick={handleGoogleSignIn}
@@ -433,7 +431,7 @@ const Login = () => {
                   />
                 </svg>
                 Sign in with Google
-              </Button>
+              </Button> */}
 
               {/* Register Link */}
               <div className="text-center">

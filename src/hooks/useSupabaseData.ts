@@ -242,9 +242,15 @@ export function useContent() {
   const addContent = async (contentData: Omit<Content, 'id' | 'views' | 'created_at' | 'updated_at'>) => {
     try {
       if (contentData.type === 'news') {
-        // Get current session for token
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        // Get current session for token from admin cookie
+        let token = null;
+        const match = document.cookie.match(new RegExp('(^| )admin_session=([^;]+)'));
+        if (match) {
+          try {
+            const session = JSON.parse(decodeURIComponent(match[2]));
+            token = session.access_token;
+          } catch (e) { console.error('Failed to parse admin session', e); }
+        }
 
         if (!token) {
           throw new Error('Authentication required');

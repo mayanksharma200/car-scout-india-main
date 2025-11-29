@@ -294,17 +294,15 @@ export const bulkInsertCarsWithTracking = async (carsData: CarData[], authToken?
 
     if (!token) {
       // Get the session token for authentication if not provided
-      const { data: { session } } = await supabase.auth.getSession();
-      token = session?.access_token;
-
-      // If no token, try to refresh the session
-      if (!token) {
-        console.log('🔄 No active session found, attempting to refresh...');
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          console.error('❌ Session refresh failed:', refreshError);
+      // Try to get from admin cookie
+      const match = document.cookie.match(new RegExp('(^| )admin_session=([^;]+)'));
+      if (match) {
+        try {
+          const session = JSON.parse(decodeURIComponent(match[2]));
+          token = session.access_token;
+        } catch (e) {
+          console.error('Failed to parse admin session', e);
         }
-        token = refreshedSession?.access_token;
       }
     }
 
