@@ -241,7 +241,7 @@ const App = () => {
         {/* Development Tools */}
         {/* <AuthStatus /> */}
         {/* <DevAuthHelper /> */}
-        <AdminSetup />
+        {/* <AdminSetup /> */}
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -4518,46 +4518,68 @@ app.get("/api/user/profile", validateToken, async (req, res) => {
 // Update user profile
 app.put("/api/user/profile", validateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId; // validateToken sets req.user.userId
     const updateData = req.body;
 
-    // Remove fields that shouldn't be updated directly
-    const allowedFields = [
-      'first_name',
-      'last_name',
-      'phone',
-      'date_of_birth',
-      'gender',
-      'city',
-      'state',
-      'preferences'
-    ];
+    // Construct full_name if provided
+    let fullName = updateData.full_name;
 
-    const filteredData = {};
-    Object.keys(updateData).forEach(key => {
-      if (allowedFields.includes(key)) {
-        filteredData[key] = updateData[key];
-      }
-    });
-
-    // Add updated timestamp
-    filteredData.updated_at = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(filteredData)
-      .eq("id", userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Profile update error:", error);
-      throw error;
+    // Fallback to first/last name if full_name not provided but parts are
+    if (!fullName && (updateData.first_name || updateData.last_name)) {
+      const firstName = updateData.first_name || '';
+      const lastName = updateData.last_name || '';
+      fullName = `${firstName} ${lastName}`.trim();
     }
+
+    const fieldsToUpdate = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (fullName !== undefined) {
+      fieldsToUpdate.push(`full_name = $${paramCount++}`);
+      values.push(fullName);
+    }
+
+    if (updateData.phone !== undefined) {
+      fieldsToUpdate.push(`phone = $${paramCount++}`);
+      values.push(updateData.phone);
+    }
+
+    if (updateData.city !== undefined) {
+      fieldsToUpdate.push(`city = $${paramCount++}`);
+      values.push(updateData.city);
+    }
+
+    // Add other fields if needed, e.g. preferences
+    // if (updateData.preferences) ...
+
+    if (fieldsToUpdate.length === 0) {
+      return res.json({ success: true, message: "No changes to update" });
+    }
+
+    fieldsToUpdate.push(`updated_at = NOW()`);
+
+    values.push(userId);
+    const query = `
+      UPDATE profiles 
+      SET ${fieldsToUpdate.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING id, email, full_name, phone, city, role, created_at, updated_at
+    `;
+
+    const result = await db.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const updatedUser = result.rows[0];
 
     res.json({
       success: true,
-      data: data,
+      data: {
+        user: updatedUser
+      },
       message: "Profile updated successfully"
     });
 
@@ -4566,7 +4588,7 @@ app.put("/api/user/profile", validateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to update profile",
-      details: IS_DEVELOPMENT ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
