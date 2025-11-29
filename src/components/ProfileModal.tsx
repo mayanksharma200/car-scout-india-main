@@ -20,8 +20,7 @@ const ProfileModal = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
-    first_name: "",
-    last_name: "",
+    full_name: "",
     phone: "",
     city: "",
   });
@@ -39,20 +38,20 @@ const ProfileModal = () => {
     if (user && open) {
       // Handle both regular and Google OAuth users
       // Google users might have different field names or missing data
-      const firstName = user.firstName || user.given_name || user.name?.split(" ")[0] || user.email?.split("@")[0] || "";
-      const lastName = user.lastName || user.family_name || user.name?.split(" ").slice(1).join(" ") || "";
-      
+      const fullName = user.name || user.full_name ||
+        (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "") ||
+        user.given_name ||
+        user.email?.split("@")[0] || "";
+
       setProfile({
-        first_name: firstName,
-        last_name: lastName,
+        full_name: fullName,
         phone: user.phone || "",
         city: user.city || "",
       });
-      
+
       // Debug: Log the profile data being set
       console.log("ProfileModal - Setting profile state:", {
-        first_name: firstName,
-        last_name: lastName,
+        full_name: fullName,
         phone: user.phone || "",
         city: user.city || "",
         originalUser: user
@@ -75,11 +74,11 @@ const ProfileModal = () => {
       // After updating profile, fetch the complete user data again
       const userResponse = await api.user.getProfile();
       console.log("ProfileModal - Profile update response:", userResponse);
-      
+
       if (userResponse.success && userResponse.data) {
         // Handle different response structures
         const userData = userResponse.data.user || userResponse.data.profile || userResponse.data;
-        
+
         if (userData) {
           // Update the user context with the complete data
           updateUser(userData);
@@ -128,7 +127,7 @@ const ProfileModal = () => {
     // Try multiple field name combinations for Google OAuth users
     const firstName = user.firstName || user.given_name || user.user_metadata?.given_name || user.name?.split(" ")[0] || user.email?.split("@")[0] || "";
     const lastName = user.lastName || user.family_name || user.user_metadata?.family_name || user.name?.split(" ").slice(1).join(" ") || "";
-    
+
     if (firstName && lastName) {
       return `${firstName} ${lastName}`;
     }
@@ -224,33 +223,19 @@ const ProfileModal = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="fullName">Full Name</Label>
                 <Input
-                  id="firstName"
-                  value={profile.first_name}
+                  id="fullName"
+                  value={profile.full_name}
                   onChange={(e) =>
                     setProfile((prev) => ({
                       ...prev,
-                      first_name: e.target.value,
+                      full_name: e.target.value,
                     }))
                   }
-                  placeholder="Enter first name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  value={profile.last_name}
-                  onChange={(e) =>
-                    setProfile((prev) => ({
-                      ...prev,
-                      last_name: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter last name"
+                  placeholder="Enter full name"
                 />
               </div>
             </div>

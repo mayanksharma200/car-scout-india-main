@@ -21,6 +21,7 @@ interface User {
   given_name?: string;
   family_name?: string;
   name?: string;
+  full_name?: string;
   user_metadata?: {
     given_name?: string;
     family_name?: string;
@@ -222,16 +223,29 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const enhancedTokenData = { ...tokenData, expiresAt };
 
       // Normalize user data structure
+      // Handle full_name from RDS
+      let firstName = userData.firstName;
+      let lastName = userData.lastName;
+
+      // Prioritize full_name if available (RDS returns full_name)
+      if (userData.full_name) {
+        const parts = userData.full_name.trim().split(" ");
+        if (parts.length > 0) {
+          firstName = parts[0];
+          lastName = parts.slice(1).join(" ");
+        }
+      }
+
       const normalizedUser: User = {
         id: userData.id || userData.sub || "",
         email: userData.email || "",
         firstName:
-          userData.firstName ||
+          firstName ||
           userData.given_name ||
           userData.name?.split(" ")[0] ||
           userData.email?.split("@")[0],
         lastName:
-          userData.lastName ||
+          lastName ||
           userData.family_name ||
           userData.name?.split(" ")[1] ||
           "",
@@ -244,11 +258,12 @@ export const UserAuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Store original Google OAuth data for reference
         given_name: userData.given_name,
         family_name: userData.family_name,
-        name: userData.name,
+        name: userData.name || userData.full_name, // Store full name
+        full_name: userData.full_name || userData.name, // Ensure full_name is stored
         user_metadata: userData.user_metadata || {
           given_name: userData.given_name,
           family_name: userData.family_name,
-          full_name: userData.name,
+          full_name: userData.name || userData.full_name,
           provider: userData.provider || "email",
         },
       };
