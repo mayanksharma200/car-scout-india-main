@@ -42,20 +42,27 @@ async function downloadImageFromURL(imageUrl) {
  * @param {string} carId - Car ID
  * @param {string} angle - Image angle/type
  * @param {string} extension - File extension (default: jpg)
+ * @param {string} color - Optional color name for folder organization
  * @returns {string} - Unique filename
  */
-function generateFileName(carId, angle, extension = 'jpg') {
+function generateFileName(carId, angle, extension = 'jpg', color = null) {
   const timestamp = Date.now();
   const randomString = crypto.randomBytes(4).toString('hex');
   const sanitizedAngle = angle.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-  
+
   // Sanitize car ID to handle spaces and special characters
   const sanitizedCarId = carId
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .replace(/\s+/g, '_')
     .toLowerCase();
 
-  return `cars/${sanitizedCarId}/ideogram_${sanitizedAngle}_${timestamp}_${randomString}.${extension}`;
+  let folderPath = `cars/${sanitizedCarId}`;
+  if (color) {
+    const sanitizedColor = color.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+    folderPath = `${folderPath}/${sanitizedColor}`;
+  }
+
+  return `${folderPath}/ideogram_${sanitizedAngle}_${timestamp}_${randomString}.${extension}`;
 }
 
 /**
@@ -94,17 +101,18 @@ async function uploadToS3(imageBuffer, fileName, contentType = 'image/jpeg') {
  * @param {string} imageUrl - Source image URL (Ideogram URL)
  * @param {string} carId - Car ID
  * @param {string} angle - Image angle identifier
+ * @param {string} color - Optional color name
  * @returns {Promise<string>} - S3 URL
  */
-async function uploadImageFromURL(imageUrl, carId, angle) {
+async function uploadImageFromURL(imageUrl, carId, angle, color = null) {
   try {
-    console.log(`[S3Upload] Uploading image for car ${carId}, angle: ${angle}`);
+    console.log(`[S3Upload] Uploading image for car ${carId}, angle: ${angle}${color ? `, color: ${color}` : ''}`);
 
     // Download image from Ideogram
     const imageBuffer = await downloadImageFromURL(imageUrl);
 
     // Generate unique filename
-    const fileName = generateFileName(carId, angle);
+    const fileName = generateFileName(carId, angle, 'jpg', color);
 
     // Upload to S3
     const s3Url = await uploadToS3(imageBuffer, fileName);
@@ -114,6 +122,42 @@ async function uploadImageFromURL(imageUrl, carId, angle) {
     console.error(`[S3Upload] Failed to upload image for ${carId}:`, error.message);
     throw error;
   }
+}
+
+/**
+ * Upload multiple Ideogram images to S3
+ * @param {Array<Object>} images - Array of image objects
+ * @param {string} carId - Car ID
+ * @param {string} colorName - Optional color name
+ * @returns {Promise<Array<Object>>} - Upload results
+ */
+async function uploadIdeogramImages(images, carId, colorName = null) {
+  const results = [];
+
+  for (const image of images) {
+    try {
+      const s3Url = await uploadImageFromURL(image.url, carId, image.angle, colorName);
+
+      results.push({
+        success: true,
+        url: s3Url,
+        angle: image.angle,
+        originalUrl: image.url
+      });
+    } catch (error) {
+      console.error(`[S3Upload] Failed to upload image for ${carId} (${colorName || 'default'}):`, error);
+      results.push({
+        success: false,
+        angle: image.angle,
+        error: error.message
+      });
+    }
+
+    // Small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+
+  return results;
 }
 
 /**
@@ -234,6 +278,7 @@ function isConfigured() {
 export default {
   uploadImageFromURL,
   uploadMultipleImages,
+  uploadIdeogramImages,
   uploadToS3,
   downloadImageFromURL,
   generateFileName,
