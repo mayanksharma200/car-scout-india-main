@@ -135,20 +135,30 @@ const RequestQuoteModal = ({ carName, carId }: RequestQuoteModalProps) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('leads').insert({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
-        timeline: formData.timeline,
-        budget_min: formData.budget_min ? parseInt(formData.budget_min) : null,
-        budget_max: formData.budget_max ? parseInt(formData.budget_max) : null,
-        interested_car_id: carId,
-        source: 'request_quote',
-        status: 'new'
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          city: formData.city,
+          timeline: formData.timeline,
+          budget_min: formData.budget_min ? parseInt(formData.budget_min) : null,
+          budget_max: formData.budget_max ? parseInt(formData.budget_max) : null,
+          interested_car_id: carId,
+          source: 'request_quote',
+          status: 'new'
+        }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit request");
+      }
 
       toast({
         title: "Quote Request Submitted",

@@ -102,18 +102,28 @@ const GetBestPriceModal = ({ carName, carId }: GetBestPriceModalProps) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('leads').insert({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        city: formData.city,
-        timeline: formData.timeline,
-        interested_car_id: carId,
-        source: 'get_best_price',
-        status: 'new'
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          city: formData.city,
+          timeline: formData.timeline,
+          interested_car_id: carId,
+          source: 'get_best_price',
+          status: 'new'
+        }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit request");
+      }
 
       toast({
         title: "Request Submitted",

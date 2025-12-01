@@ -1116,6 +1116,70 @@ app.get("/api/cars/:id", async (req, res) => {
 });
 
 // Public News Endpoints
+app.post("/api/leads", async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      city,
+      timeline,
+      interested_car_id,
+      source = 'website',
+      status = 'new'
+    } = req.body;
+
+    // Basic validation
+    if (!name || !phone || !city) {
+      return res.status(400).json({
+        success: false,
+        error: "Name, phone, and city are required fields"
+      });
+    }
+
+    // Check for existing lead within the last 24 hours to prevent spam/duplicates
+    const existingLead = await db.query(
+      `SELECT id FROM leads 
+       WHERE phone = $1 
+       AND (interested_car_id = $2 OR ($2 IS NULL AND interested_car_id IS NULL))
+       AND created_at > NOW() - INTERVAL '24 hours'`,
+      [phone, interested_car_id]
+    );
+
+    if (existingLead.rows.length > 0) {
+      // Return success even if duplicate to improve UX (idempotency)
+      return res.json({
+        success: true,
+        message: "Request received! We will contact you shortly.",
+        data: { id: existingLead.rows[0].id, isDuplicate: true }
+      });
+    }
+
+    // Insert new lead
+    const result = await db.query(
+      `INSERT INTO leads (
+        name, email, phone, city, timeline, interested_car_id, source, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [name, email, phone, city, timeline, interested_car_id, source, status]
+    );
+
+    res.json({
+      success: true,
+      message: "Request submitted successfully!",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error submitting lead:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to submit request. Please try again later."
+    });
+  }
+});
+
+// Public News Endpoints
 app.get("/api/news", async (req, res) => {
   try {
     const {
