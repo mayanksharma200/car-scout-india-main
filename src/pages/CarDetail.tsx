@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, Star, Share2, ArrowLeft, Phone, Mail, Calendar, Palette, Car as CarIcon, Zap, Gauge, Users, Fuel } from "lucide-react";
 import Header from "@/components/Header";
@@ -30,13 +30,17 @@ const CarDetail = () => {
   const [currentCarImages, setCurrentCarImages] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<any>(null);
   const [isColorChanging, setIsColorChanging] = useState(false);
+  const lastFetchedSlug = useRef<string | null>(null);
 
   const { isAuthenticated } = useUserAuth();
   const api = useAuthenticatedApi();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadCarBySlug();
+    if (slug && lastFetchedSlug.current !== slug) {
+      lastFetchedSlug.current = slug;
+      loadCarBySlug();
+    }
   }, [slug]);
 
   useEffect(() => {
