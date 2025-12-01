@@ -1585,11 +1585,38 @@ app.put("/api/admin/cars/:id", async (req, res) => {
       };
     }
 
+    // Define allowed columns to prevent "column does not exist" errors
+    const allowedColumns = [
+      'brand', 'model', 'variant', 'price_min', 'price_max', 'exact_price',
+      'fuel_type', 'transmission', 'body_type', 'seating_capacity', 'mileage',
+      'engine_capacity', 'images', 'color_variant_images', 'specifications',
+      'features', 'status', 'view_count', 'external_id', 'api_source', 'updated_at',
+      'ideogram_images' // Assuming this column was added in a migration
+    ];
+
+    // Filter carData to only include allowed columns
+    const filteredCarData = {};
+    Object.keys(carData).forEach(key => {
+      if (allowedColumns.includes(key)) {
+        // Special validation for images column (must be array)
+        if (key === 'images' && !Array.isArray(carData[key])) {
+          console.warn('[Admin] Skipping images update because value is not an array:', typeof carData[key]);
+          return;
+        }
+        filteredCarData[key] = carData[key];
+      }
+    });
+
     console.log('[Admin] Updating car:', id);
+    console.log('[Admin] Fields to update:', Object.keys(filteredCarData));
+
+    if (Object.keys(filteredCarData).length === 0) {
+      return res.json({ success: true, message: "No valid fields to update" });
+    }
 
     // Prepare columns and values for UPDATE
-    const columns = Object.keys(carData);
-    const values = Object.values(carData);
+    const columns = Object.keys(filteredCarData);
+    const values = Object.values(filteredCarData);
 
     // Construct SET clause
     const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ');
