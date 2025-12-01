@@ -1126,7 +1126,14 @@ app.post("/api/leads", async (req, res) => {
       timeline,
       interested_car_id,
       source = 'website',
-      status = 'new'
+      status = 'new',
+      employment_type,
+      monthly_income,
+      loan_amount,
+      emi_amount,
+      message,
+      budget_min,
+      budget_max
     } = req.body;
 
     // Basic validation
@@ -1158,10 +1165,14 @@ app.post("/api/leads", async (req, res) => {
     // Insert new lead
     const result = await db.query(
       `INSERT INTO leads (
-        name, email, phone, city, timeline, interested_car_id, source, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        name, email, phone, city, timeline, interested_car_id, source, status,
+        employment_type, monthly_income, loan_amount, emi_amount, message, budget_min, budget_max
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
-      [name, email, phone, city, timeline, interested_car_id, source, status]
+      [
+        name, email, phone, city, timeline, interested_car_id, source, status,
+        employment_type, monthly_income, loan_amount, emi_amount, message, budget_min, budget_max
+      ]
     );
 
     res.json({
