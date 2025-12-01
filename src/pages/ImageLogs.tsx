@@ -125,7 +125,7 @@ const ImageLogs = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">${totals.cost.toFixed(4)}</div>
+                            <div className="text-2xl font-bold">${Number(totals.cost).toFixed(4)}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -201,7 +201,7 @@ const ImageLogs = () => {
                                                         </TableCell>
                                                         <TableCell>{log.image_count}</TableCell>
                                                         <TableCell className="font-mono">
-                                                            ${log.cost.toFixed(4)}
+                                                            ${Number(log.cost).toFixed(4)}
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
