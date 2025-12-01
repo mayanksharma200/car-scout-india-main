@@ -238,21 +238,15 @@ const logAdminActivity = async (activityData) => {
  */
 const logImageGeneration = async (userId, carId, source, imageCount, cost, metadata = {}) => {
   try {
-    const logEntry = {
-      user_id: userId || null,
-      car_id: carId || null,
-      source,
-      image_count: imageCount,
-      cost,
-      metadata,
-      created_at: new Date().toISOString()
-    };
+    // Ensure metadata is a valid JSON object/string
+    const metadataJson = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
 
-    const { error } = await supabase
-      .from('image_generation_logs')
-      .insert([logEntry]);
-
-    if (error) throw error;
+    await db.query(
+      `INSERT INTO image_generation_logs (
+        user_id, car_id, source, image_count, cost, metadata, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [userId, carId, source, imageCount, cost, metadataJson]
+    );
 
     console.log(`[ImageLog] Logged ${imageCount} images from ${source} (Cost: $${cost})`);
   } catch (error) {
@@ -4652,91 +4646,43 @@ app.get("/api/admin/image-logs", validateToken, async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", req.user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Unauthorized access",
-      });
-    }
-
     // Get total count
-    const { count, error: countError } = await supabase
-      .from("image_generation_logs")
-      .select("*", { count: "exact", head: true });
+    const { rows: countRows } = await db.query("SELECT COUNT(*) FROM image_generation_logs");
+    const count = parseInt(countRows[0].count);
 
-    if (countError) {
-      throw countError;
-    }
+    // Get total stats
+    const { rows: statsRows } = await db.query("SELECT SUM(image_count) as total_images, SUM(cost) as total_cost FROM image_generation_logs");
+    const totalImages = parseInt(statsRows[0].total_images || 0);
+    const totalCost = parseFloat(statsRows[0].total_cost || 0);
 
-    // Get total stats (sum of images and cost)
-    // Note: For large datasets, this should be replaced with an RPC call or a materialized view
-    const { data: allStats, error: statsError } = await supabase
-      .from("image_generation_logs")
-      .select("image_count, cost");
+    // Get logs with details
+    const query = `
+      SELECT 
+        l.*,
+        json_build_object(
+          'id', c.id,
+          'brand', c.brand,
+          'model', c.model,
+          'variant', c.variant
+        ) as cars,
+        json_build_object(
+          'id', p.id,
+          'email', p.email,
+          'first_name', p.first_name,
+          'last_name', p.last_name
+        ) as profiles
+      FROM image_generation_logs l
+      LEFT JOIN cars c ON l.car_id = c.id
+      LEFT JOIN profiles p ON l.user_id = p.id
+      ORDER BY l.created_at DESC
+      LIMIT $1 OFFSET $2
+    `;
 
-    let totalImages = 0;
-    let totalCost = 0;
-
-    if (!statsError && allStats) {
-      totalImages = allStats.reduce((sum, log) => sum + (log.image_count || 0), 0);
-      totalCost = allStats.reduce((sum, log) => sum + (log.cost || 0), 0);
-    }
-
-    // Get logs with car details (remove profiles join)
-    const { data: logs, error } = await supabase
-      .from("image_generation_logs")
-      .select(`
-        *,
-        cars (
-          id,
-          brand,
-          model,
-          variant
-        )
-      `)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + parseInt(limit) - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    // Manually fetch profiles for the users
-    let enrichedLogs = logs;
-    if (logs && logs.length > 0) {
-      const userIds = [...new Set(logs.map(log => log.user_id).filter(Boolean))];
-
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, email, first_name, last_name")
-          .in("id", userIds);
-
-        if (!profilesError && profiles) {
-          const profilesMap = new Map(profiles.map(p => [p.id, p]));
-
-          enrichedLogs = logs.map(log => ({
-            ...log,
-            profiles: profilesMap.get(log.user_id) || {
-              email: 'Unknown',
-              first_name: 'Unknown',
-              last_name: 'User'
-            }
-          }));
-        }
-      }
-    }
+    const { rows: logs } = await db.query(query, [limit, offset]);
 
     res.json({
       success: true,
-      data: enrichedLogs,
+      data: logs,
       totals: {
         images: totalImages,
         cost: totalCost
