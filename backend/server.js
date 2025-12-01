@@ -543,6 +543,14 @@ app.get("/api/stats", async (req, res) => {
 
     const uniqueBrandsCount = uniqueBrandsList.length;
 
+    // Calculate brand counts
+    const brandCounts = {};
+    brandsData.forEach((car) => {
+      if (car.brand) {
+        brandCounts[car.brand] = (brandCounts[car.brand] || 0) + 1;
+      }
+    });
+
     // 3. Count cities and identify available ones
     // Dynamically discover city columns from the schema by fetching one row
     // This avoids hardcoding the city list and allows for new cities to be added to the DB schema
@@ -624,6 +632,7 @@ app.get("/api/stats", async (req, res) => {
         totalBrands: uniqueBrandsCount || 0,
         totalCities: totalCities,
         brands: uniqueBrandsList,
+        brandCounts: brandCounts, // Return the brand counts
         cities: availableCities, // Return the actual list of available cities
       },
     });

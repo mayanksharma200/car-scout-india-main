@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+
 
 // Import brand logos
 import marutiLogo from "@/assets/brands/maruti-suzuki-logo.png";
@@ -140,25 +140,13 @@ const BrandGrid = () => {
   useEffect(() => {
     const fetchBrandCounts = async () => {
       try {
-        const { data, error } = await supabase
-          .from('cars')
-          .select('brand')
-          .eq('status', 'active');
+        const response = await fetch('/api/stats');
+        const data = await response.json();
 
-        if (error) {
-          console.error('Error fetching brands:', error);
-          return;
+        if (data.success && data.data.brandCounts) {
+          console.log('Brand counts from API:', data.data.brandCounts);
+          setBrandCounts(data.data.brandCounts);
         }
-
-        // Count cars per brand
-        const counts: Record<string, number> = {};
-        data.forEach(item => {
-          const brand = item.brand;
-          counts[brand] = (counts[brand] || 0) + 1;
-        });
-
-        console.log('Brand counts from DB:', counts);
-        setBrandCounts(counts);
       } catch (err) {
         console.error('Failed to fetch brands:', err);
       } finally {
