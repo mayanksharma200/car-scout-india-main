@@ -562,7 +562,7 @@ const AdminDashboard = () => {
                     {isImporting ? "Importing..." : "Import 1000+ Cars"}
                   </span>
                 </Button> */}
-                <Link to="/admin/content/news/new">
+                <Link to="/admin/content">
                   <Button
                     variant="outline"
                     className="w-full h-20 flex flex-col gap-2"
