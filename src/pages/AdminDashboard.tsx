@@ -26,6 +26,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useAdminAuthenticatedApi } from "@/hooks/useAdminAuthenticatedApi";
 
 interface Activity {
   id: string;
@@ -62,13 +63,13 @@ const AdminDashboard = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const { logout } = useAdminAuth();
+  const api = useAdminAuthenticatedApi();
 
   // Fetch recent activities
   const fetchActivities = async () => {
     try {
       setLoadingActivities(true);
-      const response = await fetch('/api/admin/activities?limit=20');
-      const result = await response.json();
+      const result = await api.admin.getActivities(20);
 
       if (result.success) {
         setActivities(result.data);
@@ -84,8 +85,7 @@ const AdminDashboard = () => {
   const fetchNewLeads = async () => {
     try {
       setLoadingLeads(true);
-      const response = await fetch('/api/admin/new-leads?limit=20');
-      const result = await response.json();
+      const result = await api.admin.getNewLeads(20);
 
       if (result.success) {
         setNewLeads(result.data);
@@ -103,22 +103,15 @@ const AdminDashboard = () => {
       setLoadingStats(true);
 
       // Fetch recent activities count using the API endpoint
-      const activitiesResponse = await fetch('/api/admin/activities?limit=1000');
-      const activitiesResult = await activitiesResponse.json();
+      const activitiesResult = await api.admin.getActivities(1000);
       const recentActivitiesCount = activitiesResult.success ? activitiesResult.data.length : 0;
 
       // Fetch pending new leads count using the API endpoint
-      const newLeadsResponse = await fetch('/api/admin/new-leads?limit=1000');
-      const newLeadsResult = await newLeadsResponse.json();
+      const newLeadsResult = await api.admin.getNewLeads(1000);
       const pendingNewLeadsCount = newLeadsResult.success ? newLeadsResult.data.length : 0;
 
       // Fetch stats from backend (now includes average price from AWS RDS)
-      const statsResponse = await fetch('/api/admin/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-        }
-      });
-      const statsResult = await statsResponse.json();
+      const statsResult = await api.admin.getStats();
 
       if (statsResult.success) {
         setDashboardStats({

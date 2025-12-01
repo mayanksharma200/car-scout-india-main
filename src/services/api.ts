@@ -317,6 +317,11 @@ export interface ApiClient {
     getImageLogs: (page?: number, limit?: number) => Promise<any>;
     bulkImport: (cars: any[]) => Promise<any>;
   };
+  admin: {
+    getStats: () => Promise<any>;
+    getActivities: (limit?: number) => Promise<any>;
+    getNewLeads: (limit?: number) => Promise<any>;
+  };
 }
 
 // Export createApiClient function for use with authentication context
@@ -559,6 +564,20 @@ export const createApiClient = ({ getAuthHeaders, isTokenExpired, refreshTokens 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cars }),
         });
+        return response.json();
+      },
+    },
+    admin: {
+      getStats: async () => {
+        const response = await makeAuthenticatedRequest('/admin/stats');
+        return response.json();
+      },
+      getActivities: async (limit = 20) => {
+        const response = await makeAuthenticatedRequest(`/admin/activities?limit=${limit}`);
+        return response.json();
+      },
+      getNewLeads: async (limit = 20) => {
+        const response = await makeAuthenticatedRequest(`/admin/new-leads?limit=${limit}`);
         return response.json();
       },
     },
