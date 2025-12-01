@@ -1509,7 +1509,7 @@ const CarListing = () => {
                 <AdBanner placement="left_sidebar" />
               </div>
 
-              <Card className="relative z-10 pointer-events-auto sticky top-24 max-h-[calc(100vh-6rem)] overflow-y-auto">
+              <Card className="relative z-10 pointer-events-auto sticky top-24 max-h-[calc(110vh-6rem)] overflow-y-auto">
                 <CardContent className="p-4 lg:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-sm lg:text-base">
