@@ -4668,8 +4668,8 @@ app.get("/api/admin/image-logs", validateToken, async (req, res) => {
         json_build_object(
           'id', p.id,
           'email', p.email,
-          'first_name', p.first_name,
-          'last_name', p.last_name
+          'first_name', split_part(p.full_name, ' ', 1),
+          'last_name', CASE WHEN position(' ' in p.full_name) > 0 THEN substring(p.full_name from position(' ' in p.full_name) + 1) ELSE '' END
         ) as profiles
       FROM image_generation_logs l
       LEFT JOIN cars c ON l.car_id = c.id
