@@ -1210,7 +1210,7 @@ app.get("/api/news", async (req, res) => {
       queryText += ` AND is_featured = true`;
     }
 
-    queryText += " ORDER BY published_at DESC";
+    queryText += " ORDER BY created_at DESC";
 
     paramCount++;
     queryText += ` LIMIT $${paramCount}`;
@@ -5398,61 +5398,7 @@ setInterval(cleanupExpiredOTPs, 60 * 60 * 1000);
 
 // ===== NEWS ENDPOINTS =====
 
-// Get all news articles
-app.get("/api/news", async (req, res) => {
-  try {
-    const { limit = 10, offset = 0, status, category, slug } = req.query;
 
-    let query = "SELECT * FROM news_articles WHERE 1=1";
-    const params = [];
-    let paramCount = 1;
-
-    if (status) {
-      query += ` AND status = $${paramCount}`;
-      params.push(status);
-      paramCount++;
-    }
-
-    if (category) {
-      query += ` AND category = $${paramCount}`;
-      params.push(category);
-      paramCount++;
-    }
-
-    if (slug) {
-      query += ` AND slug = $${paramCount}`;
-      params.push(slug);
-      paramCount++;
-    }
-
-    // Add sorting and pagination
-    query += " ORDER BY created_at DESC LIMIT $" + paramCount + " OFFSET $" + (paramCount + 1);
-    params.push(limit, offset);
-
-    const { rows } = await db.query(query, params);
-
-    // Get total count for pagination
-    const countQuery = "SELECT COUNT(*) FROM news_articles";
-    const { rows: countRows } = await db.query(countQuery);
-    const total = parseInt(countRows[0].count);
-
-    res.json({
-      success: true,
-      data: rows,
-      pagination: {
-        total,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      }
-    });
-  } catch (error) {
-    console.error("Error fetching news:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch news articles"
-    });
-  }
-});
 
 // Create news article
 app.post("/api/news", validateToken, requireAdmin, async (req, res) => {
