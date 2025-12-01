@@ -492,10 +492,10 @@ const ContentManagement = () => {
           <div className="flex items-center gap-3">
             <Dialog open={isApiSyncOpen} onOpenChange={setIsApiSyncOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                {/* <Button variant="outline" className="gap-2">
                   <RefreshCw className="w-4 h-4" />
                   API Sync
-                </Button>
+                </Button> */}
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
