@@ -35,6 +35,7 @@ interface CarItem {
   images?: string[];
   colors?: string;
   color_codes?: string;
+  specifications?: Record<string, any>;
   created_at: string;
 }
 
@@ -166,13 +167,32 @@ const IdeogramCarImageGenerator = () => {
       }
 
       if (carsData && carsData.length > 0) {
-        const transformedCars = carsData.map((car) => ({
-          ...car,
-          price: car.price_min || car.price || 0,
-          fuelType: car.fuel_type || car.fuelType || 'Petrol',
-          bodyType: car.body_type || car.bodyType || 'Hatchback',
-          images: car.images || [] // Preserve images in their original format (array or object)
-        }));
+        const transformedCars = carsData.map((car) => {
+          // Extract colors from specifications if not present at top level
+          let colors = car.colors;
+          let colorCodes = car.color_codes;
+
+          if (!colors && car.specifications) {
+            // Check for "Color Name" or "Color Name" (case sensitive usually, but let's be safe)
+            if (car.specifications["Color Name"]) {
+              colors = car.specifications["Color Name"];
+            }
+            // Also check for "Color RGB" in specifications
+            if (car.specifications["Color RGB"]) {
+              colorCodes = car.specifications["Color RGB"];
+            }
+          }
+
+          return {
+            ...car,
+            price: car.price_min || car.price || 0,
+            fuelType: car.fuel_type || car.fuelType || 'Petrol',
+            bodyType: car.body_type || car.bodyType || 'Hatchback',
+            images: car.images || [], // Preserve images in their original format (array or object)
+            colors: colors,
+            color_codes: colorCodes
+          };
+        });
 
         setCars(transformedCars);
         console.log("Transformed cars for Ideogram generation:", transformedCars.length);
