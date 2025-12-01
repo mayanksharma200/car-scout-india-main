@@ -614,6 +614,8 @@ const CarListing = () => {
             seating: car.seating_capacity || car.seating || (car as any).specifications?.["Seating Capacity"]?.replace(' Person', '') || 5,
             rating: 4.2 + Math.random() * 0.8,
             image: carImage,
+            colors: car.colors || (car as any).specifications?.['Color Name'] || "",
+            color_codes: car.color_codes || (car as any).specifications?.['Color RGB'] || "",
             color: car.colors?.split(';')[0] || (car as any).specifications?.["Color Name"]?.split(';')[0] || "Pearl White",
             year: 2024,
             features: car.features || [],

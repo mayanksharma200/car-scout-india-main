@@ -180,6 +180,8 @@ const CarDetail = () => {
             brand: dbCar.brand || "Unknown",
             model: dbCar.model || "Unknown",
             variant: dbCar.variant || "",
+            colors: dbCar.colors || dbCar.specifications?.['Color Name'] || "",
+            color_codes: dbCar.color_codes || dbCar.specifications?.['Color RGB'] || "",
           };
         });
 
