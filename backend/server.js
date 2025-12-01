@@ -669,23 +669,20 @@ app.get("/api/cars/search", async (req, res) => {
       sortOrder = "asc",
     } = req.query;
 
-    console.log(`🔍 Enhanced search with filters:`, {
+    console.log(`🔍 AWS RDS Search with filters:`, {
       q,
       brand,
-      city,
       budget,
-      carType,
-      minPrice,
-      maxPrice,
       fuelTypes,
       transmissions,
       bodyTypes,
-      seatingOptions,
     });
 
-    let query = supabase.from("cars").select("*").eq("status", "active");
+    let sql = `SELECT * FROM cars WHERE status = 'active'`;
+    const params = [];
+    let paramIndex = 1;
 
-    // Apply text search if query provided
+    // Text search
     if (q && q.trim()) {
       const searchTerms = q
         .trim()
@@ -693,54 +690,75 @@ app.get("/api/cars/search", async (req, res) => {
         .split(/\s+/)
         .filter((term) => term.length > 0);
 
-      console.log(`📝 Search terms:`, searchTerms);
-
-      if (searchTerms.length === 1) {
-        const term = searchTerms[0];
-        query = query.or(
-          `brand.ilike.%${term}%,model.ilike.%${term}%,variant.ilike.%${term}%`
-        );
-      } else {
-        // For multi-word searches, we'll filter after getting results
-        // to ensure ALL terms match somewhere in brand/model/variant
-        const firstTerm = searchTerms[0];
-        query = query.or(
-          `brand.ilike.%${firstTerm}%,model.ilike.%${firstTerm}%,variant.ilike.%${firstTerm}%`
-        );
+      if (searchTerms.length > 0) {
+        const conditions = searchTerms.map((term) => {
+          const idx = paramIndex++;
+          params.push(`%${term}%`);
+          return `(brand ILIKE $${idx} OR model ILIKE $${idx} OR variant ILIKE $${idx})`;
+        });
+        sql += ` AND (${conditions.join(" AND ")})`;
       }
     }
 
-    // Apply brand filter
+    // Brand
     if (brand) {
-      query = query.ilike("brand", `%${brand}%`);
+      sql += ` AND brand ILIKE $${paramIndex++}`;
+      params.push(`%${brand}%`);
     }
 
-    // Apply car type filter (this would need to be mapped to your data structure)
-    if (carType) {
-      // You might need to adjust this based on how car types are stored
-      // For now, assuming it's part of variant or a separate field
-      switch (carType) {
-        case "new":
-          // Filter for new cars - adjust based on your data structure
-          break;
-        case "certified":
-          // Filter for certified cars
-          break;
-        case "premium":
-          // Filter for premium cars
-          break;
+    // Filter Brands (Advanced)
+    if (filterBrands) {
+      const brandArray = filterBrands.split(",").map((b) => b.trim());
+      if (brand) brandArray.push(brand);
+
+      const brandConditions = brandArray.map(() => `brand ILIKE $${paramIndex++}`).join(" OR ");
+      sql += ` AND (${brandConditions})`;
+      brandArray.forEach(b => params.push(`%${b}%`));
+    }
+
+    // Fuel Types
+    if (fuelTypes) {
+      const fuels = fuelTypes.split(",").map((f) => f.trim());
+      sql += ` AND fuel_type = ANY($${paramIndex++})`;
+      params.push(fuels);
+    }
+
+    // Transmissions
+    if (transmissions) {
+      const trans = transmissions.split(",").map((t) => t.trim());
+      sql += ` AND transmission = ANY($${paramIndex++})`;
+      params.push(trans);
+    }
+
+    // Body Types
+    if (bodyTypes) {
+      const bodies = bodyTypes.split(",").map((b) => b.trim());
+      sql += ` AND body_type = ANY($${paramIndex++})`;
+      params.push(bodies);
+    }
+
+    // Seating
+    if (seatingOptions) {
+      const seats = seatingOptions.split(",").map((s) => s.trim());
+      const exactSeats = seats
+        .filter((s) => s !== "8+")
+        .map((s) => parseInt(s));
+      const has8Plus = seats.includes("8+");
+
+      if (has8Plus) {
+        if (exactSeats.length > 0) {
+          sql += ` AND (seating_capacity = ANY($${paramIndex++}) OR seating_capacity >= 8)`;
+          params.push(exactSeats);
+        } else {
+          sql += ` AND seating_capacity >= 8`;
+        }
+      } else if (exactSeats.length > 0) {
+        sql += ` AND seating_capacity = ANY($${paramIndex++})`;
+        params.push(exactSeats);
       }
     }
 
-    // Apply price range filters
-    if (minPrice) {
-      query = query.gte("price_min", parseInt(minPrice));
-    }
-    if (maxPrice) {
-      query = query.lte("price_max", parseInt(maxPrice));
-    }
-
-    // Apply budget range filter (convert budget string to price range)
+    // Budget
     if (budget) {
       const budgetRanges = {
         "Under ₹5 Lakh": { min: 0, max: 500000 },
@@ -752,258 +770,57 @@ app.get("/api/cars/search", async (req, res) => {
         "₹50 Lakh - ₹1 Crore": { min: 5000000, max: 10000000 },
         "Above ₹1 Crore": { min: 10000000, max: null },
       };
-
-      const budgetRange = budgetRanges[budget];
-      if (budgetRange) {
-        // Correct logic: Car price range should overlap with budget range
-        // A car fits if: car_min <= budget_max AND car_max >= budget_min
-        if (budgetRange.max) {
-          query = query.lte("price_min", budgetRange.max); // Car starts within or before budget max
+      const range = budgetRanges[budget];
+      if (range) {
+        if (range.max) {
+          sql += ` AND price_min <= $${paramIndex++}`;
+          params.push(range.max);
         }
-        query = query.gte("price_max", budgetRange.min); // Car ends within or after budget min
-
-        console.log(`Budget filter: ${budgetRange.min} - ${budgetRange.max}`);
+        sql += ` AND price_max >= $${paramIndex++}`;
+        params.push(range.min);
       }
     }
 
-    // Apply fuel type filters
-    if (fuelTypes) {
-      const fuelArray = fuelTypes.split(",").map((f) => f.trim());
-      console.log(`🔥 Filtering by fuel types:`, fuelArray);
-
-      if (fuelArray.length === 1) {
-        // Try exact match first, then case-insensitive if needed
-        query = query.eq("fuel_type", fuelArray[0]);
-      } else {
-        // For multiple fuel types, use exact matches in array
-        query = query.in("fuel_type", fuelArray);
-      }
-
-      console.log(`🔍 Applied fuel type filter for: ${fuelArray.join(', ')}`);
+    // Min/Max Price
+    if (minPrice) {
+      sql += ` AND price_min >= $${paramIndex++}`;
+      params.push(parseInt(minPrice));
+    }
+    if (maxPrice) {
+      sql += ` AND price_max <= $${paramIndex++}`;
+      params.push(parseInt(maxPrice));
     }
 
-    // Apply transmission filters
-    if (transmissions) {
-      const transmissionArray = transmissions.split(",").map((t) => t.trim());
-      console.log(`⚙️ Filtering by transmissions:`, transmissionArray);
+    // Sorting
+    const validSortColumns = ["brand", "price_min", "year", "created_at"];
+    const sortCol = validSortColumns.includes(sortBy) ? sortBy : "brand";
+    const sortDir = sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
+    sql += ` ORDER BY ${sortCol} ${sortDir}`;
 
-      if (transmissionArray.length === 1) {
-        query = query.eq("transmission", transmissionArray[0]);
-      } else {
-        query = query.in("transmission", transmissionArray);
-      }
-    }
+    // Pagination
+    sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(limit, offset);
 
-    // Apply body type filters
-    if (bodyTypes) {
-      const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
-      console.log(`🚗 Filtering by body types:`, bodyTypeArray);
+    console.log("📝 Executing SQL:", sql);
+    // console.log('📝 Params:', params);
 
-      if (bodyTypeArray.length === 1) {
-        query = query.eq("body_type", bodyTypeArray[0]);
-      } else {
-        query = query.in("body_type", bodyTypeArray);
-      }
-    }
+    const result = await db.query(sql, params);
+    let filteredData = result.rows;
 
-    // Apply seating capacity filters with logical validation
-    if (seatingOptions) {
-      const seatingArray = seatingOptions.split(",").map((s) => s.trim());
-      const seatingNumbers = seatingArray
-        .map((s) => {
-          if (s === "8+") return 8; // Handle 8+ as 8 or greater
-          return parseInt(s);
-        })
-        .filter((n) => !isNaN(n));
-
-      if (seatingNumbers.length > 0) {
-        if (seatingArray.includes("8+")) {
-          // If 8+ is included, get cars with 8 or more seats
-          query = query.gte("seating_capacity", 8);
-        } else {
-          query = query.in("seating_capacity", seatingNumbers);
-        }
-
-        // Log potential conflicts
-        if (bodyTypes && seatingNumbers.some((s) => s >= 7)) {
-          const bodyTypeArray = bodyTypes.split(",").map((b) => b.trim());
-          if (bodyTypeArray.includes("Hatchback")) {
-            console.warn(
-              "⚠️ Conflicting filters: 7+ seater Hatchbacks are rare. Consider SUV or MPV body types."
-            );
-          }
-        }
-      }
-    }
-
-    // Apply additional brand filters from advanced filters
-    if (filterBrands) {
-      const brandArray = filterBrands.split(",").map((b) => b.trim());
-      // Combine with main brand filter if both exist
-      if (brand) {
-        brandArray.push(brand);
-      }
-
-      // Create OR conditions for brands
-      const brandConditions = brandArray
-        .map((b) => `brand.ilike.%${b}%`)
-        .join(",");
-      query = query.or(brandConditions);
-    }
-
-    // Apply mileage filters (extract numeric value from mileage string)
-    if (minMileage || maxMileage) {
-      // Note: This is tricky because mileage is stored as "24.9 kmpl"
-      // You might want to add a numeric mileage column for better filtering
-      // For now, this is a basic implementation
-      if (minMileage) {
-        // This won't work well with string mileage - consider adding numeric column
-        console.warn(
-          "Mileage filtering needs numeric mileage column for accurate results"
-        );
-      }
-    }
-
-    // Apply sorting and pagination
-    query = query
-      .order(sortBy, { ascending: sortOrder === "asc" })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
-
-    // Debug: Let's see what we get from the database before applying filters
-    console.log(`🗃️ Executing database query...`);
-
-    // First, let's see if there's ANY data in the cars table
-    const { data: allCars, error: allCarsError } = await supabase
-      .from("cars")
-      .select("id, brand, model, variant, fuel_type, transmission, body_type, status")
-      .eq("status", "active")
-      .limit(5);
-
-    console.log(`📊 Sample cars in database:`, allCars);
-    console.log(`🔢 Total active cars sample:`, allCars ? allCars.length : 0);
-
-    if (allCars && allCars.length > 0) {
-      console.log(`⛽ Fuel types in sample:`, allCars.map(car => car.fuel_type));
-    }
-
-    // Debug: Let's also test a simple fuel type query to see if it works
-    const { data: simpleFuelTest, error: simpleFuelError } = await supabase
-      .from("cars")
-      .select("id, brand, model, fuel_type")
-      .eq("status", "active")
-      .eq("fuel_type", "Petrol")
-      .limit(3);
-
-    console.log(`🧪 Simple fuel type test:`, simpleFuelTest);
-    console.log(`🧪 Simple fuel type count:`, simpleFuelTest ? simpleFuelTest.length : 0);
-
-    const { data, error, count } = await query;
-
-    console.log(`🔍 Query executed. Results count:`, data ? data.length : 0);
-    console.log(`🔍 Database error:`, error);
-    console.log(`🔍 First few results:`, data ? data.slice(0, 3).map(car => ({
-      id: car.id,
-      brand: car.brand,
-      model: car.model,
-      fuel_type: car.fuel_type
-    })) : []);
-
-    if (error) {
-      console.error("❌ Database error:", error);
-      throw error;
-    }
-
-    let filteredData = data || [];
-
-    // Post-process for multi-word text search
-    if (q && q.trim()) {
-      const searchTerms = q
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((term) => term.length > 0);
-
-      if (searchTerms.length > 1) {
-        filteredData = filteredData.filter((car) => {
-          // Include all car text fields for comprehensive search
-          const carText =
-            `${car.brand} ${car.model} ${car.variant} ${car.fuel_type} ${car.transmission} ${car.body_type}`.toLowerCase();
-          return searchTerms.every((term) => carText.includes(term));
-        });
-      }
-    }
-
-    // Post-process for city filter (if you don't have city in cars table)
-    if (city) {
-      // Since cars table might not have city, you could:
-      // 1. Add city to cars table
-      // 2. Filter based on dealer locations
-      // 3. Skip city filtering for now
-      console.warn(
-        "City filtering not implemented - add city column to cars table"
-      );
-    }
-
-    // Post-process for mileage filtering (better implementation)
+    // Post-process for mileage filtering (since it's string in DB)
     if (minMileage || maxMileage) {
       filteredData = filteredData.filter((car) => {
         if (!car.mileage) return true;
-
-        // Extract numeric value from mileage string like "24.9 kmpl"
         const mileageMatch = car.mileage.match(/(\d+\.?\d*)/);
         if (!mileageMatch) return true;
-
         const numericMileage = parseFloat(mileageMatch[1]);
-
         if (minMileage && numericMileage < parseFloat(minMileage)) return false;
         if (maxMileage && numericMileage > parseFloat(maxMileage)) return false;
-
         return true;
       });
     }
 
-    console.log(`✅ Found ${filteredData.length} cars after all filters`);
-
-    // Enhanced debugging for empty results
-    if (filteredData.length === 0) {
-      console.log("🔍 No results found. Debugging filters:");
-      console.log("Applied filters:", {
-        brand,
-        budget,
-        fuelTypes,
-        transmissions,
-        bodyTypes,
-        seatingOptions,
-      });
-
-      // Test each filter individually
-      if (brand) {
-        const { data: brandTest } = await supabase
-          .from("cars")
-          .select("*")
-          .eq("status", "active")
-          .ilike("brand", `%${brand}%`);
-        console.log(`Brand "${brand}" has ${brandTest?.length || 0} cars`);
-      }
-
-      if (bodyTypes && seatingOptions) {
-        const bodyArray = bodyTypes.split(",");
-        const seatingArray = seatingOptions.split(",");
-        if (bodyArray.includes("Hatchback") && seatingArray.includes("7")) {
-          console.log(
-            "⚠️ FILTER CONFLICT: Searching for 7-seater Hatchback (these rarely exist)"
-          );
-          console.log("💡 Suggestion: 7-seaters are typically MPVs or SUVs");
-        }
-      }
-    }
-
-    // Log sample results for debugging
-    filteredData.slice(0, 3).forEach((car) => {
-      console.log(
-        `🚗 ${car.brand} ${car.model} ${car.variant} - ₹${car.price_min}-${car.price_max}`
-      );
-    });
+    console.log(`✅ Found ${filteredData.length} cars via AWS RDS`);
 
     res.json({
       success: true,
@@ -1023,10 +840,10 @@ app.get("/api/cars/search", async (req, res) => {
         filterBrands: filterBrands ? filterBrands.split(",") : [],
       },
       totalFound: filteredData.length,
-      searchType: q ? "search_with_filters" : "filter_only",
+      searchType: "aws_rds",
     });
   } catch (error) {
-    console.error("💥 Search error:", error);
+    console.error("💥 AWS RDS Search error:", error);
     res.status(500).json({
       success: false,
       error: "Failed to search cars",
