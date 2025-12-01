@@ -4434,12 +4434,29 @@ app.put("/api/user/profile", validateToken, async (req, res) => {
 // Admin routes
 app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
   try {
-    const [carsCount, leadsCount, usersCount, activeSessions] =
+    // Calculate average price using SQL
+    // Logic: Use exact_price if available, else ex_showroom_price, else average of min/max
+    // We need to handle the text format of prices (e.g., "10.5 Lakh", "1.5 Crore")
+    // For simplicity in this migration, we'll focus on the numeric columns first if they exist, 
+    // or use a simplified average of min/max which are usually numeric or easier to parse
+
+    const [carsCount, leadsCount, usersCount, activeSessions, avgPriceResult] =
       await Promise.all([
         db.query("SELECT COUNT(*) FROM cars"),
         db.query("SELECT COUNT(*) FROM leads"),
         db.query("SELECT COUNT(*) FROM profiles"),
         db.query("SELECT COUNT(*) FROM user_sessions WHERE is_active = true"),
+        db.query(`
+          SELECT AVG(
+            CASE 
+              WHEN price_min IS NOT NULL AND price_max IS NOT NULL THEN (price_min + price_max) / 2
+              WHEN price_min IS NOT NULL THEN price_min
+              ELSE 0
+            END
+          ) as avg_price
+          FROM cars 
+          WHERE status = 'active' AND price_min > 0
+        `)
       ]);
 
     res.json({
@@ -4449,6 +4466,7 @@ app.get("/api/admin/stats", validateToken, requireAdmin, async (req, res) => {
         totalLeads: parseInt(leadsCount.rows[0].count) || 0,
         totalUsers: parseInt(usersCount.rows[0].count) || 0,
         activeSessions: parseInt(activeSessions.rows[0].count) || 0,
+        averagePrice: Math.round(parseFloat(avgPriceResult.rows[0].avg_price || 0)),
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),
       },
@@ -4467,24 +4485,14 @@ app.get("/api/admin/activities", async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    const { data, error } = await supabase
-      .from("admin_activities")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(parseInt(limit));
-
-    if (error) {
-      console.error('[Admin] Error fetching activities:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch activities',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(
+      "SELECT * FROM admin_activities ORDER BY created_at DESC LIMIT $1",
+      [parseInt(limit)]
+    );
 
     res.json({
       success: true,
-      data: data || []
+      data: rows || []
     });
 
   } catch (error) {
@@ -4502,26 +4510,15 @@ app.get("/api/admin/new-leads", async (req, res) => {
   try {
     const { limit = 10 } = req.query;
 
-    const { data, error } = await supabase
-      .from("leads")
-      .select("*")
-      .eq('status', 'new')
-      .order("created_at", { ascending: false })
-      .limit(parseInt(limit));
-
-    if (error) {
-      console.error('[Admin] Error fetching new leads:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch new leads',
-        details: error.message
-      });
-    }
+    const { rows } = await db.query(
+      "SELECT * FROM leads WHERE status = 'new' ORDER BY created_at DESC LIMIT $1",
+      [parseInt(limit)]
+    );
 
     res.json({
       success: true,
-      data: data || [],
-      count: data?.length || 0
+      data: rows || [],
+      count: rows.length
     });
 
   } catch (error) {
