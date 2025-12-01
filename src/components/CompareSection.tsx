@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Car,
   Plus,
@@ -328,8 +328,15 @@ const CompareSection = () => {
   const [showComparison, setShowComparison] = useState(false);
   const [popularCars, setPopularCars] = useState([]);
 
+  // Ref to track if data has been fetched
+  const dataFetchedRef = useRef(false);
+
   // Load popular cars for quick comparisons
   useEffect(() => {
+    // Prevent double fetching in StrictMode
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
     loadPopularCars();
   }, []);
 

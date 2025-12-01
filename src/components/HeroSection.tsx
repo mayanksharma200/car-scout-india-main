@@ -109,7 +109,14 @@ const HeroSection = () => {
   const [availableBrands, setAvailableBrands] = useState([]);
   const [availableCities, setAvailableCities] = useState([]);
 
+  // Ref to track if data has been fetched
+  const dataFetchedRef = useRef(false);
+
   useEffect(() => {
+    // Prevent double fetching in StrictMode
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
     const fetchStats = async () => {
       try {
         const response = await fetch("/api/stats");

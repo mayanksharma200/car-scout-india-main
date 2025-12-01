@@ -1,7 +1,7 @@
 // src/components/FeaturedCars.tsx
 // Updated version with wishlist integration
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { carAPI } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -15,6 +15,9 @@ const FeaturedCars = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Ref to track if data has been fetched
+  const dataFetchedRef = useRef(false);
 
   // Mock data fallback (only used if API is completely unavailable)
   const mockCars = [
@@ -81,6 +84,10 @@ const FeaturedCars = () => {
   ];
 
   useEffect(() => {
+    // Prevent double fetching in StrictMode
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
     const fetchCars = async () => {
       try {
         console.log("🔍 Fetching cars...");
