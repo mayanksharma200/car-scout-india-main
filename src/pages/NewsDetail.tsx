@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Calendar, User, ArrowLeft, Share2, Clock } from "lucide-react";
 import Header from "@/components/Header";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ShareModal from "@/components/ShareModal";
 import { toast } from "@/components/ui/use-toast";
-import { useAuthenticatedApi } from "@/hooks/useAuthenticatedApi";
+import { newsAPI } from "@/services/api";
 
 interface NewsArticle {
     id: string;
@@ -27,15 +27,21 @@ const NewsDetail = () => {
     const navigate = useNavigate();
     const [article, setArticle] = useState<NewsArticle | null>(null);
     const [loading, setLoading] = useState(true);
-    const api = useAuthenticatedApi();
+    const lastFetchedSlug = useRef<string | null>(null);
 
     useEffect(() => {
         const fetchArticle = async () => {
             if (!slug) return;
 
+            // Prevent double fetching
+            if (lastFetchedSlug.current === slug) {
+                return;
+            }
+            lastFetchedSlug.current = slug;
+
             try {
                 setLoading(true);
-                const response = await api.news.getBySlug(slug);
+                const response = await newsAPI.getBySlug(slug);
 
                 if (response.success && response.data) {
                     setArticle(response.data);
@@ -47,7 +53,7 @@ const NewsDetail = () => {
                     });
                     navigate("/news");
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error fetching article:", error);
                 toast({
                     title: "Error",
@@ -61,7 +67,7 @@ const NewsDetail = () => {
         };
 
         fetchArticle();
-    }, [slug, navigate, api]);
+    }, [slug, navigate]);
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);

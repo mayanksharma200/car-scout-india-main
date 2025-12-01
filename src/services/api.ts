@@ -14,6 +14,15 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}, timeout: nu
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  // If an external signal is provided, abort our controller when it aborts
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', () => controller.abort());
+    }
+  }
+
   try {
     const headers: any = {
       'Content-Type': 'application/json',
@@ -45,6 +54,13 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}, timeout: nu
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
+        // Check if it was external abort
+        if (options.signal?.aborted) {
+          // Rethrow as AbortError so caller handles it
+          throw error;
+        }
+
+        // Only treat as timeout if it wasn't an external abort
         console.error(`API Timeout (${endpoint}): Request took longer than ${timeout}ms`);
         throw new Error(`Request timeout - server is not responding`);
       }
@@ -188,6 +204,20 @@ export const leadAPI = {
       method: 'POST',
       body: JSON.stringify(leadData),
     });
+  },
+};
+
+// News API endpoints (public)
+export const newsAPI = {
+  // Get all news
+  getAll: async (params?: any) => {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return fetchAPI(`/news${queryString}`);
+  },
+
+  // Get single news by slug
+  getBySlug: async (slug: string, options?: RequestInit) => {
+    return fetchAPI(`/news/${slug}`, options);
   },
 };
 
