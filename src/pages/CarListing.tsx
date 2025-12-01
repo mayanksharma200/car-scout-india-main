@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   Filter,
@@ -91,6 +91,7 @@ const CarListing = () => {
 
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+  const dataFetchedRef = useRef(false);
 
   // Load initial cars from database
   useEffect(() => {
@@ -99,7 +100,8 @@ const CarListing = () => {
 
     // Always load all cars from database to ensure filters work correctly
     // We rely on URL parameters to apply initial filters
-    if (isMounted) {
+    if (isMounted && !dataFetchedRef.current) {
+      dataFetchedRef.current = true;
       loadCarsFromDB();
       fetchStats();
     }
