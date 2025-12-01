@@ -2079,11 +2079,22 @@ app.get("/api/admin/cars", async (req, res) => {
 
     // Sorting
     // Validate sort_by to prevent SQL injection
-    const allowedSortColumns = ['created_at', 'price_min', 'price_max', 'brand', 'model', 'view_count', 'status'];
+    const allowedSortColumns = ['created_at', 'updated_at', 'price_min', 'price_max', 'brand', 'model', 'view_count', 'status', 'image_count'];
     const safeSortBy = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
     const safeSortOrder = sort_order === 'asc' ? 'ASC' : 'DESC';
 
-    queryText += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
+    if (safeSortBy === 'image_count') {
+      queryText += ` ORDER BY (
+        COALESCE(array_length(images, 1), 0) + 
+        (
+          SELECT COUNT(*)
+          FROM jsonb_each(COALESCE(color_variant_images, '{}'::jsonb)) AS color
+          CROSS JOIN LATERAL jsonb_object_keys(color.value -> 'images')
+        )
+      ) ${safeSortOrder}`;
+    } else {
+      queryText += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
+    }
 
     // Pagination
     paramCount++;

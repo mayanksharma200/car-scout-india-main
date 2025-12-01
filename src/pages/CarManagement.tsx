@@ -64,6 +64,19 @@ const CarManagement = () => {
   const [totalCars, setTotalCars] = useState(0);
   const limit = 20;
 
+  // Sorting States
+  const [sortBy, setSortBy] = useState("updated_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+  };
+
   // Stats States
   const [stats, setStats] = useState({
     totalCars: 0,
@@ -182,8 +195,8 @@ const CarManagement = () => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        sort_by: "updated_at",
-        sort_order: "desc",
+        sort_by: sortBy,
+        sort_order: sortOrder,
       });
 
       if (searchQuery) params.append("search", searchQuery);
@@ -224,7 +237,7 @@ const CarManagement = () => {
   // Fetch cars when page, search, or filters change
   useEffect(() => {
     fetchCars();
-  }, [page, searchQuery, brandFilter]);
+  }, [page, searchQuery, brandFilter, sortBy, sortOrder]);
 
   const formatPrice = (price: number) => {
     if (price >= 10000000) {
@@ -610,8 +623,28 @@ const CarManagement = () => {
                   <TableHead>Car Details</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Photos</TableHead>
-                  <TableHead>Last Updated</TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort('image_count')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Photos
+                      {sortBy === 'image_count' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort('updated_at')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Last Updated
+                      {sortBy === 'updated_at' && (
+                        <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
