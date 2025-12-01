@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,48 @@ import AdDebugger from "@/components/AdDebugger"; // Import the debug component
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Stats state
+  const [stats, setStats] = useState({
+    totalCars: 0,
+    totalBrands: 0,
+    totalCities: 0,
+  });
+  const [availableBrands, setAvailableBrands] = useState([]);
+  const [availableCities, setAvailableCities] = useState([]);
+  const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
+
+  // Ref to track if stats have been fetched
+  const statsFetchedRef = useRef(false);
+
+  useEffect(() => {
+    // Prevent double fetching in StrictMode
+    if (statsFetchedRef.current) return;
+    statsFetchedRef.current = true;
+
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/stats");
+        const result = await response.json();
+        if (result.success) {
+          setStats(result.data);
+          if (result.data.brands && Array.isArray(result.data.brands)) {
+            setAvailableBrands(result.data.brands);
+          }
+          if (result.data.cities && Array.isArray(result.data.cities)) {
+            setAvailableCities(result.data.cities);
+          }
+          if (result.data.brandCounts) {
+            setBrandCounts(result.data.brandCounts);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     // Handle OAuth callback
@@ -50,8 +92,8 @@ const Index = () => {
               provider === "google"
                 ? "Google"
                 : provider === "facebook"
-                ? "Facebook"
-                : provider.charAt(0).toUpperCase() + provider.slice(1);
+                  ? "Facebook"
+                  : provider.charAt(0).toUpperCase() + provider.slice(1);
 
             toast({
               title: "Welcome!",
@@ -82,13 +124,17 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <HeroSection />
+      <HeroSection
+        stats={stats}
+        availableBrands={availableBrands}
+        availableCities={availableCities}
+      />
 
       <div className="my-8">
         <AdBanner placement="below_hero" className="mb-8" />
       </div>
 
-      <BrandGrid />
+      <BrandGrid brandCounts={brandCounts} />
 
       <div className="my-8">
         <AdBanner placement="between_brands_1" className="mb-8" />

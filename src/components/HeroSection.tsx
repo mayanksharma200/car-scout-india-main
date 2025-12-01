@@ -89,7 +89,15 @@ const AnimatedCounter = ({ end, suffix = "", delay = 0 }) => {
   );
 };
 
-const HeroSection = () => {
+const HeroSection = ({
+  stats: initialStats,
+  availableBrands: initialBrands,
+  availableCities: initialCities
+}: {
+  stats?: any,
+  availableBrands?: string[],
+  availableCities?: string[]
+}) => {
   const navigate = useNavigate();
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -98,45 +106,29 @@ const HeroSection = () => {
   const [priceRange, setPriceRange] = useState([5, 50]);
   const [mileageRange, setMileageRange] = useState([10, 30]);
 
-  // Stats state
-  const [stats, setStats] = useState({
+  // Stats state - initialize with props or defaults
+  const [stats, setStats] = useState(initialStats || {
     totalCars: 0,
     totalBrands: 0,
     totalCities: 0,
   });
 
-  // Available brands and cities from DB
-  const [availableBrands, setAvailableBrands] = useState([]);
-  const [availableCities, setAvailableCities] = useState([]);
+  // Available brands and cities from DB - initialize with props or defaults
+  const [availableBrands, setAvailableBrands] = useState(initialBrands || []);
+  const [availableCities, setAvailableCities] = useState(initialCities || []);
 
-  // Ref to track if data has been fetched
-  const dataFetchedRef = useRef(false);
+  // Update state when props change (for initial load)
+  useEffect(() => {
+    if (initialStats) setStats(initialStats);
+  }, [initialStats]);
 
   useEffect(() => {
-    // Prevent double fetching in StrictMode
-    if (dataFetchedRef.current) return;
-    dataFetchedRef.current = true;
+    if (initialBrands) setAvailableBrands(initialBrands);
+  }, [initialBrands]);
 
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("/api/stats");
-        const result = await response.json();
-        if (result.success) {
-          setStats(result.data);
-          if (result.data.brands && Array.isArray(result.data.brands)) {
-            setAvailableBrands(result.data.brands);
-          }
-          if (result.data.cities && Array.isArray(result.data.cities)) {
-            setAvailableCities(result.data.cities);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  useEffect(() => {
+    if (initialCities) setAvailableCities(initialCities);
+  }, [initialCities]);
 
   // Main search states
   const [carType, setCarType] = useState("");

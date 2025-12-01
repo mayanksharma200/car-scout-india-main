@@ -131,31 +131,18 @@ const allBrands = [
   },
 ];
 
-const BrandGrid = () => {
+const BrandGrid = ({ brandCounts: initialBrandCounts }: { brandCounts?: Record<string, number> }) => {
   const navigate = useNavigate();
   const [showAllBrands, setShowAllBrands] = useState(false);
-  const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [brandCounts, setBrandCounts] = useState<Record<string, number>>(initialBrandCounts || {});
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Update state when props change
   useEffect(() => {
-    const fetchBrandCounts = async () => {
-      try {
-        const response = await fetch('/api/stats');
-        const data = await response.json();
-
-        if (data.success && data.data.brandCounts) {
-          console.log('Brand counts from API:', data.data.brandCounts);
-          setBrandCounts(data.data.brandCounts);
-        }
-      } catch (err) {
-        console.error('Failed to fetch brands:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBrandCounts();
-  }, []);
+    if (initialBrandCounts) {
+      setBrandCounts(initialBrandCounts);
+    }
+  }, [initialBrandCounts]);
 
   // Filter allBrands to only include those present in brandCounts
   // We compare case-insensitively to be safe
