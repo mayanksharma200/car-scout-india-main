@@ -386,8 +386,8 @@ const LeadManagement = () => {
                   {lead.budget_min && lead.budget_max
                     ? `${formatCurrency(lead.budget_min)} - ${formatCurrency(lead.budget_max)}`
                     : lead.budget_min
-                    ? formatCurrency(lead.budget_min)
-                    : formatCurrency(lead.budget_max!)}
+                      ? formatCurrency(lead.budget_min)
+                      : formatCurrency(lead.budget_max!)}
                 </span>
               </div>
             )}
@@ -638,10 +638,10 @@ const LeadManagement = () => {
                                 <ExternalLink className="w-4 h-4 mr-2" />
                                 Send to API
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              {/* <DropdownMenuItem>
                                 <MessageSquare className="w-4 h-4 mr-2" />
                                 Add Note
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> */}
                               <DropdownMenuItem onClick={() => handleEditClick(lead)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit Lead
@@ -760,8 +760,8 @@ const LeadManagement = () => {
                           {selectedLead.budget_min && selectedLead.budget_max
                             ? `${formatCurrency(selectedLead.budget_min)} - ${formatCurrency(selectedLead.budget_max)}`
                             : selectedLead.budget_min
-                            ? formatCurrency(selectedLead.budget_min)
-                            : formatCurrency(selectedLead.budget_max!)}
+                              ? formatCurrency(selectedLead.budget_min)
+                              : formatCurrency(selectedLead.budget_max!)}
                         </p>
                       )}
                       {selectedLead.timeline && (
